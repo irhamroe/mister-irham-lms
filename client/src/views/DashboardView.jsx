@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { FlatBadge, FlatStatusDot } from '../components/common/FlatComponents';
+import FirebaseAnnouncements from '../components/FirebaseAnnouncements';
 
 export default function DashboardView({ setActiveTab, onStartCbt }) {
   const { user, classes, subjects } = useAuth();
@@ -290,6 +291,11 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
           </div>
         </div>
       )}
+
+      {/* ===================================================================
+          Firebase Realtime Announcements Board
+          =================================================================== */}
+      <FirebaseAnnouncements />
 
       {/* ===================================================================
           Two Column Layout: Modules & Recent Assignments
