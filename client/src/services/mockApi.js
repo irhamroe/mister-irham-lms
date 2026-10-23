@@ -718,13 +718,93 @@ export function handleMockRequest(endpoint, options = {}) {
 
     if (parts[4] === 'monitor') {
       const exam = exams.find(e => e.id === examId) || exams[0];
+      const studentsInClass = users.filter(u => u.role === 'siswa' && (!exam.class_name || u.kelas === exam.class_name));
+      const proctorList = studentsInClass.map((st, idx) => {
+        let status = 'IN_PROGRESS';
+        let answered = 2;
+        let progress = 67;
+        let violations = 0;
+        let score = null;
+        let device = 'Chrome 128 • Windows 11';
+
+        if (idx === 1 || idx === 6) {
+          status = 'SUBMITTED';
+          answered = 3;
+          progress = 100;
+          score = 85 + idx;
+          device = 'Edge 128 • Windows 10';
+        } else if (idx === 2) {
+          status = 'BLOCKED';
+          answered = 1;
+          progress = 33;
+          violations = 2;
+          device = 'Chrome 127 • Android 14';
+        } else if (idx === 5 || idx === 7) {
+          status = 'NOT_STARTED';
+          answered = 0;
+          progress = 0;
+          device = null;
+        }
+
+        return {
+          student: st,
+          status,
+          answered_count: answered,
+          doubtful_count: idx === 2 ? 1 : 0,
+          progress_percent: progress,
+          remaining_seconds: 2400,
+          violation_count: violations,
+          score,
+          device_info: device,
+          last_active_at: new Date().toISOString()
+        };
+      });
+
+      const stats = {
+        total: studentsInClass.length,
+        not_started: proctorList.filter(p => p.status === 'NOT_STARTED').length,
+        in_progress: proctorList.filter(p => p.status === 'IN_PROGRESS').length,
+        blocked: proctorList.filter(p => p.status === 'BLOCKED').length,
+        submitted: proctorList.filter(p => p.status === 'SUBMITTED').length,
+        avg_score: 85
+      };
+
+      const logs = [
+        {
+          id: 1,
+          student_id: 6,
+          student_name: 'Rendy Kurniawan',
+          nis: '1003',
+          event_type: 'TAB_SWITCH',
+          details: 'Meninggalkan tab pengerjaan ujian selama 4 detik (Peringatan ke-2, Layar Dikunci)',
+          created_at: new Date(Date.now() - 2 * 60 * 1000).toISOString()
+        },
+        {
+          id: 2,
+          student_id: 8,
+          student_name: 'Reza Aditya Nugraha',
+          nis: '1005',
+          event_type: 'FULLSCREEN_EXIT',
+          details: 'Keluar dari mode layar penuh (fullscreen exit)',
+          created_at: new Date(Date.now() - 8 * 60 * 1000).toISOString()
+        },
+        {
+          id: 3,
+          student_id: 5,
+          student_name: 'Dewi Anjani Kusuma',
+          nis: '1002',
+          event_type: 'SUBMIT',
+          details: 'Menyelesaikan dan mengumpulkan lembar jawaban ujian',
+          created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString()
+        }
+      ];
+
       return {
         exam,
-        activeStudents: 6,
-        submittedCount: 2,
-        violationAlerts: [
-          { studentName: 'Rendy Kurniawan', type: 'TAB_SWITCH', time: '10:14:02', details: 'Beralih ke tab browser lain' }
-        ]
+        total_questions: questions.filter(q => q.exam_id === exam.id).length || 3,
+        students: proctorList,
+        logs,
+        stats
       };
     }
 

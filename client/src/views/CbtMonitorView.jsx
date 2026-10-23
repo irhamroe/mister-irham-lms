@@ -65,28 +65,32 @@ export default function CbtMonitorView({ examId: propExamId }) {
   }
 
   async function loadMonitorState(examId) {
+    if (!examId) return;
     try {
       setLoading(true);
       const data = await api.getCbtMonitor(examId);
       setMonitorData(data);
     } catch (err) {
-      alert('Gagal memuat status live monitor: ' + err.message);
+      console.warn('Gagal memuat status live monitor:', err);
     } finally {
       setLoading(false);
     }
   }
 
   function setupRealtimeSocket(examId) {
-    const socket = getSocket();
+    if (!examId) return;
+    try {
+      const socket = getSocket();
+      if (!socket) return;
 
-    socket.emit('join_exam', {
-      exam_id: examId,
-      user
-    });
+      socket.emit('join_exam', {
+        exam_id: examId,
+        user
+      });
 
-    // 1. Live Progress update from student
-    socket.off('live_progress_update');
-    socket.on('live_progress_update', (data) => {
+      // 1. Live Progress update from student
+      socket.off('live_progress_update');
+      socket.on('live_progress_update', (data) => {
       setMonitorData(prev => {
         if (!prev) return prev;
         const updatedStudents = prev.students.map(st => {
@@ -143,7 +147,10 @@ export default function CbtMonitorView({ examId: propExamId }) {
         };
       });
     });
+  } catch (e) {
+    console.warn('Socket setup error:', e);
   }
+}
 
   async function handleProctorAction(actionType, studentId, value = null) {
     try {
@@ -355,7 +362,7 @@ export default function CbtMonitorView({ examId: propExamId }) {
             </div>
             <div className="stat-details">
               <h4>Total Peserta</h4>
-              <div className="stat-value" style={{ color: '#1D4ED8' }}>{monitorData.stats.total}</div>
+              <div className="stat-value" style={{ color: '#1D4ED8' }}>{monitorData?.stats?.total ?? 0}</div>
               <div className="stat-desc">Terdaftar dalam rombel</div>
             </div>
           </div>
@@ -367,7 +374,7 @@ export default function CbtMonitorView({ examId: propExamId }) {
             </div>
             <div className="stat-details">
               <h4>Sedang Mengerjakan</h4>
-              <div className="stat-value" style={{ color: '#047857' }}>{monitorData.stats.in_progress}</div>
+              <div className="stat-value" style={{ color: '#047857' }}>{monitorData?.stats?.in_progress ?? 0}</div>
               <div className="stat-desc">Koneksi ujian aktif</div>
             </div>
           </div>
@@ -379,7 +386,7 @@ export default function CbtMonitorView({ examId: propExamId }) {
             </div>
             <div className="stat-details">
               <h4>Layar Terkunci</h4>
-              <div className="stat-value" style={{ color: '#B91C1C' }}>{monitorData.stats.blocked}</div>
+              <div className="stat-value" style={{ color: '#B91C1C' }}>{monitorData?.stats?.blocked ?? 0}</div>
               <div className="stat-desc">Perlu pembukaan kunci</div>
             </div>
           </div>
@@ -391,7 +398,7 @@ export default function CbtMonitorView({ examId: propExamId }) {
             </div>
             <div className="stat-details">
               <h4>Selesai Mengumpulkan</h4>
-              <div className="stat-value" style={{ color: '#0369A1' }}>{monitorData.stats.submitted}</div>
+              <div className="stat-value" style={{ color: '#0369A1' }}>{monitorData?.stats?.submitted ?? 0}</div>
               <div className="stat-desc">Lembar ujian diserahkan</div>
             </div>
           </div>
