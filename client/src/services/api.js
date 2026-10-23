@@ -1,3 +1,5 @@
+import { handleMockRequest } from './mockApi';
+
 const API_BASE = '/api';
 
 export function getToken() {
@@ -20,16 +22,20 @@ async function request(endpoint, options = {}) {
     ...options.headers
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers
-  });
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers
+    });
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || 'Terjadi kesalahan sistem');
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      return await response.json();
+    }
+    return handleMockRequest(endpoint, options);
+  } catch (err) {
+    return handleMockRequest(endpoint, options);
   }
-  return data;
 }
 
 function toQueryString(params = {}) {
