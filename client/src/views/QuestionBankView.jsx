@@ -1557,11 +1557,21 @@ export default function QuestionBankView({ onNavigateToCbt }) {
         <div className="modal-overlay" onClick={() => !isImporting && setShowImportModal(false)}>
           <div
             className="modal-container"
-            style={{ maxWidth: 940, width: '95%', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
+            style={{
+              maxWidth: 940,
+              width: '95%',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              background: '#FFFFFF',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden'
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="modal-header" style={{ padding: '16px 22px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="modal-header" style={{ padding: '16px 22px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FFFFFF' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.18rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Upload size={20} color="var(--primary)" /> Impor Butir Soal Massal

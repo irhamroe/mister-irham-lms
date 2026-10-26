@@ -925,10 +925,20 @@ export default function AssignmentsView() {
         <div className="modal-overlay" onClick={() => setShowDriveModal(false)}>
           <div
             className="modal-container"
-            style={{ maxWidth: 780, width: '95%', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
+            style={{
+              maxWidth: 780,
+              width: '95%',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              background: '#FFFFFF',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden'
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header" style={{ padding: '16px 22px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="modal-header" style={{ padding: '16px 22px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FFFFFF' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.18rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Cloud size={22} color="#2563eb" /> Pengaturan Integrasi Google Drive
