@@ -348,6 +348,58 @@ const DEFAULT_ASSIGNMENTS = [
   }
 ];
 
+const DEFAULT_ATTENDANCE = [
+  {
+    id: 1,
+    class_id: 1,
+    class_name: 'X-IPA-1',
+    subject_id: 1,
+    subject_name: 'Matematika Wajib',
+    teacher_id: 2,
+    teacher_name: 'Budi Santoso, S.Pd.',
+    date: '2026-10-22',
+    time_start: '07:30',
+    time_end: '09:00',
+    session_title: 'Pertemuan 2: Metode Eliminasi dan Substitusi SPLTV',
+    session_code: 'MAT912',
+    is_open: 1
+  },
+  {
+    id: 2,
+    class_id: 1,
+    class_name: 'X-IPA-1',
+    subject_id: 1,
+    subject_name: 'Matematika Wajib',
+    teacher_id: 2,
+    teacher_name: 'Budi Santoso, S.Pd.',
+    date: '2026-10-15',
+    time_start: '07:30',
+    time_end: '09:00',
+    session_title: 'Pertemuan 1: Konsep Dasar dan Notasi SPLTV',
+    session_code: 'MAT101',
+    is_open: 0
+  }
+];
+
+const DEFAULT_ATT_RECORDS = [
+  { session_id: 1, student_id: 4, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:35:00' },
+  { session_id: 1, student_id: 5, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:36:00' },
+  { session_id: 1, student_id: 6, status: 'Sakit', notes: 'Surat dokter', recorded_at: '2026-10-22 07:40:00' },
+  { session_id: 1, student_id: 7, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:35:00' },
+  { session_id: 1, student_id: 8, status: 'Izin', notes: 'Lomba OSN', recorded_at: '2026-10-22 07:30:00' },
+  { session_id: 1, student_id: 9, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:42:00' },
+  { session_id: 1, student_id: 10, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:38:00' },
+  { session_id: 1, student_id: 11, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:35:00' },
+  { session_id: 2, student_id: 4, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
+  { session_id: 2, student_id: 5, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:36:00' },
+  { session_id: 2, student_id: 6, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
+  { session_id: 2, student_id: 7, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
+  { session_id: 2, student_id: 8, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
+  { session_id: 2, student_id: 9, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
+  { session_id: 2, student_id: 10, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
+  { session_id: 2, student_id: 11, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' }
+];
+
 function getStored(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -900,47 +952,225 @@ export function handleMockRequest(endpoint, options = {}) {
 
   // ATTENDANCE
   if (path === '/attendance/sessions') {
-    return [
-      {
-        id: 1,
-        class_id: 1,
-        class_name: 'X-IPA-1',
-        subject_id: 1,
-        subject_name: 'Matematika Wajib',
-        teacher_id: 2,
-        teacher_name: 'Budi Santoso, S.Pd.',
-        date: '2026-10-22',
-        time_start: '07:30',
-        time_end: '09:00',
-        session_title: 'Pertemuan 2: Metode Eliminasi dan Substitusi SPLTV',
-        session_code: 'MAT912',
-        is_open: 1,
-        count_hadir: 7,
-        count_total_recorded: 8,
-        count_class_students: 8
+    let sessions = getStored(STORAGE_KEYS.ATTENDANCE, DEFAULT_ATTENDANCE);
+    const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
+    const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);
+    const records = getStored(STORAGE_KEYS.ATT_RECORDS, DEFAULT_ATT_RECORDS);
+
+    if (method === 'GET') {
+      const classId = params.get('class_id');
+      const subjectId = params.get('subject_id');
+
+      let filtered = sessions;
+      if (currentUser.role === 'siswa') {
+        filtered = filtered.filter(s => s.class_name === currentUser.kelas);
+      } else if (classId) {
+        filtered = filtered.filter(s => s.class_id === Number(classId));
       }
-    ];
+      if (subjectId) {
+        filtered = filtered.filter(s => s.subject_id === Number(subjectId));
+      }
+
+      return filtered.map(s => {
+        const sessRecords = records.filter(r => r.session_id === s.id);
+        const classStudents = users.filter(u => u.role === 'siswa' && (u.kelas === s.class_name || !s.class_name));
+        return {
+          ...s,
+          count_hadir: sessRecords.filter(r => r.status === 'Hadir').length,
+          count_total_recorded: sessRecords.length,
+          count_class_students: classStudents.length
+        };
+      });
+    }
+
+    if (method === 'POST') {
+      const cls = classes.find(c => c.id === Number(body.class_id));
+      const subj = subjects.find(s => s.id === Number(body.subject_id));
+      const session_code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const newSession = {
+        id: Date.now(),
+        class_id: Number(body.class_id),
+        class_name: cls ? cls.name : 'X-IPA-1',
+        subject_id: Number(body.subject_id),
+        subject_name: subj ? subj.name : 'Matematika Wajib',
+        teacher_id: currentUser.id,
+        teacher_name: currentUser.name,
+        date: body.date || new Date().toISOString().split('T')[0],
+        time_start: body.time_start || '07:30',
+        time_end: body.time_end || '09:00',
+        session_title: body.session_title || 'Sesi Presensi',
+        session_code,
+        is_open: 1
+      };
+      sessions.unshift(newSession);
+      setStored(STORAGE_KEYS.ATTENDANCE, sessions);
+      return newSession;
+    }
   }
 
-  if (path.startsWith('/attendance/sessions/')) {
+  if (path.match(/^\/attendance\/sessions\/\d+\/toggle$/)) {
     const id = Number(path.split('/')[3]);
-    const studentsInClass = users.filter(u => u.role === 'siswa' && u.kelas === 'X-IPA-1');
+    let sessions = getStored(STORAGE_KEYS.ATTENDANCE, DEFAULT_ATTENDANCE);
+    const sess = sessions.find(s => s.id === id);
+    if (!sess) return { error: 'Sesi tidak ditemukan' };
+    sess.is_open = sess.is_open ? 0 : 1;
+    setStored(STORAGE_KEYS.ATTENDANCE, sessions);
+    return { success: true, is_open: sess.is_open };
+  }
+
+  if (path.match(/^\/attendance\/sessions\/\d+\/check-in$/)) {
+    const id = Number(path.split('/')[3]);
+    let sessions = getStored(STORAGE_KEYS.ATTENDANCE, DEFAULT_ATTENDANCE);
+    const sess = sessions.find(s => s.id === id);
+    if (!sess) return { error: 'Sesi tidak ditemukan' };
+    if (!sess.is_open) return { error: 'Sesi presensi ini telah ditutup oleh guru' };
+    if (sess.session_code && sess.session_code.toUpperCase() !== (body.code || '').trim().toUpperCase()) {
+      return { error: 'Kode presensi tidak sesuai' };
+    }
+    let records = getStored(STORAGE_KEYS.ATT_RECORDS, DEFAULT_ATT_RECORDS);
+    const existingIdx = records.findIndex(r => r.session_id === id && r.student_id === currentUser.id);
+    const newRecord = {
+      session_id: id,
+      student_id: currentUser.id,
+      status: 'Hadir',
+      notes: 'Presensi mandiri',
+      recorded_at: new Date().toISOString()
+    };
+    if (existingIdx >= 0) {
+      records[existingIdx] = newRecord;
+    } else {
+      records.push(newRecord);
+    }
+    setStored(STORAGE_KEYS.ATT_RECORDS, records);
+    return { success: true, message: 'Presensi berhasil dicatat! Status: Hadir' };
+  }
+
+  if (path.match(/^\/attendance\/sessions\/\d+\/records$/)) {
+    const id = Number(path.split('/')[3]);
+    let records = getStored(STORAGE_KEYS.ATT_RECORDS, DEFAULT_ATT_RECORDS);
+    const newRecords = Array.isArray(body.records) ? body.records : [];
+
+    newRecords.forEach(row => {
+      if (row.status && row.status !== 'Belum Presensi') {
+        const studentId = row.student_id || row.id;
+        const idx = records.findIndex(r => r.session_id === id && r.student_id === studentId);
+        const item = {
+          session_id: id,
+          student_id: studentId,
+          status: row.status,
+          notes: row.notes || '',
+          recorded_at: new Date().toISOString()
+        };
+        if (idx >= 0) {
+          records[idx] = item;
+        } else {
+          records.push(item);
+        }
+      }
+    });
+    setStored(STORAGE_KEYS.ATT_RECORDS, records);
+    return { success: true, message: 'Data presensi berhasil diperbarui' };
+  }
+
+  if (path.match(/^\/attendance\/sessions\/\d+$/)) {
+    const id = Number(path.split('/')[3]);
+    const sessions = getStored(STORAGE_KEYS.ATTENDANCE, DEFAULT_ATTENDANCE);
+    const session = sessions.find(s => s.id === id) || sessions[0] || {
+      id,
+      session_title: 'Pertemuan Presensi',
+      session_code: 'MAT912',
+      is_open: 1,
+      class_id: 1,
+      class_name: 'X-IPA-1',
+      subject_id: 1,
+      subject_name: 'Matematika Wajib',
+      date: '2026-10-22',
+      time_start: '07:30',
+      time_end: '09:00'
+    };
+
+    const records = getStored(STORAGE_KEYS.ATT_RECORDS, DEFAULT_ATT_RECORDS);
+    const sessionRecords = records.filter(r => r.session_id === id);
+    const recordMap = {};
+    sessionRecords.forEach(r => { recordMap[r.student_id] = r; });
+
+    const className = session.class_name || 'X-IPA-1';
+    const studentsInClass = users.filter(u => u.role === 'siswa' && (u.kelas === className || !className));
+
+    const studentList = studentsInClass.map(s => ({
+      id: s.id,
+      name: s.name,
+      nis: s.nis || s.nis_nip || '',
+      avatar: s.avatar,
+      kelas: s.kelas,
+      record: recordMap[s.id] || { status: 'Belum Presensi', notes: '', recorded_at: null }
+    }));
+
+    const stats = {
+      total: studentList.length,
+      hadir: sessionRecords.filter(r => r.status === 'Hadir').length,
+      sakit: sessionRecords.filter(r => r.status === 'Sakit').length,
+      izin: sessionRecords.filter(r => r.status === 'Izin').length,
+      alpa: sessionRecords.filter(r => r.status === 'Alpa').length,
+      terlambat: sessionRecords.filter(r => r.status === 'Terlambat').length,
+      belum: studentList.length - sessionRecords.length
+    };
+
     return {
-      session: {
-        id,
-        session_title: 'Pertemuan 2: Metode Eliminasi dan Substitusi SPLTV',
-        session_code: 'MAT912',
-        is_open: 1,
-        class_id: 1,
-        subject_id: 1
-      },
-      records: studentsInClass.map((s, idx) => ({
+      session,
+      students: studentList,
+      records: studentList.map(s => ({
         student_id: s.id,
         student_name: s.name,
         nis: s.nis,
-        status: idx === 2 ? 'Sakit' : 'Hadir',
-        notes: idx === 2 ? 'Izin dokter' : 'Tepat waktu'
-      }))
+        avatar: s.avatar,
+        status: s.record.status,
+        notes: s.record.notes
+      })),
+      stats
+    };
+  }
+
+  if (path === '/attendance/summary') {
+    const classId = Number(params.get('class_id') || 1);
+    const subjectId = Number(params.get('subject_id') || 1);
+    const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
+    const cls = classes.find(c => c.id === classId);
+    const className = cls ? cls.name : 'X-IPA-1';
+
+    const sessions = getStored(STORAGE_KEYS.ATTENDANCE, DEFAULT_ATTENDANCE)
+      .filter(s => s.class_id === classId && s.subject_id === subjectId);
+    const records = getStored(STORAGE_KEYS.ATT_RECORDS, DEFAULT_ATT_RECORDS);
+    const studentsInClass = users.filter(u => u.role === 'siswa' && (u.kelas === className || !className));
+
+    const summary = studentsInClass.map(st => {
+      const stRecords = records.filter(r => r.student_id === st.id && sessions.some(s => s.id === r.session_id));
+      const hadir = stRecords.filter(r => r.status === 'Hadir').length;
+      const sakit = stRecords.filter(r => r.status === 'Sakit').length;
+      const izin = stRecords.filter(r => r.status === 'Izin').length;
+      const alpa = stRecords.filter(r => r.status === 'Alpa').length;
+      const terlambat = stRecords.filter(r => r.status === 'Terlambat').length;
+      const totalSess = sessions.length;
+      const percentage = totalSess > 0 ? Math.round(((hadir + terlambat) / totalSess) * 100) : 100;
+
+      return {
+        student: {
+          id: st.id,
+          name: st.name,
+          nis: st.nis || st.nis_nip || ''
+        },
+        hadir,
+        sakit,
+        izin,
+        alpa,
+        terlambat,
+        percentage
+      };
+    });
+
+    return {
+      sessions,
+      summary
     };
   }
 

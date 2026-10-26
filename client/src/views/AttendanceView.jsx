@@ -79,9 +79,17 @@ export default function AttendanceView() {
         class_id: selectedClass || undefined,
         subject_id: selectedSubject || undefined
       });
-      setSessions(data);
-      if (data.length > 0 && !activeSession) {
-        openSessionDetails(data[0].id);
+      const sessionList = Array.isArray(data) ? data : [];
+      setSessions(sessionList);
+      if (sessionList.length > 0) {
+        const stillValid = sessionList.some(s => s.id === activeSession);
+        if (!stillValid || !activeSession) {
+          openSessionDetails(sessionList[0].id);
+        }
+      } else {
+        setActiveSession(null);
+        setSessionDetail(null);
+        setStudentRecords([]);
       }
     } catch (err) {
       console.error('Load sessions error:', err);
@@ -93,25 +101,34 @@ export default function AttendanceView() {
   async function openSessionDetails(sessionId) {
     try {
       const data = await api.getAttendanceSessionDetails(sessionId);
+      if (!data) return;
       setActiveSession(sessionId);
-      setSessionDetail(data.session);
-      setStudentRecords(data.students.map(s => ({
-        student_id: s.id,
-        name: s.name,
-        nis: s.nis,
-        avatar: s.avatar,
-        status: s.record.status === 'Belum Presensi' ? 'Hadir' : s.record.status,
-        notes: s.record.notes || ''
-      })));
+      if (data.session) {
+        setSessionDetail(data.session);
+      }
+      const rawList = data.students || data.records || [];
+      setStudentRecords(rawList.map(s => {
+        const rec = s.record || (s.status ? { status: s.status, notes: s.notes } : {});
+        const status = (rec.status && rec.status !== 'Belum Presensi') ? rec.status : 'Hadir';
+        return {
+          student_id: s.student_id || s.id,
+          name: s.student_name || s.name || '',
+          nis: s.nis || s.nis_nip || '',
+          avatar: s.avatar || `https://api.dicebear.com/7.x/micah/svg?seed=${s.student_name || s.name || s.id}`,
+          status,
+          notes: rec.notes || s.notes || ''
+        };
+      }));
     } catch (err) {
-      alert('Gagal memuat detail sesi: ' + err.message);
+      console.error('Error openSessionDetails:', err);
+      alert('Gagal memuat detail sesi: ' + (err.message || 'Terjadi kesalahan'));
     }
   }
 
   async function loadRecap() {
     try {
       const data = await api.getAttendanceSummary(selectedClass, selectedSubject);
-      setRecapData(data);
+      setRecapData(data || { sessions: [], summary: [] });
     } catch (err) {
       console.error('Load recap error:', err);
     }
