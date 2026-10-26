@@ -54,7 +54,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
   const [classesList, setClassesList] = useState([]);
   const [showClassModal, setShowClassModal] = useState(false);
   const [editingClass, setEditingClass] = useState(null);
-  const [classForm, setClassForm] = useState({ name: '', level: 'Kelas 10', academic_year: '2024/2025' });
+  const [classForm, setClassForm] = useState({ name: '', level: 'Kelas 10', academic_year: '2026/2027' });
 
   // Subject Management State (Data Mapel)
   const [subjectsList, setSubjectsList] = useState([]);
@@ -149,7 +149,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
 
   function handleOpenCreateClass() {
     setEditingClass(null);
-    setClassForm({ name: '', level: 'Kelas 10', academic_year: '2024/2025' });
+    setClassForm({ name: '', level: 'Kelas 10', academic_year: '2026/2027' });
     setShowClassModal(true);
   }
 
@@ -1030,11 +1030,11 @@ export default function ManagementView({ initialTab = 'classes' }) {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Tahun Ajaran</label>
+                    <label className="form-label">Tahun Pelajaran</label>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="2024/2025"
+                      placeholder="2026/2027"
                       value={classForm.academic_year}
                       onChange={(e) => setClassForm({ ...classForm, academic_year: e.target.value })}
                       required

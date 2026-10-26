@@ -106,7 +106,7 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
         <div style={{ position: 'relative', zIndex: 2, maxWidth: '640px' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255, 255, 255, 0.2)', padding: '5px 12px', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', fontWeight: 700, marginBottom: '14px' }}>
             <Sparkles size={15} />
-            <span>Tahun Ajaran 2024/2025 • Semester Ganjil</span>
+            <span>Tahun Pelajaran 2026/2027 • Semester Ganjil</span>
           </div>
 
           <h1 style={{ fontSize: '2.1rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '10px', lineHeight: 1.2 }}>

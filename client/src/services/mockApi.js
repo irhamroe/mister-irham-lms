@@ -160,9 +160,9 @@ const DEFAULT_USERS = [
 ];
 
 const DEFAULT_CLASSES = [
-  { id: 1, name: 'X-IPA-1', level: 'Kelas 10', academic_year: '2024/2025', student_count: 8, subject_count: 2 },
-  { id: 2, name: 'X-IPA-2', level: 'Kelas 10', academic_year: '2024/2025', student_count: 0, subject_count: 1 },
-  { id: 3, name: 'XI-IPA-1', level: 'Kelas 11', academic_year: '2024/2025', student_count: 0, subject_count: 0 }
+  { id: 1, name: 'X-IPA-1', level: 'Kelas 10', academic_year: '2026/2027', student_count: 8, subject_count: 2 },
+  { id: 2, name: 'X-IPA-2', level: 'Kelas 10', academic_year: '2026/2027', student_count: 0, subject_count: 1 },
+  { id: 3, name: 'XI-IPA-1', level: 'Kelas 11', academic_year: '2026/2027', student_count: 0, subject_count: 0 }
 ];
 
 const DEFAULT_SUBJECTS = [
@@ -573,7 +573,7 @@ export async function handleMockRequest(endpoint, options = {}) {
         id: Date.now(),
         name: body.name.trim(),
         level: body.level.trim(),
-        academic_year: body.academic_year || '2024/2025',
+        academic_year: body.academic_year || '2026/2027',
         student_count: 0,
         subject_count: 0
       };

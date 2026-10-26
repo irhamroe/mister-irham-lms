@@ -289,9 +289,9 @@ function seedData() {
 
   // 1. Classes
   const insertClass = db.prepare('INSERT INTO classes (name, level, academic_year) VALUES (?, ?, ?)');
-  const c1 = insertClass.run('X-IPA-1', 'Kelas 10', '2024/2025').lastInsertRowid;
-  const c2 = insertClass.run('X-IPA-2', 'Kelas 10', '2024/2025').lastInsertRowid;
-  const c3 = insertClass.run('XI-IPA-1', 'Kelas 11', '2024/2025').lastInsertRowid;
+  const c1 = insertClass.run('X-IPA-1', 'Kelas 10', '2026/2027').lastInsertRowid;
+  const c2 = insertClass.run('X-IPA-2', 'Kelas 10', '2026/2027').lastInsertRowid;
+  const c3 = insertClass.run('XI-IPA-1', 'Kelas 11', '2026/2027').lastInsertRowid;
 
   // 2. Users (Admin, Guru, Siswa)
   const insertUser = db.prepare(`

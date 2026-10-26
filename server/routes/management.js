@@ -66,7 +66,7 @@ router.post('/classes', requireRole(['admin', 'guru']), (req, res) => {
     }
 
     const insert = db.prepare('INSERT INTO classes (name, level, academic_year) VALUES (?, ?, ?)');
-    const result = insert.run(name.trim(), level.trim(), academic_year || '2024/2025');
+    const result = insert.run(name.trim(), level.trim(), academic_year || '2026/2027');
 
     const newClass = db.prepare(`
       SELECT c.*, 0 as student_count FROM classes c WHERE c.id = ?
