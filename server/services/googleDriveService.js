@@ -115,7 +115,7 @@ function sanitizeName(name) {
 
 /**
  * Upload student assignment submission to Google Drive:
- * Structure: [Nama Tugas] -> [Nama Kelas] -> [Nomor Absen] - [Nama Siswa].[ext]
+ * Structure: [Nama Tugas] -> [Nama Kelas] -> [Nomor Absen]_ [Nama Siswa].[ext]
  */
 async function uploadSubmissionFile({
   folderTask,
@@ -137,9 +137,9 @@ async function uploadSubmissionFile({
   const absenNumber = Number(studentAbsen) || 1;
   const absenFormatted = String(absenNumber).padStart(2, '0');
 
-  // Format final file name as requested: [Nomor Absen] - [Nama Siswa].[ext]
+  // Format final file name as requested: nomor absen_ nama siswa.[ext]
   const cleanStudentName = sanitizeName(studentName);
-  const targetFileName = `${absenFormatted} - ${cleanStudentName}${ext}`;
+  const targetFileName = `${absenFormatted}_ ${cleanStudentName}${ext}`;
 
   const cleanFolderTask = sanitizeName(folderTask) || 'Tugas Kelas';
   const cleanFolderClass = sanitizeName(folderClass) || 'Umum';
@@ -223,9 +223,115 @@ async function uploadSubmissionFile({
   };
 }
 
+/**
+ * Automatically create Task Folder and Class Subfolder(s) in Google Drive & Local Storage
+ * Triggered as soon as an admin or teacher creates an assignment and selects class(es)
+ */
+async function createTaskAndClassFolders({ folderTask, folderClass, folderClasses }) {
+  const settings = getDriveSettings();
+  const cleanFolderTask = sanitizeName(folderTask) || 'Tugas Kelas';
+
+  // Normalize list of classes
+  let classesList = [];
+  if (Array.isArray(folderClasses) && folderClasses.length > 0) {
+    classesList = folderClasses.map(c => sanitizeName(c)).filter(Boolean);
+  } else if (folderClass) {
+    classesList = [sanitizeName(folderClass)];
+  }
+  if (classesList.length === 0) {
+    classesList = ['Semua Kelas'];
+  }
+
+  const primaryClass = classesList[0];
+
+  // 1. If Google Apps Script Web App is configured, create folders in Google Drive
+  if (settings.webhookUrl) {
+    try {
+      const response = await fetch(settings.webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'create_folders',
+          parentFolderId: settings.parentFolderId || '',
+          folderTask: cleanFolderTask,
+          folderClass: primaryClass,
+          folderClasses: classesList
+        })
+      });
+
+      if (response.ok) {
+        const driveRes = await response.json();
+        if (driveRes && driveRes.success) {
+          const classFoldersMap = driveRes.classFolders || {};
+          // Ensure primaryClass has mapping if single class was processed
+          if (!classFoldersMap[primaryClass] && driveRes.classFolderUrl) {
+            classFoldersMap[primaryClass] = {
+              id: driveRes.classFolderId,
+              url: driveRes.classFolderUrl
+            };
+          }
+
+          // Also ensure local mirror directories exist for all selected classes
+          for (const cName of classesList) {
+            const localClassDir = path.join(__dirname, '..', 'uploads', 'assignments', cleanFolderTask, cName);
+            fs.mkdirSync(localClassDir, { recursive: true });
+          }
+
+          return {
+            success: true,
+            taskFolderId: driveRes.taskFolderId,
+            taskFolderUrl: driveRes.taskFolderUrl,
+            classFolderId: driveRes.classFolderId,
+            classFolderUrl: driveRes.classFolderUrl,
+            classFolders: classFoldersMap,
+            folderTask: cleanFolderTask,
+            folderClasses: classesList,
+            mode: 'GOOGLE_DRIVE'
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Google Drive create folders failed, creating local folder structure:', err.message);
+    }
+  }
+
+  // 2. Local filesystem creation fallback (and offline safety)
+  const classFoldersMap = {};
+  for (const cName of classesList) {
+    const localClassDir = path.join(__dirname, '..', 'uploads', 'assignments', cleanFolderTask, cName);
+    fs.mkdirSync(localClassDir, { recursive: true });
+    const relativeUrl = `/uploads/assignments/${encodeURIComponent(cleanFolderTask)}/${encodeURIComponent(cName)}`;
+    classFoldersMap[cName] = {
+      id: `local_class_${cName}_${Date.now()}`,
+      url: relativeUrl
+    };
+  }
+
+  const primaryUrl = classFoldersMap[primaryClass]?.url || `/uploads/assignments/${encodeURIComponent(cleanFolderTask)}/${encodeURIComponent(primaryClass)}`;
+
+  return {
+    success: true,
+    taskFolderId: `local_task_${Date.now()}`,
+    taskFolderUrl: `/uploads/assignments/${encodeURIComponent(cleanFolderTask)}`,
+    classFolderId: `local_class_${Date.now()}`,
+    classFolderUrl: primaryUrl,
+    classFolders: classFoldersMap,
+    folderTask: cleanFolderTask,
+    folderClasses: classesList,
+    mode: 'LOCAL',
+    warning: settings.webhookUrl
+      ? 'Google Drive tidak merespons, folder dibuat di server lokal.'
+      : 'Google Drive belum dikonfigurasi, folder dibuat di server lokal.'
+  };
+}
+
 module.exports = {
   getDriveSettings,
   saveDriveSettings,
   testDriveConnection,
-  uploadSubmissionFile
+  uploadSubmissionFile,
+  createTaskAndClassFolders,
+  sanitizeName
 };

@@ -1153,29 +1153,103 @@ export async function handleMockRequest(endpoint, options = {}) {
     }
 
     if (method === 'POST') {
-      const cls = classes.find(c => c.id === Number(body.class_id));
-      const subj = subjects.find(s => s.id === Number(body.subject_id));
-      const newAssign = {
-        id: Date.now(),
-        class_id: Number(body.class_id),
-        class_name: cls ? cls.name : 'X-IPA-1',
-        subject_id: Number(body.subject_id),
-        subject_name: subj ? subj.name : 'Matematika Wajib',
-        teacher_id: currentUser.id,
-        teacher_name: currentUser.name,
-        title: body.title || 'Tugas Baru',
-        instructions: body.instructions || '',
-        due_date: body.due_date || '2026-10-30 23:59',
-        max_points: Number(body.max_points || 100),
-        attachments: Array.isArray(body.attachments) ? body.attachments : [],
-        status: 'ACTIVE',
-        turned_in_count: 0,
-        graded_count: 0
-      };
-      assignments.unshift(newAssign);
+      let targetClassIds = [];
+      if (Array.isArray(body.class_ids) && body.class_ids.length > 0) {
+        targetClassIds = body.class_ids.map(Number).filter(id => !isNaN(id) && id > 0);
+      } else if (body.class_id) {
+        targetClassIds = [Number(body.class_id)];
+      }
+      if (targetClassIds.length === 0) targetClassIds = [Number(classes[0]?.id || 1)];
+
+      const subj = subjects.find(s => s.id === Number(body.subject_id)) || subjects[0] || { name: 'Matematika Wajib' };
+      const taskTitle = body.title || 'Tugas Baru';
+      const targetClasses = classes.filter(c => targetClassIds.includes(c.id));
+      const classNames = targetClasses.length > 0 ? targetClasses.map(c => c.name) : ['X-IPA-1'];
+
+      const driveSettings = JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}');
+      let taskFolderUrl = `https://drive.google.com/drive/folders/task_${Date.now()}?usp=sharing`;
+      const classFoldersMap = {};
+      classNames.forEach((cName, idx) => {
+        classFoldersMap[cName] = `https://drive.google.com/drive/folders/class_${cName}_${Date.now() + idx}?usp=sharing`;
+      });
+
+      if (driveSettings.webhookUrl) {
+        try {
+          const response = await fetch(driveSettings.webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              action: 'create_folders',
+              parentFolderId: driveSettings.parentFolderId || '',
+              folderTask: taskTitle,
+              folderClass: classNames[0],
+              folderClasses: classNames
+            })
+          });
+          if (response.ok) {
+            const resJson = await response.json();
+            if (resJson && resJson.success) {
+              if (resJson.taskFolderUrl) taskFolderUrl = resJson.taskFolderUrl;
+              if (resJson.classFolders) {
+                Object.keys(resJson.classFolders).forEach(k => {
+                  classFoldersMap[k] = resJson.classFolders[k].url || resJson.classFolders[k];
+                });
+              } else if (resJson.classFolderUrl) {
+                classFoldersMap[classNames[0]] = resJson.classFolderUrl;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Apps Script folder creation in mock failed:', e);
+        }
+      }
+
+      const createdAssignments = [];
+      targetClasses.forEach((cls) => {
+        const clsFolder = classFoldersMap[cls.name] || taskFolderUrl;
+        const newAssign = {
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          class_id: cls.id,
+          class_name: cls.name,
+          subject_id: Number(body.subject_id),
+          subject_name: subj.name,
+          teacher_id: currentUser.id,
+          teacher_name: currentUser.name,
+          title: taskTitle,
+          instructions: body.instructions || '',
+          due_date: body.due_date || '2026-10-30 23:59',
+          max_points: Number(body.max_points || 100),
+          attachments: Array.isArray(body.attachments) ? body.attachments : [],
+          status: 'ACTIVE',
+          turned_in_count: 0,
+          graded_count: 0,
+          drive_folder_url: clsFolder,
+          class_folder_url: clsFolder,
+          task_folder_url: taskFolderUrl
+        };
+        assignments.unshift(newAssign);
+        createdAssignments.push(newAssign);
+      });
+
       setStored(STORAGE_KEYS.ASSIGNMENTS, assignments);
-      return newAssign;
+      return createdAssignments[0] || {};
     }
+  }
+
+  if (path.match(/^\/assignments\/\d+\/create-folders$/)) {
+    return {
+      success: true,
+      message: 'Folder tugas dan kelas Google Drive otomatis dipastikan / dibuat!'
+    };
+  }
+
+  if (path.match(/^\/assignments\/\d+\/local-files$/)) {
+    return {
+      task: 'Tugas',
+      class: 'Kelas',
+      folderPath: '/uploads/assignments/Tugas/Kelas',
+      files: []
+    };
   }
 
   if (path.match(/^\/assignments\/\d+\/submit$/)) {
@@ -1196,7 +1270,7 @@ export async function handleMockRequest(endpoint, options = {}) {
     // Handle real or simulated file upload
     if (body.file) {
       const ext = body.file.name && body.file.name.includes('.') ? '.' + body.file.name.split('.').pop() : '.pdf';
-      const targetFileName = `${absenFormatted} - ${currentUser.name}${ext}`;
+      const targetFileName = `${absenFormatted}_ ${currentUser.name}${ext}`;
       
       const driveSettings = JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}');
       let driveUrl = `https://drive.google.com/file/d/demo_${Date.now()}/view?usp=sharing`;

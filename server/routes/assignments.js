@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const db = require('../db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const googleDriveService = require('../services/googleDriveService');
@@ -125,34 +127,96 @@ router.get('/', authenticateToken, (req, res) => {
   }
 });
 
-// POST /api/assignments - Create new assignment (Guru/Admin)
-router.post('/', authenticateToken, requireRole(['admin', 'guru']), (req, res) => {
+// POST /api/assignments - Create new assignment(s) with automatic Task & Class folder creation (Guru/Admin)
+router.post('/', authenticateToken, requireRole(['admin', 'guru']), async (req, res) => {
   try {
-    const { class_id, subject_id, title, instructions, due_date, max_points, attachments } = req.body;
-    if (!class_id || !subject_id || !title || !due_date) {
-      return res.status(400).json({ error: 'Data tugas belum lengkap (Judul, Kelas, Mapel, Tenggat Waktu wajib)' });
+    const { class_id, class_ids, subject_id, title, instructions, due_date, max_points, attachments } = req.body;
+
+    // Normalize class_ids (support array or single class_id)
+    let targetClassIds = [];
+    if (Array.isArray(class_ids) && class_ids.length > 0) {
+      targetClassIds = class_ids.map(Number).filter(id => !isNaN(id) && id > 0);
+    } else if (class_id) {
+      const parsedId = Number(class_id);
+      if (!isNaN(parsedId) && parsedId > 0) {
+        targetClassIds = [parsedId];
+      }
     }
 
+    if (targetClassIds.length === 0 || !subject_id || !title || !due_date) {
+      return res.status(400).json({ error: 'Data tugas belum lengkap (Judul, Minimal 1 Kelas, Mapel, Tenggat Waktu wajib)' });
+    }
+
+    // Get class names for all target classes
+    const placeholders = targetClassIds.map(() => '?').join(',');
+    const targetClasses = db.prepare(`SELECT id, name FROM classes WHERE id IN (${placeholders})`).all(...targetClassIds);
+    if (targetClasses.length === 0) {
+      return res.status(404).json({ error: 'Kelas sasaran tidak ditemukan' });
+    }
+
+    const classNames = targetClasses.map(c => c.name);
+
+    // 1. Automatically create folder structure: Folder Tugas -> Subfolder for each selected class
+    const driveFolderResult = await googleDriveService.createTaskAndClassFolders({
+      folderTask: title,
+      folderClasses: classNames,
+      folderClass: classNames[0]
+    });
+
     const insert = db.prepare(`
-      INSERT INTO assignments (teacher_id, class_id, subject_id, title, instructions, due_date, max_points, attachments_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO assignments (teacher_id, class_id, subject_id, title, instructions, due_date, max_points, attachments_json, drive_folder_url, task_folder_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const result = insert.run(
-      req.user.id,
-      class_id,
-      subject_id,
-      title,
-      instructions || '',
-      due_date,
-      Number(max_points) || 100,
-      JSON.stringify(attachments || [])
-    );
+    const createdAssignments = [];
+    const classFoldersMap = driveFolderResult.classFolders || {};
 
-    const newAssignment = db.prepare('SELECT * FROM assignments WHERE id = ?').get(result.lastInsertRowid);
+    const insertTx = db.transaction(() => {
+      for (const cls of targetClasses) {
+        const clsFolderUrl = classFoldersMap[cls.name]?.url 
+          || (classNames.length === 1 ? driveFolderResult.classFolderUrl : null)
+          || driveFolderResult.taskFolderUrl;
+
+        const result = insert.run(
+          req.user.id,
+          cls.id,
+          subject_id,
+          title,
+          instructions || '',
+          due_date,
+          Number(max_points) || 100,
+          JSON.stringify(attachments || []),
+          clsFolderUrl,
+          driveFolderResult.taskFolderUrl
+        );
+
+        const newAssignment = db.prepare(`
+          SELECT a.*, c.name as class_name, s.name as subject_name, u.name as teacher_name
+          FROM assignments a
+          JOIN classes c ON a.class_id = c.id
+          JOIN subjects s ON a.subject_id = s.id
+          JOIN users u ON a.teacher_id = u.id
+          WHERE a.id = ?
+        `).get(result.lastInsertRowid);
+
+        createdAssignments.push({
+          ...newAssignment,
+          attachments: JSON.parse(newAssignment.attachments_json || '[]'),
+          drive_folder_url: clsFolderUrl,
+          task_folder_url: driveFolderResult.taskFolderUrl,
+          class_folder_url: clsFolderUrl
+        });
+      }
+    });
+
+    insertTx();
+
     res.status(201).json({
-      ...newAssignment,
-      attachments: JSON.parse(newAssignment.attachments_json || '[]')
+      success: true,
+      count: createdAssignments.length,
+      assignments: createdAssignments,
+      ...(createdAssignments[0] || {}),
+      drive_creation: driveFolderResult
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -368,6 +432,85 @@ router.post('/:id/grade', authenticateToken, requireRole(['admin', 'guru']), (re
     }
 
     res.json({ success: true, message: 'Nilai dan masukan tugas berhasil disimpan' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/assignments/:id/create-folders - Ensure / sync Task Folder & Class Folder creation
+router.post('/:id/create-folders', authenticateToken, requireRole(['admin', 'guru']), async (req, res) => {
+  try {
+    const assignment = db.prepare(`
+      SELECT a.*, c.name as class_name 
+      FROM assignments a 
+      JOIN classes c ON a.class_id = c.id 
+      WHERE a.id = ?
+    `).get(req.params.id);
+
+    if (!assignment) return res.status(404).json({ error: 'Tugas tidak ditemukan' });
+
+    const driveFolderResult = await googleDriveService.createTaskAndClassFolders({
+      folderTask: assignment.title,
+      folderClass: assignment.class_name,
+      folderClasses: [assignment.class_name]
+    });
+
+    const classFolderUrl = driveFolderResult.classFolders?.[assignment.class_name]?.url || driveFolderResult.classFolderUrl;
+    const taskFolderUrl = driveFolderResult.taskFolderUrl;
+
+    db.prepare('UPDATE assignments SET drive_folder_url = ?, task_folder_url = ? WHERE id = ?')
+      .run(classFolderUrl, taskFolderUrl, assignment.id);
+
+    res.json({
+      success: true,
+      message: 'Folder tugas dan folder kelas berhasil dipastikan/dibuat!',
+      drive_folder_url: classFolderUrl,
+      task_folder_url: taskFolderUrl,
+      drive_creation: driveFolderResult
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/assignments/:id/local-files - List all submitted files stored in local task/class directory
+router.get('/:id/local-files', authenticateToken, (req, res) => {
+  try {
+    const assignment = db.prepare(`
+      SELECT a.*, c.name as class_name 
+      FROM assignments a 
+      JOIN classes c ON a.class_id = c.id 
+      WHERE a.id = ?
+    `).get(req.params.id);
+
+    if (!assignment) return res.status(404).json({ error: 'Tugas tidak ditemukan' });
+
+    const cleanFolderTask = googleDriveService.sanitizeName(assignment.title) || 'Tugas Kelas';
+    const cleanFolderClass = googleDriveService.sanitizeName(assignment.class_name) || 'Semua Kelas';
+    const localDir = path.join(__dirname, '..', 'uploads', 'assignments', cleanFolderTask, cleanFolderClass);
+
+    if (!fs.existsSync(localDir)) {
+      fs.mkdirSync(localDir, { recursive: true });
+    }
+
+    const files = fs.readdirSync(localDir).map(file => {
+      const filePath = path.join(localDir, file);
+      const stat = fs.statSync(filePath);
+      return {
+        name: file,
+        size: `${(stat.size / (1024 * 1024)).toFixed(2)} MB`,
+        sizeBytes: stat.size,
+        updatedAt: stat.mtime,
+        url: `/uploads/assignments/${encodeURIComponent(cleanFolderTask)}/${encodeURIComponent(cleanFolderClass)}/${encodeURIComponent(file)}`
+      };
+    });
+
+    res.json({
+      task: cleanFolderTask,
+      class: cleanFolderClass,
+      folderPath: `/uploads/assignments/${encodeURIComponent(cleanFolderTask)}/${encodeURIComponent(cleanFolderClass)}`,
+      files
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

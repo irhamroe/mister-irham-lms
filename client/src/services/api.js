@@ -88,6 +88,8 @@ export const api = {
   getDriveSettings: () => request('/assignments/drive-settings'),
   saveDriveSettings: (payload) => request('/assignments/drive-settings', { method: 'POST', body: JSON.stringify(payload) }),
   testDriveConnection: (payload) => request('/assignments/drive-settings/test', { method: 'POST', body: JSON.stringify(payload) }),
+  createAssignmentFolders: (id) => request(`/assignments/${id}/create-folders`, { method: 'POST' }),
+  getLocalAssignmentFiles: (id) => request(`/assignments/${id}/local-files`),
 
   // CBT
   getCbtExams: (params = {}) => request(`/cbt/exams${toQueryString(params)}`),

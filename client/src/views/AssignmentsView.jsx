@@ -22,7 +22,8 @@ import {
   X,
   File,
   Download,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -30,6 +31,8 @@ import { api } from '../services/api';
 const APPS_SCRIPT_CODE = `function doPost(e) {
   try {
     var payload = JSON.parse(e.postData.contents);
+    
+    // 1. Aksi Tes Koneksi
     if (payload.action === 'test') {
       return ContentService.createTextOutput(JSON.stringify({
         success: true,
@@ -42,24 +45,69 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
       ? DriveApp.getFolderById(payload.parentFolderId.trim()) 
       : DriveApp.getRootFolder();
       
-    // 1. Dapatkan / Buat Folder Tugas (misal: "Tugas 1: Dinamika Gerak")
+    // Dapatkan / Buat Folder Tugas (misal: "Tugas 1: Dinamika Gerak")
     var taskFolderName = payload.folderTask || 'Tugas Kelas';
     var taskFolders = parentFolder.getFoldersByName(taskFolderName);
     var taskFolder = taskFolders.hasNext() ? taskFolders.next() : parentFolder.createFolder(taskFolderName);
+    try {
+      taskFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch(eShare) {}
     
-    // 2. Dapatkan / Buat Folder Kelas (misal: "Kelas X-A") di dalam Folder Tugas
-    var classFolderName = payload.folderClass || 'Semua Kelas';
-    var classFolders = taskFolder.getFoldersByName(classFolderName);
-    var classFolder = classFolders.hasNext() ? classFolders.next() : taskFolder.createFolder(classFolderName);
+    // Siapkan daftar kelas (bisa array folderClasses atau single folderClass)
+    var classList = [];
+    if (Array.isArray(payload.folderClasses) && payload.folderClasses.length > 0) {
+      classList = payload.folderClasses;
+    } else if (payload.folderClass) {
+      classList = [payload.folderClass];
+    } else {
+      classList = ['Semua Kelas'];
+    }
+
+    var createdClassFolders = {};
+    var primaryClassFolder = null;
+
+    for (var i = 0; i < classList.length; i++) {
+      var cName = classList[i];
+      var cFolders = taskFolder.getFoldersByName(cName);
+      var cFolder = cFolders.hasNext() ? cFolders.next() : taskFolder.createFolder(cName);
+      try {
+        cFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      } catch(eShare) {}
+      createdClassFolders[cName] = {
+        id: cFolder.getId(),
+        url: cFolder.getUrl()
+      };
+      if (!primaryClassFolder) {
+        primaryClassFolder = cFolder;
+      }
+    }
     
-    // 3. Simpan File dengan nama: [Nomor Absen] - [Nama Siswa].[ext]
+    // 2. Aksi Otomatis: Buat Folder saat Admin/Guru membuat tugas baru
+    if (payload.action === 'create_folders') {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        taskFolderId: taskFolder.getId(),
+        taskFolderUrl: taskFolder.getUrl(),
+        classFolderId: primaryClassFolder ? primaryClassFolder.getId() : '',
+        classFolderUrl: primaryClassFolder ? primaryClassFolder.getUrl() : '',
+        classFolders: createdClassFolders
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // 3. Aksi Simpan Berkas Siswa: nomor absen_ nama siswa.[ext]
+    var uploadClassFolder = primaryClassFolder || taskFolder;
+    if (payload.folderClass) {
+      var targetFolders = taskFolder.getFoldersByName(payload.folderClass);
+      uploadClassFolder = targetFolders.hasNext() ? targetFolders.next() : taskFolder.createFolder(payload.folderClass);
+    }
+
     var base64Data = payload.fileBase64;
     if (base64Data.indexOf(';base64,') > -1) {
       base64Data = base64Data.split(';base64,')[1];
     }
     var decoded = Utilities.base64Decode(base64Data);
     var blob = Utilities.newBlob(decoded, payload.mimeType || 'application/octet-stream', payload.fileName);
-    var newFile = classFolder.createFile(blob);
+    var newFile = uploadClassFolder.createFile(blob);
     
     try {
       newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -71,7 +119,7 @@ const APPS_SCRIPT_CODE = `function doPost(e) {
       fileUrl: newFile.getUrl(),
       fileName: newFile.getName(),
       taskFolderUrl: taskFolder.getUrl(),
-      classFolderUrl: classFolder.getUrl()
+      classFolderUrl: uploadClassFolder.getUrl()
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (err) {
@@ -93,12 +141,16 @@ export default function AssignmentsView() {
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
+  const [isSyncingFolders, setIsSyncingFolders] = useState(false);
+  const [localFilesModal, setLocalFilesModal] = useState(null);
   const [createForm, setCreateForm] = useState({
     class_id: '',
+    class_ids: [],
     subject_id: '',
     title: '',
     instructions: '',
-    due_date: '2026-10-28 23:59',
+    due_date: '2026-10-30 23:59',
     max_points: 100,
     attachments: []
   });
@@ -270,21 +322,117 @@ export default function AssignmentsView() {
     }
   }
 
+  function handleOpenCreateModal() {
+    const initialClassId = selectedClass ? Number(selectedClass) : (classes[0]?.id || '');
+    setCreateForm(prev => ({
+      ...prev,
+      class_id: initialClassId,
+      class_ids: initialClassId ? [Number(initialClassId)] : (classes.length > 0 ? [classes[0].id] : []),
+      subject_id: selectedSubject ? Number(selectedSubject) : (subjects[0]?.id || '')
+    }));
+    setShowCreateModal(true);
+  }
+
+  function toggleClassSelection(classId) {
+    setCreateForm(prev => {
+      const id = Number(classId);
+      const exists = prev.class_ids.includes(id);
+      let updated;
+      if (exists) {
+        if (prev.class_ids.length <= 1) return prev; // keep at least 1
+        updated = prev.class_ids.filter(x => x !== id);
+      } else {
+        updated = [...prev.class_ids, id];
+      }
+      return {
+        ...prev,
+        class_ids: updated,
+        class_id: updated[0] || ''
+      };
+    });
+  }
+
+  function handleSelectAllClasses() {
+    setCreateForm(prev => ({
+      ...prev,
+      class_ids: classes.map(c => c.id),
+      class_id: classes[0]?.id || ''
+    }));
+  }
+
   async function handleCreateAssignment(e) {
     e.preventDefault();
+    const targetClassIds = createForm.class_ids.length > 0 
+      ? createForm.class_ids 
+      : (createForm.class_id ? [Number(createForm.class_id)] : [classes[0]?.id]);
+
+    if (targetClassIds.length === 0) {
+      alert('Pilih minimal satu kelas sasaran yang diberi tugas!');
+      return;
+    }
+
+    setIsCreatingAssignment(true);
     try {
+      const selectedClasses = classes.filter(c => targetClassIds.includes(c.id));
       await api.createAssignment({
         ...createForm,
-        class_id: Number(createForm.class_id || classes[0]?.id),
+        class_ids: targetClassIds,
+        class_id: targetClassIds[0],
         subject_id: Number(createForm.subject_id || subjects[0]?.id)
       });
       setShowCreateModal(false);
-      loadAssignments();
-      alert('Tugas baru berhasil dipublikasikan!');
+      await loadAssignments();
+      const folderList = selectedClasses.map(c => `  ├── 📂 Kelas ${c.name} (Folder kelas otomatis dibuat)`).join('\n');
+      alert(`✅ Tugas baru berhasil dipublikasikan!\n\nStruktur folder Google Drive & Server otomatis dibuat:\n📁 Folder Tugas: ${createForm.title}\n${folderList}`);
+      setCreateForm({
+        class_id: '',
+        class_ids: [],
+        subject_id: '',
+        title: '',
+        instructions: '',
+        due_date: '2026-10-30 23:59',
+        max_points: 100,
+        attachments: []
+      });
     } catch (err) {
       alert('Gagal membuat tugas: ' + err.message);
+    } finally {
+      setIsCreatingAssignment(false);
     }
   }
+
+  async function handleSyncFolders(assignmentId) {
+    if (!assignmentId) return;
+    setIsSyncingFolders(true);
+    try {
+      const res = await api.createAssignmentFolders(assignmentId);
+      alert(res.message || 'Folder tugas dan kelas Google Drive berhasil dipastikan/dibuat!');
+      await openAssignmentDetails(assignmentId);
+      await loadAssignments();
+    } catch (err) {
+      alert('Gagal membuat/sinkronkan folder: ' + err.message);
+    } finally {
+      setIsSyncingFolders(false);
+    }
+  }
+
+  async function handleViewLocalFiles(assignmentId) {
+    try {
+      const res = await api.getLocalAssignmentFiles(assignmentId);
+      setLocalFilesModal(res);
+    } catch (err) {
+      alert('Gagal membaca berkas lokal: ' + err.message);
+    }
+  }
+
+  const studentAbsenVal = submissionForm.student_absen || user?.no_absen || 1;
+  const paddedAbsen = String(Number(studentAbsenVal) || 1).padStart(2, '0');
+  const targetTaskFolder = assignmentDetail?.assignment?.title || 'Tugas Kelas';
+  const targetClassFolder = assignmentDetail?.assignment?.class_name ? `Kelas ${assignmentDetail.assignment.class_name}` : 'Semua Kelas';
+  const fileExt = submissionForm.selectedFile?.name && submissionForm.selectedFile.name.includes('.') 
+    ? submissionForm.selectedFile.name.substring(submissionForm.selectedFile.name.lastIndexOf('.'))
+    : (submissionForm.fileName && submissionForm.fileName.includes('.') ? submissionForm.fileName.substring(submissionForm.fileName.lastIndexOf('.')) : '.pdf');
+  const targetFormattedFileName = `${paddedAbsen}_ ${user?.name || 'Nama Siswa'}${fileExt}`;
 
   async function handleStudentSubmit(e) {
     e.preventDefault();
@@ -371,7 +519,7 @@ export default function AssignmentsView() {
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
               )}
             </button>
-            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+            <button className="btn btn-primary" onClick={handleOpenCreateModal}>
               <Plus size={16} /> Buat Tugas Baru
             </button>
           </div>
@@ -475,36 +623,117 @@ export default function AssignmentsView() {
                     </div>
                   </div>
                 )}
-                {/* Google Drive Folder Indicator */}
+                {/* Google Drive / Local Folder Indicator & Controls */}
                 <div style={{
-                  marginTop: 12,
-                  padding: '10px 14px',
+                  marginTop: 14,
+                  padding: '14px 18px',
                   background: 'rgba(37, 99, 235, 0.05)',
-                  border: '1px solid #bfdbfe',
-                  borderRadius: 'var(--radius-sm)',
+                  border: '1.5px solid #bfdbfe',
+                  borderRadius: 'var(--radius-md)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   flexWrap: 'wrap',
-                  gap: 10
+                  gap: 14
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem' }}>
-                    <FolderOpen size={16} color="#2563eb" />
-                    <span>
-                      Struktur Drive: <strong>{assignmentDetail.assignment.title}</strong> &gt; <strong>{assignmentDetail.assignment.class_name}</strong>
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: '0.85rem' }}>
+                    <div style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 8,
+                      background: '#dbeafe',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      <FolderOpen size={20} color="#2563eb" />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, color: '#1e40af', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>Folder Otomatis Terhubung</span>
+                        <span className="badge badge-success" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                          {driveSettings?.isConfigured ? 'Google Drive' : 'Penyimpanan Server'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 3 }}>
+                        📁 Folder Tugas: <strong style={{ color: 'var(--text-main)' }}>{assignmentDetail.assignment.title}</strong>
+                        &nbsp;›&nbsp;
+                        📂 Folder Kelas: <strong style={{ color: 'var(--text-main)' }}>Kelas {assignmentDetail.assignment.class_name}</strong>
+                      </div>
+                    </div>
                   </div>
-                  {assignmentDetail.assignment.drive_folder_url && assignmentDetail.assignment.drive_folder_url !== '#' && (
-                    <a
-                      href={assignmentDetail.assignment.drive_folder_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn btn-outline btn-sm"
-                      style={{ color: '#2563eb', borderColor: '#bfdbfe', fontSize: '0.76rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                    >
-                      <ExternalLink size={12} /> Buka Folder di Google Drive
-                    </a>
-                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {/* Buka Folder Tugas (Induk) */}
+                    {assignmentDetail.assignment.task_folder_url && assignmentDetail.assignment.task_folder_url !== '#' && (
+                      <a
+                        href={assignmentDetail.assignment.task_folder_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-outline btn-sm"
+                        style={{
+                          background: '#ffffff',
+                          color: '#1e40af',
+                          borderColor: '#bfdbfe',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}
+                        title="Buka folder induk tugas ini di Google Drive / Server"
+                      >
+                        <Folder size={14} color="#2563eb" /> Buka Folder Tugas
+                        <ExternalLink size={12} />
+                      </a>
+                    )}
+
+                    {/* Buka Folder Kelas */}
+                    {assignmentDetail.assignment.drive_folder_url && assignmentDetail.assignment.drive_folder_url !== '#' ? (
+                      <a
+                        href={assignmentDetail.assignment.drive_folder_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-primary btn-sm"
+                        style={{
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}
+                        title="Buka folder khusus kelas ini di Google Drive"
+                      >
+                        <FolderOpen size={14} /> Buka Folder Kelas
+                        <ExternalLink size={12} />
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={() => handleViewLocalFiles(assignmentDetail.assignment.id)}
+                        style={{ fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                        title="Buka daftar berkas tugas di folder server lokal"
+                      >
+                        <FolderOpen size={14} /> Berkas Lokal Server
+                      </button>
+                    )}
+
+                    {isTeacher && (
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={() => handleSyncFolders(assignmentDetail.assignment.id)}
+                        disabled={isSyncingFolders}
+                        style={{ fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        title="Pastikan / buat ulang folder tugas dan kelas di Google Drive"
+                      >
+                        <RefreshCw size={13} className={isSyncingFolders ? 'spin' : ''} />
+                        {isSyncingFolders ? 'Menyinkronkan...' : 'Sinkronkan'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -835,18 +1064,81 @@ export default function AssignmentsView() {
             </div>
             <form onSubmit={handleCreateAssignment}>
               <div className="modal-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <div className="form-group">
-                    <label className="form-label">Kelas Sasaran</label>
-                    <select
-                      className="form-control"
-                      value={createForm.class_id}
-                      onChange={(e) => setCreateForm({ ...createForm, class_id: e.target.value })}
-                      required
-                    >
-                      {classes.map(c => <option key={c.id} value={c.id}>Kelas {c.name}</option>)}
-                    </select>
+                {/* Pilihan Kelas Sasaran (Bisa 1 atau banyak kelas) */}
+                <div className="form-group" style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <label className="form-label" style={{ marginBottom: 0 }}>
+                      Pilih Kelas Sasaran yang Diberi Tugas <span style={{ color: 'var(--danger)' }}>*</span>
+                    </label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        style={{ padding: '2px 8px', fontSize: '0.72rem' }}
+                        onClick={handleSelectAllClasses}
+                      >
+                        Pilih Semua Kelas
+                      </button>
+                    </div>
                   </div>
+                  <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    padding: 10,
+                    background: 'var(--bg-subtle)',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-color)'
+                  }}>
+                    {classes.map(c => {
+                      const isSelected = createForm.class_ids.includes(c.id);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => toggleClassSelection(c.id)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 12px',
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1.5px solid',
+                            borderColor: isSelected ? 'var(--primary)' : 'var(--border-color)',
+                            background: isSelected ? 'var(--primary)' : '#ffffff',
+                            color: isSelected ? '#ffffff' : 'var(--text-main)',
+                            fontSize: '0.82rem',
+                            fontWeight: isSelected ? 700 : 500,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <span style={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: 3,
+                            border: `1.5px solid ${isSelected ? '#ffffff' : '#94a3b8'}`,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: isSelected ? '#ffffff' : 'transparent',
+                            color: 'var(--primary)',
+                            fontSize: '0.65rem',
+                            fontWeight: 900
+                          }}>
+                            {isSelected ? '✓' : ''}
+                          </span>
+                          Kelas {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    Pilih satu atau beberapa kelas. Setiap kelas yang dipilih otomatis memiliki folder kelas tersendiri di dalam folder tugas.
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <div className="form-group">
                     <label className="form-label">Mata Pelajaran</label>
                     <select
@@ -857,6 +1149,18 @@ export default function AssignmentsView() {
                     >
                       {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Tenggat Waktu (Deadline)</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="YYYY-MM-DD HH:mm"
+                      value={createForm.due_date}
+                      onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
+                      required
+                    />
                   </div>
                 </div>
 
@@ -872,11 +1176,59 @@ export default function AssignmentsView() {
                   />
                 </div>
 
+                {/* Live Real-time Auto Folder Creation Preview */}
+                <div style={{
+                  background: 'rgba(37, 99, 235, 0.05)',
+                  border: '1.5px solid #93c5fd',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '12px 16px',
+                  marginBottom: 16
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#1e40af', fontSize: '0.84rem' }}>
+                      <FolderOpen size={18} color="#2563eb" />
+                      <span>Otomatisasi Struktur Folder Google Drive & Server:</span>
+                    </div>
+                    <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>
+                      {classes.filter(c => createForm.class_ids.includes(c.id)).length} Kelas Dipilih
+                    </span>
+                  </div>
+
+                  <div style={{
+                    background: '#ffffff',
+                    borderRadius: 6,
+                    padding: '10px 14px',
+                    border: '1px solid #bfdbfe',
+                    fontFamily: 'monospace',
+                    fontSize: '0.82rem'
+                  }}>
+                    <div style={{ fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      📁 {createForm.title ? createForm.title.trim() : '[Nama / Judul Tugas]'}
+                      <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 400 }}>(Folder Induk Tugas Otomatis)</span>
+                    </div>
+
+                    {classes.filter(c => createForm.class_ids.includes(c.id)).map((cls, idx, arr) => (
+                      <div key={cls.id} style={{ paddingLeft: 22, marginTop: 4, color: '#047857', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>{idx === arr.length - 1 ? '└──' : '├──'}</span>
+                        <span>📂 Kelas {cls.name}</span>
+                        <span style={{ fontSize: '0.68rem', color: '#15803d', background: '#dcfce7', padding: '1px 6px', borderRadius: 4 }}>
+                          ✓ Folder kelas otomatis dibuat
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ marginTop: 8, fontSize: '0.74rem', color: '#1e40af', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckCircle2 size={13} color="#2563eb" />
+                    <span>Saat tugas diterbitkan, sistem otomatis membuat folder tugas dan subfolder untuk setiap kelas yang dipilih di atas.</span>
+                  </div>
+                </div>
+
                 <div className="form-group">
                   <label className="form-label">Petunjuk & Instruksi Pengerjaan</label>
                   <textarea
                     className="form-control"
-                    rows={4}
+                    rows={3}
                     placeholder="Tuliskan petunjuk langkah kerja, format pengumpulan file, dan kriteria penilaian..."
                     value={createForm.instructions}
                     onChange={(e) => setCreateForm({ ...createForm, instructions: e.target.value })}
@@ -884,36 +1236,24 @@ export default function AssignmentsView() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <div className="form-group">
-                    <label className="form-label">Tenggat Waktu (Deadline)</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="YYYY-MM-DD HH:mm"
-                      value={createForm.due_date}
-                      onChange={(e) => setCreateForm({ ...createForm, due_date: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Poin Maksimal</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={createForm.max_points}
-                      onChange={(e) => setCreateForm({ ...createForm, max_points: e.target.value })}
-                      required
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">Poin Maksimal</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={createForm.max_points}
+                    onChange={(e) => setCreateForm({ ...createForm, max_points: e.target.value })}
+                    required
+                  />
                 </div>
               </div>
+
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline" onClick={() => setShowCreateModal(false)}>
                   Batal
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Tugaskan Sekarang
+                <button type="submit" className="btn btn-primary" disabled={isCreatingAssignment}>
+                  {isCreatingAssignment ? 'Membuat Tugas & Folder Otomatis...' : 'Tugaskan Sekarang & Buat Folder Otomatis'}
                 </button>
               </div>
             </form>
@@ -973,7 +1313,7 @@ export default function AssignmentsView() {
                   <div>📁 <strong>[Nama Tugas]</strong> (Contoh: <em>Tugas 1: Dinamika Gerak</em>)</div>
                   <div style={{ paddingLeft: 20 }}>📂 <strong>[Nama Kelas]</strong> (Contoh: <em>Kelas X-A</em>)</div>
                   <div style={{ paddingLeft: 40 }}>
-                    📄 <strong>[Nomor Absen] - [Nama Siswa].[ext]</strong> (Contoh: <code style={{ background: '#dbeafe', padding: '1px 6px', borderRadius: 4, color: '#1e40af', fontWeight: 700 }}>05 - Budi Santoso.pdf</code>)
+                    📄 <strong>nomor absen_ nama siswa.[ext]</strong> (Contoh: <code style={{ background: '#dbeafe', padding: '1px 6px', borderRadius: 4, color: '#1e40af', fontWeight: 700 }}>05_ Budi Santoso.pdf</code>)
                   </div>
                 </div>
               </div>
@@ -1133,6 +1473,77 @@ export default function AssignmentsView() {
                   <li>Klik <strong>Deploy</strong>, izinkan akses akun Google Anda, lalu salin <strong>Web App URL</strong> dan tempelkan ke kolom URL di atas!</li>
                 </ol>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Local Files Preview Modal */}
+      {localFilesModal && (
+        <div className="modal-overlay" onClick={() => setLocalFilesModal(null)}>
+          <div className="modal-dialog" style={{ maxWidth: 620 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FolderOpen size={18} color="var(--primary)" />
+                Penyimpanan Berkas Server Lokal
+              </h3>
+              <button
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
+                onClick={() => setLocalFilesModal(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{
+                padding: '10px 14px',
+                background: 'rgba(37, 99, 235, 0.06)',
+                border: '1px solid #bfdbfe',
+                borderRadius: 'var(--radius-sm)',
+                marginBottom: 14,
+                fontSize: '0.82rem'
+              }}>
+                <div>📁 Folder Tugas: <strong>{localFilesModal.task}</strong></div>
+                <div style={{ marginTop: 2 }}>📂 Folder Kelas: <strong>Kelas {localFilesModal.class}</strong></div>
+              </div>
+
+              {localFilesModal.files?.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {localFilesModal.files.map((f, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        background: 'var(--bg-subtle)',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border-color)'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem' }}>{f.name}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {f.size} • Diunggah {new Date(f.updatedAt).toLocaleString('id-ID')}
+                        </div>
+                      </div>
+                      <a href={f.url} download className="btn btn-outline btn-sm" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Download size={13} /> Unduh
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  Folder tugas dan kelas sudah siap dibuat di direktori server.<br />
+                  Belum ada berkas tugas yang diunggah siswa.
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-outline" onClick={() => setLocalFilesModal(null)}>
+                Tutup
+              </button>
             </div>
           </div>
         </div>

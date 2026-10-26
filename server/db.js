@@ -269,6 +269,9 @@ function initDatabase() {
   try {
     db.exec('ALTER TABLE assignments ADD COLUMN drive_folder_url TEXT');
   } catch (e) {}
+  try {
+    db.exec('ALTER TABLE assignments ADD COLUMN task_folder_url TEXT');
+  } catch (e) {}
 
   seedData();
   seedQuestionBank();
