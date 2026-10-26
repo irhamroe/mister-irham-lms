@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   ATTENDANCE: 'lms_mock_attendance_sessions',
   ATT_RECORDS: 'lms_mock_attendance_records',
   ASSIGNMENTS: 'lms_mock_assignments',
+  ASSIGNMENT_SUBMISSIONS: 'lms_mock_assignment_submissions',
   EXAMS: 'lms_mock_cbt_exams',
   QUESTIONS: 'lms_mock_cbt_questions',
   QUESTION_BANK: 'lms_mock_question_bank',
@@ -338,13 +339,75 @@ const DEFAULT_ASSIGNMENTS = [
     subject_id: 1,
     subject_name: 'Matematika Wajib',
     teacher_id: 2,
+    teacher_name: 'Budi Santoso, S.Pd.',
     title: 'Tugas Terstruktur 1: Pemodelan SPLTV Kasus Kontekstual',
-    description: 'Selesaikan 3 soal aplikasi SPLTV pada buku paket halaman 45 dalam bentuk PDF.',
-    deadline: '2026-10-30 23:59',
-    max_score: 100,
-    status: 'ACTIVE',
-    submission_count: 5,
-    graded_count: 3
+    instructions: 'Selesaikan 3 soal aplikasi SPLTV pada buku paket halaman 45 dalam bentuk dokumen PDF. Cantumkan langkah eliminasi dan substitusi secara terperinci.',
+    due_date: '2026-10-30 23:59',
+    max_points: 100,
+    attachments: [
+      { name: 'Lembar_Kerja_SPLTV.pdf', url: '#', size: '1.2 MB' }
+    ],
+    status: 'ACTIVE'
+  },
+  {
+    id: 2,
+    class_id: 1,
+    class_name: 'X-IPA-1',
+    subject_id: 1,
+    subject_name: 'Matematika Wajib',
+    teacher_id: 2,
+    teacher_name: 'Budi Santoso, S.Pd.',
+    title: 'Tugas Mandiri 2: Grafik Penyelesaian SPLTV',
+    instructions: 'Gambarkan representasi visual bidang 3 dimensi perpotongan himpunan penyelesaian tiga persamaan linear.',
+    due_date: '2026-11-05 23:59',
+    max_points: 100,
+    attachments: [],
+    status: 'ACTIVE'
+  }
+];
+
+const DEFAULT_ASSIGNMENT_SUBMISSIONS = [
+  {
+    id: 1,
+    assignment_id: 1,
+    student_id: 4,
+    content: 'Tugas SPLTV nomor 1-3 sudah selesai dikerjakan sesuai rumus eliminasi Gauss-Jordan sederhana.',
+    attachments: [
+      { name: 'Jawaban_Ahmad_SPLTV.pdf', url: '#', size: '1.4 MB' }
+    ],
+    submitted_at: '2026-10-24 14:20:00',
+    status: 'GRADED',
+    score: 95,
+    teacher_feedback: 'Langkah pengerjaan sangat rapi dan jawaban akhir tepat!',
+    graded_at: '2026-10-25 09:10:00'
+  },
+  {
+    id: 2,
+    assignment_id: 1,
+    student_id: 5,
+    content: 'Berikut lampiran pengerjaan tugas kontekstual harga belanjaan buah.',
+    attachments: [
+      { name: 'Dewi_Anjani_Tugas1.pdf', url: '#', size: '980 KB' }
+    ],
+    submitted_at: '2026-10-24 16:45:00',
+    status: 'GRADED',
+    score: 88,
+    teacher_feedback: 'Perhatikan tanda minus saat substitusi variabel z.',
+    graded_at: '2026-10-25 09:15:00'
+  },
+  {
+    id: 3,
+    assignment_id: 1,
+    student_id: 6,
+    content: 'Tugas sudah selesai pak, mohon koreksinya.',
+    attachments: [
+      { name: 'Tugas_Rendy_Mat.pdf', url: '#', size: '1.1 MB' }
+    ],
+    submitted_at: '2026-10-25 11:30:00',
+    status: 'SUBMITTED',
+    score: null,
+    teacher_feedback: null,
+    graded_at: null
   }
 ];
 
@@ -930,24 +993,169 @@ export function handleMockRequest(endpoint, options = {}) {
   // ASSIGNMENTS
   if (path === '/assignments') {
     let assignments = getStored(STORAGE_KEYS.ASSIGNMENTS, DEFAULT_ASSIGNMENTS);
-    if (method === 'GET') return assignments;
+    const submissions = getStored(STORAGE_KEYS.ASSIGNMENT_SUBMISSIONS, DEFAULT_ASSIGNMENT_SUBMISSIONS);
+    const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
+    const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);
+
+    if (method === 'GET') {
+      const classId = params.get('class_id');
+      const subjectId = params.get('subject_id');
+
+      let filtered = [...assignments];
+      if (currentUser.role === 'siswa') {
+        filtered = filtered.filter(a => a.class_name === currentUser.kelas);
+      } else if (classId) {
+        filtered = filtered.filter(a => a.class_id === Number(classId));
+      }
+      if (subjectId) {
+        filtered = filtered.filter(a => a.subject_id === Number(subjectId));
+      }
+
+      return filtered.map(a => {
+        const assignSubs = submissions.filter(s => s.assignment_id === a.id);
+        const mySub = assignSubs.find(s => s.student_id === currentUser.id);
+        let studentStatus = 'ASSIGNED';
+        if (mySub) {
+          studentStatus = mySub.status;
+        } else if (new Date() > new Date(a.due_date)) {
+          studentStatus = 'MISSING';
+        }
+        return {
+          ...a,
+          turned_in_count: assignSubs.length,
+          graded_count: assignSubs.filter(s => s.status === 'GRADED').length,
+          my_submission: mySub || null,
+          student_status: studentStatus
+        };
+      });
+    }
+
     if (method === 'POST') {
-      const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
-      const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);
       const cls = classes.find(c => c.id === Number(body.class_id));
       const subj = subjects.find(s => s.id === Number(body.subject_id));
       const newAssign = {
         id: Date.now(),
-        ...body,
+        class_id: Number(body.class_id),
         class_name: cls ? cls.name : 'X-IPA-1',
-        subject_name: subj ? subj.name : 'Matematika',
-        submission_count: 0,
+        subject_id: Number(body.subject_id),
+        subject_name: subj ? subj.name : 'Matematika Wajib',
+        teacher_id: currentUser.id,
+        teacher_name: currentUser.name,
+        title: body.title || 'Tugas Baru',
+        instructions: body.instructions || '',
+        due_date: body.due_date || '2026-10-30 23:59',
+        max_points: Number(body.max_points || 100),
+        attachments: Array.isArray(body.attachments) ? body.attachments : [],
+        status: 'ACTIVE',
+        turned_in_count: 0,
         graded_count: 0
       };
       assignments.unshift(newAssign);
       setStored(STORAGE_KEYS.ASSIGNMENTS, assignments);
       return newAssign;
     }
+  }
+
+  if (path.match(/^\/assignments\/\d+\/submit$/)) {
+    const id = Number(path.split('/')[2]);
+    let submissions = getStored(STORAGE_KEYS.ASSIGNMENT_SUBMISSIONS, DEFAULT_ASSIGNMENT_SUBMISSIONS);
+    const existingIdx = submissions.findIndex(s => s.assignment_id === id && s.student_id === currentUser.id);
+    const newSub = {
+      id: existingIdx >= 0 ? submissions[existingIdx].id : Date.now(),
+      assignment_id: id,
+      student_id: currentUser.id,
+      content: body.content || '',
+      attachments: Array.isArray(body.attachments) ? body.attachments : [],
+      submitted_at: new Date().toISOString(),
+      status: 'SUBMITTED',
+      score: existingIdx >= 0 ? submissions[existingIdx].score : null,
+      teacher_feedback: existingIdx >= 0 ? submissions[existingIdx].teacher_feedback : null,
+      graded_at: existingIdx >= 0 ? submissions[existingIdx].graded_at : null
+    };
+    if (existingIdx >= 0) {
+      submissions[existingIdx] = newSub;
+    } else {
+      submissions.push(newSub);
+    }
+    setStored(STORAGE_KEYS.ASSIGNMENT_SUBMISSIONS, submissions);
+    return { success: true, message: 'Tugas Anda berhasil diserahkan!' };
+  }
+
+  if (path.match(/^\/assignments\/\d+\/grade$/)) {
+    const id = Number(path.split('/')[2]);
+    let submissions = getStored(STORAGE_KEYS.ASSIGNMENT_SUBMISSIONS, DEFAULT_ASSIGNMENT_SUBMISSIONS);
+    const studentId = Number(body.student_id);
+    const existingIdx = submissions.findIndex(s => s.assignment_id === id && s.student_id === studentId);
+    if (existingIdx >= 0) {
+      submissions[existingIdx] = {
+        ...submissions[existingIdx],
+        score: Number(body.score),
+        teacher_feedback: body.teacher_feedback || '',
+        status: 'GRADED',
+        graded_at: new Date().toISOString()
+      };
+      setStored(STORAGE_KEYS.ASSIGNMENT_SUBMISSIONS, submissions);
+      return { success: true, message: 'Nilai berhasil disimpan' };
+    }
+    return { error: 'Submission tidak ditemukan' };
+  }
+
+  if (path.match(/^\/assignments\/\d+$/)) {
+    const id = Number(path.split('/')[2]);
+    const assignments = getStored(STORAGE_KEYS.ASSIGNMENTS, DEFAULT_ASSIGNMENTS);
+    const assignment = assignments.find(a => a.id === id) || assignments[0] || {
+      id,
+      title: 'Tugas Terstruktur',
+      instructions: 'Silakan kerjakan tugas sesuai instruksi guru.',
+      due_date: '2026-10-30 23:59',
+      max_points: 100,
+      class_name: 'X-IPA-1',
+      subject_name: 'Matematika Wajib',
+      attachments: []
+    };
+
+    const className = assignment.class_name || 'X-IPA-1';
+    const studentsInClass = users.filter(u => u.role === 'siswa' && (u.kelas === className || !className));
+    const submissions = getStored(STORAGE_KEYS.ASSIGNMENT_SUBMISSIONS, DEFAULT_ASSIGNMENT_SUBMISSIONS)
+      .filter(s => s.assignment_id === id);
+
+    const subMap = {};
+    submissions.forEach(sub => { subMap[sub.student_id] = sub; });
+
+    const studentSubmissions = studentsInClass.map(st => {
+      const sub = subMap[st.id];
+      let status = 'NOT_SUBMITTED';
+      if (sub) {
+        status = sub.status;
+      } else if (new Date() > new Date(assignment.due_date)) {
+        status = 'MISSING';
+      }
+      return {
+        student: {
+          id: st.id,
+          name: st.name,
+          nis: st.nis || st.nis_nip || '',
+          kelas: st.kelas,
+          avatar: st.avatar
+        },
+        submission: sub || null,
+        status
+      };
+    });
+
+    const stats = {
+      total: studentsInClass.length,
+      turned_in: submissions.filter(s => s.status === 'SUBMITTED').length,
+      graded: submissions.filter(s => s.status === 'GRADED').length,
+      missing: studentsInClass.length - submissions.length
+    };
+
+    return {
+      assignment,
+      submissions: studentSubmissions,
+      stats,
+      my_submission: subMap[currentUser.id] || null
+    };
   }
 
   // ATTENDANCE

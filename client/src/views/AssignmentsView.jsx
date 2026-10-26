@@ -18,7 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
 export default function AssignmentsView() {
-  const { user, classes, subjects } = useAuth();
+  const { user, classes = [], subjects = [] } = useAuth();
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -69,9 +69,16 @@ export default function AssignmentsView() {
         class_id: selectedClass || undefined,
         subject_id: selectedSubject || undefined
       });
-      setAssignments(data);
-      if (data.length > 0 && !activeAssignment) {
-        openAssignmentDetails(data[0].id);
+      const list = Array.isArray(data) ? data : [];
+      setAssignments(list);
+      if (list.length > 0) {
+        const stillValid = list.some(a => a.id === activeAssignment);
+        if (!stillValid || !activeAssignment) {
+          openAssignmentDetails(list[0].id);
+        }
+      } else {
+        setActiveAssignment(null);
+        setAssignmentDetail(null);
       }
     } catch (err) {
       console.error('Load assignments error:', err);
@@ -83,6 +90,7 @@ export default function AssignmentsView() {
   async function openAssignmentDetails(id) {
     try {
       const data = await api.getAssignmentDetails(id);
+      if (!data) return;
       setActiveAssignment(id);
       setAssignmentDetail(data);
       if (data.my_submission) {
@@ -93,7 +101,8 @@ export default function AssignmentsView() {
         });
       }
     } catch (err) {
-      alert('Gagal memuat detail tugas: ' + err.message);
+      console.error('Error openAssignmentDetails:', err);
+      alert('Gagal memuat detail tugas: ' + (err.message || 'Terjadi kesalahan'));
     }
   }
 
@@ -229,7 +238,7 @@ export default function AssignmentsView() {
 
         {/* Right Column: Assignment Details & Classroom Submissions */}
         <div className="card">
-          {assignmentDetail ? (
+          {assignmentDetail && assignmentDetail.assignment ? (
             <div>
               {/* Header */}
               <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 18, marginBottom: 20 }}>
@@ -350,7 +359,7 @@ export default function AssignmentsView() {
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                     <h4 style={{ fontWeight: 800, fontSize: '1rem' }}>
-                      Daftar Pengumpulan Siswa ({assignmentDetail.submissions.length} Siswa)
+                      Daftar Pengumpulan Siswa ({assignmentDetail.submissions?.length || 0} Siswa)
                     </h4>
                     <div style={{ display: 'flex', gap: 10, fontSize: '0.8rem' }}>
                       <span className="badge badge-success">Diserahkan: {assignmentDetail.stats?.turned_in || 0}</span>
@@ -372,7 +381,7 @@ export default function AssignmentsView() {
                         </tr>
                       </thead>
                       <tbody>
-                        {assignmentDetail.submissions.map(({ student, submission, status }) => (
+                        {(assignmentDetail.submissions || []).map(({ student, submission, status }) => (
                           <tr key={student.id}>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
