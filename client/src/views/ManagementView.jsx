@@ -19,10 +19,14 @@ import {
   X,
   Building2,
   Filter,
-  BookOpen
+  BookOpen,
+  FileSpreadsheet,
+  Upload,
+  Download
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { downloadStudentExcelTemplate, parseStudentExcel } from '../services/fileImportHelper';
 
 export default function ManagementView({ initialTab = 'classes' }) {
   const { user } = useAuth();
@@ -75,6 +79,14 @@ export default function ManagementView({ initialTab = 'classes' }) {
     phone: '',
     password: ''
   });
+
+  // Student Import Excel State
+  const [showImportStudentModal, setShowImportStudentModal] = useState(false);
+  const [importStudentTargetClass, setImportStudentTargetClass] = useState('');
+  const [importStudentPreview, setImportStudentPreview] = useState([]);
+  const [importStudentFileName, setImportStudentFileName] = useState('');
+  const [isImportingStudents, setIsImportingStudents] = useState(false);
+  const [importStudentFilterStatus, setImportStudentFilterStatus] = useState('ALL');
 
   // User Management State
   const [usersList, setUsersList] = useState([]);
@@ -357,6 +369,66 @@ export default function ManagementView({ initialTab = 'classes' }) {
     });
   }
 
+  // ================= IMPORT SISWA EXCEL =================
+  function handleOpenImportStudentModal() {
+    setImportStudentTargetClass(studentClassFilter || classesList[0]?.name || '');
+    setImportStudentPreview([]);
+    setImportStudentFileName('');
+    setImportStudentFilterStatus('ALL');
+    setShowImportStudentModal(true);
+  }
+
+  async function handleStudentFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportStudentFileName(file.name);
+    try {
+      const parsed = await parseStudentExcel(file, importStudentTargetClass);
+      setImportStudentPreview(parsed);
+      const validCount = parsed.filter(p => p.isValid).length;
+      showToast('info', `Berhasil membaca ${parsed.length} baris (${validCount} baris valid).`);
+    } catch (err) {
+      showToast('error', 'Gagal membaca file Excel: ' + err.message);
+      setImportStudentPreview([]);
+    }
+  }
+
+  function handleTargetClassChange(newClass) {
+    setImportStudentTargetClass(newClass);
+    if (importStudentPreview.length > 0) {
+      setImportStudentPreview(prev => prev.map(p => {
+        const kelas = newClass || p.kelas;
+        const isValid = Boolean(p.name && p.nis && kelas);
+        const errors = [];
+        if (!p.name) errors.push('Nama wajib diisi');
+        if (!p.nis) errors.push('NIS wajib diisi');
+        if (!kelas) errors.push('Kelas wajib diisi');
+        return { ...p, kelas, isValid, errors };
+      }));
+    }
+  }
+
+  async function handleExecuteImportStudents() {
+    const validStudents = importStudentPreview.filter(p => p.isValid);
+    if (validStudents.length === 0) {
+      showToast('error', 'Tidak ada data siswa valid untuk diimpor.');
+      return;
+    }
+
+    try {
+      setIsImportingStudents(true);
+      const res = await api.importManagementStudentsBatch(validStudents);
+      showToast('success', res.message || `Berhasil mengimpor ${validStudents.length} siswa!`);
+      setShowImportStudentModal(false);
+      loadStudents();
+      loadStats();
+    } catch (err) {
+      showToast('error', 'Impor gagal: ' + err.message);
+    } finally {
+      setIsImportingStudents(false);
+    }
+  }
+
   // ================= USERS CRUD =================
   async function loadUsers() {
     try {
@@ -479,9 +551,18 @@ export default function ManagementView({ initialTab = 'classes' }) {
           )}
 
           {activeTab === 'students' && (
-            <button className="btn btn-primary" onClick={handleOpenCreateStudent}>
-              <Plus size={16} /> Tambah Siswa Baru
-            </button>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-outline"
+                onClick={handleOpenImportStudentModal}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: '#10b981', color: '#10b981' }}
+              >
+                <FileSpreadsheet size={16} /> Impor dari Excel
+              </button>
+              <button className="btn btn-primary" onClick={handleOpenCreateStudent}>
+                <Plus size={16} /> Tambah Siswa Baru
+              </button>
+            </div>
           )}
 
           {activeTab === 'users' && user?.role === 'admin' && (
@@ -1274,6 +1355,229 @@ export default function ManagementView({ initialTab = 'classes' }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL: IMPORT DATA SISWA DARI EXCEL
+         ======================================================== */}
+      {showImportStudentModal && (
+        <div className="modal-overlay">
+          <div className="modal-dialog" style={{ maxWidth: 860, width: '95%' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: '#d1fae5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FileSpreadsheet size={22} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
+                    Impor Data Siswa dari File Excel
+                  </h3>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
+                    Unggah file .xlsx, .xls, atau .csv untuk menambahkan peserta didik secara massal
+                  </p>
+                </div>
+              </div>
+              <button
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.3rem', color: 'var(--text-muted)' }}
+                onClick={() => setShowImportStudentModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 16 }}>
+                {/* 1. Unduh Template */}
+                <div style={{ background: 'var(--bg-subtle)', padding: 14, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--primary)', color: '#fff', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>1</span>
+                    <strong style={{ fontSize: '0.88rem' }}>Unduh Format Template</strong>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.4 }}>
+                    Gunakan template resmi agar kolom Nama, NIS, Kelas, dsb. terbaca dengan sempurna.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={downloadStudentExcelTemplate}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                  >
+                    <Download size={14} /> Unduh Template (.xlsx)
+                  </button>
+                </div>
+
+                {/* 2. Pengaturan Kelas */}
+                <div style={{ background: 'var(--bg-subtle)', padding: 14, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--primary)', color: '#fff', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>2</span>
+                    <strong style={{ fontSize: '0.88rem' }}>Alokasi Kelas</strong>
+                  </div>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.4 }}>
+                    Pilih rombel jika file Excel tidak mencantumkan kelas:
+                  </p>
+                  <select
+                    className="form-control"
+                    style={{ fontSize: '0.84rem' }}
+                    value={importStudentTargetClass}
+                    onChange={(e) => handleTargetClassChange(e.target.value)}
+                  >
+                    <option value="">Gunakan Kolom Kelas di File Excel</option>
+                    {classesList.map(c => (
+                      <option key={c.id} value={c.name}>Set Semua ke Kelas {c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Dropzone File */}
+              <div
+                style={{
+                  border: '2px dashed var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '24px 20px',
+                  textAlign: 'center',
+                  background: 'var(--bg-card)',
+                  marginBottom: 16,
+                  cursor: 'pointer'
+                }}
+                onClick={() => document.getElementById('student-excel-file-input')?.click()}
+              >
+                <input
+                  id="student-excel-file-input"
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  style={{ display: 'none' }}
+                  onChange={handleStudentFileUpload}
+                />
+                <Upload size={32} color="#059669" style={{ margin: '0 auto 8px', display: 'block' }} />
+                <h4 style={{ fontSize: '0.96rem', fontWeight: 700, marginBottom: 4 }}>
+                  {importStudentFileName ? importStudentFileName : 'Klik atau Tarik File Excel ke Sini'}
+                </h4>
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Mendukung file Microsoft Excel (.xlsx, .xls) atau Comma-Separated Values (.csv)
+                </p>
+              </div>
+
+              {/* Preview Table */}
+              {importStudentPreview.length > 0 && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span className="badge badge-primary">{importStudentPreview.length} Baris Terbaca</span>
+                      <span className="badge badge-success">
+                        {importStudentPreview.filter(p => p.isValid).length} Siap Diimpor
+                      </span>
+                      {importStudentPreview.some(p => !p.isValid) && (
+                        <span className="badge badge-danger">
+                          {importStudentPreview.filter(p => !p.isValid).length} Perlu Dilengkapi
+                        </span>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${importStudentFilterStatus === 'ALL' ? 'btn-primary' : 'btn-outline'}`}
+                        onClick={() => setImportStudentFilterStatus('ALL')}
+                      >
+                        Semua ({importStudentPreview.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${importStudentFilterStatus === 'VALID' ? 'btn-primary' : 'btn-outline'}`}
+                        onClick={() => setImportStudentFilterStatus('VALID')}
+                      >
+                        Valid ({importStudentPreview.filter(p => p.isValid).length})
+                      </button>
+                      {importStudentPreview.some(p => !p.isValid) && (
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${importStudentFilterStatus === 'INVALID' ? 'btn-primary' : 'btn-outline'}`}
+                          onClick={() => setImportStudentFilterStatus('INVALID')}
+                        >
+                          Bermasalah ({importStudentPreview.filter(p => !p.isValid).length})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="table-container" style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid var(--border-color)' }}>
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: 45 }}>No</th>
+                          <th>Nama Siswa</th>
+                          <th>NIS</th>
+                          <th>Kelas</th>
+                          <th>Username</th>
+                          <th>Email</th>
+                          <th style={{ width: 100 }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importStudentPreview
+                          .filter(st => {
+                            if (importStudentFilterStatus === 'VALID') return st.isValid;
+                            if (importStudentFilterStatus === 'INVALID') return !st.isValid;
+                            return true;
+                          })
+                          .map(st => (
+                            <tr key={st.rowNumber} style={{ background: !st.isValid ? '#fff1f2' : 'transparent' }}>
+                              <td>{st.rowNumber}</td>
+                              <td><strong>{st.name || '-'}</strong></td>
+                              <td><span style={{ fontFamily: 'var(--font-mono)' }}>{st.nis || '-'}</span></td>
+                              <td><span className="badge badge-neutral">{st.kelas || '-'}</span></td>
+                              <td><code>{st.username || '-'}</code></td>
+                              <td style={{ fontSize: '0.78rem' }}>{st.email || '-'}</td>
+                              <td>
+                                {st.isValid ? (
+                                  <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>Siap</span>
+                                ) : (
+                                  <span className="badge badge-danger" title={st.errors.join(', ')} style={{ fontSize: '0.7rem' }}>
+                                    {st.errors[0]}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                {importStudentPreview.length > 0 && (
+                  <span>
+                    Total <strong>{importStudentPreview.filter(p => p.isValid).length}</strong> siswa siap disimpan.
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setShowImportStudentModal(false)}
+                  disabled={isImportingStudents}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleExecuteImportStudents}
+                  disabled={isImportingStudents || importStudentPreview.filter(p => p.isValid).length === 0}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#059669', borderColor: '#059669' }}
+                >
+                  <Upload size={16} />
+                  {isImportingStudents ? 'Menyimpan...' : `Impor ${importStudentPreview.filter(p => p.isValid).length} Siswa Sekarang`}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -221,6 +221,74 @@ router.post('/students', requireRole(['admin', 'guru']), (req, res) => {
   }
 });
 
+// POST /api/management/students/batch-import - Import students from Excel
+router.post('/students/batch-import', requireRole(['admin', 'guru']), (req, res) => {
+  try {
+    const { students } = req.body;
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ error: 'Data siswa untuk diimpor tidak boleh kosong' });
+    }
+
+    const salt = bcrypt.genSaltSync(10);
+    const defaultPasswordHash = bcrypt.hashSync('password123', salt);
+
+    const checkExisting = db.prepare('SELECT id, username FROM users WHERE username = ?');
+    const insert = db.prepare(`
+      INSERT INTO users (username, password_hash, name, role, nis_nip, kelas, email, phone, avatar)
+      VALUES (?, ?, ?, 'siswa', ?, ?, ?, ?, ?)
+    `);
+
+    let importedCount = 0;
+    let skippedCount = 0;
+
+    const runBatch = db.transaction((list) => {
+      for (const st of list) {
+        if (!st.name || !st.nis || !st.kelas) {
+          skippedCount++;
+          continue;
+        }
+
+        let username = (st.username || `siswa_${st.nis}`).trim().toLowerCase();
+        let candidate = username;
+        let counter = 1;
+        while (checkExisting.get(candidate)) {
+          candidate = `${username}_${counter}`;
+          counter++;
+        }
+        username = candidate;
+
+        const email = st.email ? st.email.trim() : `${username}@siswa.sekolah.sch.id`;
+        const phone = st.phone ? st.phone.trim() : '';
+        const passwordHash = st.password ? bcrypt.hashSync(st.password, salt) : defaultPasswordHash;
+        const avatar = `https://api.dicebear.com/7.x/micah/svg?seed=${username}`;
+
+        insert.run(
+          username,
+          passwordHash,
+          st.name.trim(),
+          String(st.nis).trim(),
+          String(st.kelas).trim(),
+          email,
+          phone,
+          avatar
+        );
+        importedCount++;
+      }
+    });
+
+    runBatch(students);
+
+    res.json({
+      success: true,
+      importedCount,
+      skippedCount,
+      message: `Berhasil mengimpor ${importedCount} data siswa! (${skippedCount} baris dilewati/tidak lengkap)`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/management/students/:id
 router.put('/students/:id', requireRole(['admin', 'guru']), (req, res) => {
   try {

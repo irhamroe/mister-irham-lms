@@ -110,6 +110,7 @@ export const api = {
   exportQuestionBankToExam: (payload) => request('/question-bank/export-to-exam', { method: 'POST', body: JSON.stringify(payload) }),
   importQuestionsFromExamToBank: (examId) => request(`/question-bank/import-from-exam/${examId}`, { method: 'POST' }),
   saveExamQuestionToBank: (questionId) => request(`/question-bank/save-from-exam-question/${questionId}`, { method: 'POST' }),
+  importQuestionBankBatch: (payload) => request('/question-bank/batch-import', { method: 'POST', body: JSON.stringify(payload) }),
 
   // Management
   getManagementStats: () => request('/management/stats'),
@@ -122,6 +123,7 @@ export const api = {
   createManagementStudent: (payload) => request('/management/students', { method: 'POST', body: JSON.stringify(payload) }),
   updateManagementStudent: (id, payload) => request(`/management/students/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteManagementStudent: (id) => request(`/management/students/${id}`, { method: 'DELETE' }),
+  importManagementStudentsBatch: (students) => request('/management/students/batch-import', { method: 'POST', body: JSON.stringify({ students }) }),
 
   getManagementUsers: (params = {}) => request(`/management/users${toQueryString(params)}`),
   createManagementUser: (payload) => request('/management/users', { method: 'POST', body: JSON.stringify(payload) }),

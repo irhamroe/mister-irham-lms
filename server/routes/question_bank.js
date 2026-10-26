@@ -178,6 +178,67 @@ router.post('/', authenticateToken, requireRole(['admin', 'guru']), (req, res) =
   }
 });
 
+// POST /api/question-bank/batch-import - Import questions batch from Excel / Word
+router.post('/batch-import', authenticateToken, requireRole(['admin', 'guru']), (req, res) => {
+  try {
+    const { questions, default_subject_id, default_grade_level, default_package_title, default_topic } = req.body;
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ error: 'Data soal untuk diimpor tidak boleh kosong' });
+    }
+
+    const insert = db.prepare(`
+      INSERT INTO question_bank (
+        teacher_id, subject_id, grade_level, topic, question_text, question_type,
+        options_json, correct_answer, points, explanation, difficulty, source_exam_title
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    let importedCount = 0;
+    const runBatch = db.transaction((list) => {
+      for (const q of list) {
+        if (!q.question_text || !q.question_text.trim()) continue;
+
+        const subjectId = Number(q.subject_id || default_subject_id || 1);
+        const gradeLevel = q.grade_level || default_grade_level || 'Kelas X';
+        const topic = q.topic || default_topic || 'Umum';
+        const title = q.source_exam_title || default_package_title || 'Bank Soal Mandiri Guru';
+        const qType = q.question_type || 'MULTIPLE_CHOICE';
+        const options = qType === 'MULTIPLE_CHOICE' ? (q.options || []) : [];
+        const correctAnswer = qType === 'ESSAY' ? '' : (q.correct_answer || 'A');
+        const points = Number(q.points) || (qType === 'ESSAY' ? 20 : 10);
+        const difficulty = q.difficulty || 'SEDANG';
+        const explanation = q.explanation || '';
+
+        insert.run(
+          req.user.id,
+          subjectId,
+          gradeLevel,
+          topic,
+          q.question_text.trim(),
+          qType,
+          JSON.stringify(options),
+          correctAnswer,
+          points,
+          explanation,
+          difficulty,
+          title
+        );
+        importedCount++;
+      }
+    });
+
+    runBatch(questions);
+
+    res.json({
+      success: true,
+      importedCount,
+      message: `Berhasil mengimpor ${importedCount} butir soal ke Bank Soal!`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PUT /api/question-bank/:id - Update question in master bank
 router.put('/:id', authenticateToken, requireRole(['admin', 'guru']), (req, res) => {
   try {

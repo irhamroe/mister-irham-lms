@@ -23,10 +23,21 @@ import {
   School,
   Share2,
   Copy,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  FileSpreadsheet,
+  FileText,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import {
+  downloadQuestionExcelTemplate,
+  parseQuestionExcel,
+  downloadQuestionWordTemplateGuide,
+  parseQuestionWord
+} from '../services/fileImportHelper';
 
 export default function QuestionBankView({ onNavigateToCbt }) {
   const { user } = useAuth();
@@ -83,6 +94,19 @@ export default function QuestionBankView({ onNavigateToCbt }) {
     difficulty: 'SEDANG',
     source_exam_title: 'Bank Soal Mandiri Guru'
   });
+
+  // Import Question Bank Modal State (Excel & Word)
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importType, setImportType] = useState('excel'); // 'excel' | 'word'
+  const [importFileName, setImportFileName] = useState('');
+  const [importTargetPackage, setImportTargetPackage] = useState('');
+  const [importSubjectId, setImportSubjectId] = useState('');
+  const [importGradeLevel, setImportGradeLevel] = useState('Kelas X');
+  const [importTopic, setImportTopic] = useState('');
+  const [importPreviewQuestions, setImportPreviewQuestions] = useState([]);
+  const [importPreviewSummary, setImportPreviewSummary] = useState(null);
+  const [importFilterTab, setImportFilterTab] = useState('ALL'); // 'ALL' | 'VALID' | 'INVALID'
+  const [isImporting, setIsImporting] = useState(false);
 
   useEffect(() => {
     loadInitialData();
@@ -284,6 +308,147 @@ export default function QuestionBankView({ onNavigateToCbt }) {
     setShowCreateModal(true);
   }
 
+  // --- Handlers for Batch Question Import (Excel & Word) ---
+  function handleOpenImportModal(prefillTitle = '', prefillSubjectId = '', prefillGrade = '', prefillTopic = '') {
+    setShowImportModal(true);
+    setImportType('excel');
+    setImportFileName('');
+    setImportPreviewQuestions([]);
+    setImportPreviewSummary(null);
+    setImportFilterTab('ALL');
+    setImportTargetPackage(prefillTitle || (packagesList[0]?.title || 'Paket Soal Latihan Mandiri'));
+    setImportSubjectId(prefillSubjectId || subjects[0]?.id || 1);
+    setImportGradeLevel(prefillGrade || 'Kelas X');
+    setImportTopic(prefillTopic || '');
+  }
+
+  async function handleQuestionFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setImportFileName(file.name);
+      let parsed = [];
+
+      if (importType === 'excel') {
+        parsed = await parseQuestionExcel(file);
+      } else {
+        parsed = await parseQuestionWord(file);
+      }
+
+      setImportPreviewQuestions(parsed);
+      const validCount = parsed.filter(p => p.isValid).length;
+      const invalidCount = parsed.filter(p => !p.isValid).length;
+      setImportPreviewSummary({
+        total: parsed.length,
+        valid: validCount,
+        invalid: invalidCount,
+        mc: parsed.filter(p => p.question_type === 'MULTIPLE_CHOICE').length,
+        essay: parsed.filter(p => p.question_type === 'ESSAY').length
+      });
+    } catch (err) {
+      alert('Gagal membaca file: ' + err.message);
+      setImportPreviewQuestions([]);
+      setImportPreviewSummary(null);
+    }
+    e.target.value = '';
+  }
+
+  function handleToggleCorrectAnswerInPreview(index, optKey) {
+    setImportPreviewQuestions(prev => {
+      const copy = [...prev];
+      const q = { ...copy[index] };
+      q.correct_answer = optKey;
+
+      const errs = [];
+      if (!q.question_text?.trim()) errs.push('Teks pertanyaan kosong');
+      if (q.question_type === 'MULTIPLE_CHOICE') {
+        const opts = q.options || [];
+        const hasA = opts.find(o => o.id === 'A')?.text?.trim();
+        const hasB = opts.find(o => o.id === 'B')?.text?.trim();
+        if (!hasA || !hasB) errs.push('Opsi A dan B wajib terisi');
+        if (!['A', 'B', 'C', 'D', 'E'].includes(q.correct_answer)) {
+          errs.push('Kunci jawaban (A-E) belum ditentukan');
+        }
+      }
+      q.errors = errs;
+      q.isValid = errs.length === 0;
+      copy[index] = q;
+
+      const validCount = copy.filter(p => p.isValid).length;
+      const invalidCount = copy.filter(p => !p.isValid).length;
+      setImportPreviewSummary(s => s ? { ...s, valid: validCount, invalid: invalidCount } : null);
+
+      return copy;
+    });
+  }
+
+  function handleRemoveQuestionFromPreview(index) {
+    setImportPreviewQuestions(prev => {
+      const copy = prev.filter((_, i) => i !== index);
+      const validCount = copy.filter(p => p.isValid).length;
+      const invalidCount = copy.filter(p => !p.isValid).length;
+      setImportPreviewSummary({
+        total: copy.length,
+        valid: validCount,
+        invalid: invalidCount,
+        mc: copy.filter(p => p.question_type === 'MULTIPLE_CHOICE').length,
+        essay: copy.filter(p => p.question_type === 'ESSAY').length
+      });
+      return copy;
+    });
+  }
+
+  async function handleExecuteImportQuestions() {
+    if (!importTargetPackage.trim()) {
+      alert('Nama / Judul Paket Soal tujuan wajib diisi!');
+      return;
+    }
+    if (!importSubjectId) {
+      alert('Pilih Mata Pelajaran tujuan!');
+      return;
+    }
+
+    const validQuestions = importPreviewQuestions.filter(q => q.isValid);
+    if (validQuestions.length === 0) {
+      alert('Tidak ada soal yang valid untuk diimpor. Periksa teks pertanyaan atau pastikan kunci jawaban sudah terisi.');
+      return;
+    }
+
+    const payload = {
+      source_exam_title: importTargetPackage.trim(),
+      subject_id: Number(importSubjectId),
+      grade_level: importGradeLevel,
+      topic: importTopic.trim() || undefined,
+      questions: validQuestions.map(q => ({
+        question_text: q.question_text,
+        question_type: q.question_type,
+        options: q.options,
+        correct_answer: q.correct_answer,
+        points: q.points || 10,
+        explanation: q.explanation || '',
+        difficulty: q.difficulty || 'SEDANG',
+        topic: q.topic || importTopic.trim() || undefined,
+        grade_level: q.grade_level || importGradeLevel
+      }))
+    };
+
+    setIsImporting(true);
+    try {
+      const res = await api.importQuestionBankBatch(payload);
+      alert(res.message || `Berhasil mengimpor ${validQuestions.length} butir soal ke judul "${importTargetPackage}"!`);
+      setShowImportModal(false);
+      setImportPreviewQuestions([]);
+      setImportPreviewSummary(null);
+      setExpandedTitles(prev => ({ ...prev, [importTargetPackage.trim()]: true }));
+      loadQuestions();
+    } catch (err) {
+      alert('Gagal mengimpor butir soal: ' + err.message);
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   async function handleSaveQuestion(e) {
     e.preventDefault();
     if (!questionForm.question_text.trim()) {
@@ -452,6 +617,14 @@ export default function QuestionBankView({ onNavigateToCbt }) {
 
         {isTeacher && (
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-outline"
+              onClick={() => handleOpenImportModal()}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              title="Impor butir soal secara massal dari file Excel (.xlsx) atau Dokumen Word (.docx)"
+            >
+              <Upload size={16} color="var(--primary)" /> Impor Excel / Word
+            </button>
             <button
               className="btn btn-outline"
               onClick={() => setShowSyncModal(true)}
@@ -788,6 +961,15 @@ export default function QuestionBankView({ onNavigateToCbt }) {
                       style={{ fontSize: '0.78rem' }}
                     >
                       <Plus size={13} /> + Tambah Butir Soal
+                    </button>
+
+                    <button
+                      className="btn btn-outline btn-sm"
+                      onClick={() => handleOpenImportModal(pkg.title, pkg.subject_id, pkg.grade_level, pkg.topic)}
+                      title="Impor berkas Excel / Word langsung ke judul soal ini"
+                      style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      <Upload size={13} /> Impor File
                     </button>
 
                     <button
@@ -1366,6 +1548,503 @@ export default function QuestionBankView({ onNavigateToCbt }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Import Excel / Word Bank Soal */}
+      {showImportModal && (
+        <div className="modal-overlay" onClick={() => !isImporting && setShowImportModal(false)}>
+          <div
+            className="modal-container"
+            style={{ maxWidth: 940, width: '95%', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="modal-header" style={{ padding: '16px 22px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.18rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Upload size={20} color="var(--primary)" /> Impor Butir Soal Massal
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Impor butir soal dari berkas Excel (.xlsx / .csv) atau Dokumen Microsoft Word (.docx) langsung ke Bank Soal
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setShowImportModal(false)}
+                disabled={isImporting}
+                style={{ padding: '4px 8px', borderRadius: '50%' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="modal-body" style={{ padding: '18px 22px', overflowY: 'auto', flex: 1 }}>
+              {/* Format Switcher Tabs */}
+              <div style={{ display: 'flex', gap: 10, marginBottom: 18, borderBottom: '2px solid #e2e8f0', paddingBottom: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportType('excel');
+                    setImportFileName('');
+                    setImportPreviewQuestions([]);
+                    setImportPreviewSummary(null);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 18px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.86rem',
+                    cursor: 'pointer',
+                    background: importType === 'excel' ? 'var(--primary)' : '#f1f5f9',
+                    color: importType === 'excel' ? 'white' : '#475569',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <FileSpreadsheet size={18} /> Microsoft Excel (.xlsx / .xls)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportType('word');
+                    setImportFileName('');
+                    setImportPreviewQuestions([]);
+                    setImportPreviewSummary(null);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 18px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.86rem',
+                    cursor: 'pointer',
+                    background: importType === 'word' ? '#2563eb' : '#f1f5f9',
+                    color: importType === 'word' ? 'white' : '#475569',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <FileText size={18} /> Microsoft Word (.docx)
+                </button>
+              </div>
+
+              {/* Template Download & Guide Banner */}
+              <div style={{
+                background: importType === 'excel' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(37, 99, 235, 0.08)',
+                border: importType === 'excel' ? '1px dashed #10b981' : '1px dashed #3b82f6',
+                borderRadius: 'var(--radius-sm)',
+                padding: '12px 16px',
+                marginBottom: 16,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 12
+              }}>
+                <div style={{ flex: 1, minWidth: 260 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: importType === 'excel' ? '#065f46' : '#1e40af', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {importType === 'excel' ? <FileSpreadsheet size={16} /> : <FileText size={16} />}
+                    {importType === 'excel' ? 'Gunakan Format Standar Kolom Excel' : 'Format Aiken / Nomor Soal Dokumen Word'}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                    {importType === 'excel'
+                      ? 'Tabel memuat kolom: No, Pertanyaan, Tipe (PG/ESAI), Opsi A, B, C, D, E, Kunci, Bobot, Pembahasan, Kesulitan, dsb.'
+                      : 'Mendukung format penomoran standar guru (1. Soal... A. Opsi... Kunci: A / KUNCI JAWABAN: A / Pembahasan: ...).'}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  onClick={importType === 'excel' ? downloadQuestionExcelTemplate : downloadQuestionWordTemplateGuide}
+                  style={{
+                    background: 'white',
+                    borderColor: importType === 'excel' ? '#10b981' : '#3b82f6',
+                    color: importType === 'excel' ? '#047857' : '#1d4ed8',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <Download size={14} /> {importType === 'excel' ? 'Unduh Template Excel' : 'Unduh Panduan Format Word'}
+                </button>
+              </div>
+
+              {/* Destination Form Fields */}
+              <div style={{ background: '#f8fafc', padding: 14, borderRadius: 'var(--radius-sm)', border: '1px solid #e2e8f0', marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 10, color: 'var(--text-main)' }}>
+                  1. Tentukan Paket & Mata Pelajaran Tujuan Impor
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Judul / Paket Soal Tujuan *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      list="target-package-datalist"
+                      placeholder="Contoh: PTS Ganjil Matematika X"
+                      value={importTargetPackage}
+                      onChange={(e) => setImportTargetPackage(e.target.value)}
+                      required
+                    />
+                    <datalist id="target-package-datalist">
+                      {existingTitles.map(t => (
+                        <option key={t} value={t} />
+                      ))}
+                    </datalist>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Ketik nama baru atau pilih judul paket yang sudah ada</span>
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Mata Pelajaran *</label>
+                    <select
+                      className="form-control"
+                      value={importSubjectId}
+                      onChange={(e) => setImportSubjectId(e.target.value)}
+                      required
+                    >
+                      {subjects.map(sub => (
+                        <option key={sub.id} value={sub.id}>{sub.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Tingkat Kelas</label>
+                    <select
+                      className="form-control"
+                      value={importGradeLevel}
+                      onChange={(e) => setImportGradeLevel(e.target.value)}
+                    >
+                      <option value="Kelas X">Kelas X</option>
+                      <option value="Kelas XI">Kelas XI</option>
+                      <option value="Kelas XII">Kelas XII</option>
+                      <option value="Umum">Umum / Lintas Tingkat</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>Topik / Bab Default (Opsional)</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Contoh: Logaritma, Eksponen..."
+                      value={importTopic}
+                      onChange={(e) => setImportTopic(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Upload Dropzone */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 8, color: 'var(--text-main)' }}>
+                  2. Unggah Berkas {importType === 'excel' ? 'Excel (.xlsx, .xls, .csv)' : 'Dokumen Word (.docx)'}
+                </div>
+                <div style={{
+                  border: '2px dashed #cbd5e1',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '24px 16px',
+                  textAlign: 'center',
+                  background: '#ffffff',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}>
+                  <input
+                    type="file"
+                    accept={importType === 'excel' ? '.xlsx, .xls, .csv' : '.docx'}
+                    onChange={handleQuestionFileUpload}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      opacity: 0,
+                      cursor: 'pointer'
+                    }}
+                  />
+                  {importType === 'excel' ? (
+                    <FileSpreadsheet size={36} color="var(--primary)" style={{ margin: '0 auto 8px', display: 'block' }} />
+                  ) : (
+                    <FileText size={36} color="#2563eb" style={{ margin: '0 auto 8px', display: 'block' }} />
+                  )}
+                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    {importFileName ? (
+                      <span style={{ color: 'var(--primary)' }}>File Terpilih: {importFileName}</span>
+                    ) : (
+                      `Klik atau Tarik File ${importType === 'excel' ? 'Excel (.xlsx, .xls, .csv)' : 'Word (.docx)'} ke Sini`
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    Sistem otomatis mengekstrak butir soal, pilihan jawaban (A-E), kunci jawaban, poin, dan pembahasan.
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview Section */}
+              {importPreviewQuestions.length > 0 && (
+                <div>
+                  {/* Summary Badges & Filter Tabs */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 10,
+                    marginBottom: 12,
+                    padding: '8px 12px',
+                    background: '#f1f5f9',
+                    borderRadius: 'var(--radius-sm)'
+                  }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span className="badge badge-primary" style={{ fontSize: '0.78rem' }}>
+                        Total: {importPreviewSummary?.total || 0} Soal
+                      </span>
+                      <span className="badge badge-success" style={{ fontSize: '0.78rem' }}>
+                        Valid: {importPreviewSummary?.valid || 0}
+                      </span>
+                      {importPreviewSummary?.invalid > 0 && (
+                        <span className="badge badge-danger" style={{ fontSize: '0.78rem' }}>
+                          Perlu Perbaikan: {importPreviewSummary.invalid}
+                        </span>
+                      )}
+                      <span className="badge" style={{ fontSize: '0.78rem', background: '#e0e7ff', color: '#4338ca' }}>
+                        PG: {importPreviewSummary?.mc || 0}
+                      </span>
+                      <span className="badge" style={{ fontSize: '0.78rem', background: '#fae8ff', color: '#86198f' }}>
+                        Esai: {importPreviewSummary?.essay || 0}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${importFilterTab === 'ALL' ? 'btn-primary' : 'btn-outline'}`}
+                        onClick={() => setImportFilterTab('ALL')}
+                        style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+                      >
+                        Semua ({importPreviewQuestions.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${importFilterTab === 'VALID' ? 'btn-primary' : 'btn-outline'}`}
+                        onClick={() => setImportFilterTab('VALID')}
+                        style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+                      >
+                        Valid ({importPreviewSummary?.valid || 0})
+                      </button>
+                      {importPreviewSummary?.invalid > 0 && (
+                        <button
+                          type="button"
+                          className={`btn btn-sm ${importFilterTab === 'INVALID' ? 'btn-danger' : 'btn-outline'}`}
+                          onClick={() => setImportFilterTab('INVALID')}
+                          style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+                        >
+                          Perlu Perbaikan ({importPreviewSummary?.invalid || 0})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* List of Preview Question Cards */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 360, overflowY: 'auto', paddingRight: 4 }}>
+                    {importPreviewQuestions
+                      .filter(q => {
+                        if (importFilterTab === 'VALID') return q.isValid;
+                        if (importFilterTab === 'INVALID') return !q.isValid;
+                        return true;
+                      })
+                      .map((q) => {
+                        const originalIndex = importPreviewQuestions.indexOf(q);
+                        const isMC = q.question_type === 'MULTIPLE_CHOICE';
+
+                        return (
+                          <div
+                            key={originalIndex}
+                            style={{
+                              background: '#ffffff',
+                              border: q.isValid ? '1px solid #e2e8f0' : '1.5px solid #f87171',
+                              borderRadius: 'var(--radius-sm)',
+                              padding: '12px 14px',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <span style={{
+                                  background: 'var(--primary)',
+                                  color: 'white',
+                                  borderRadius: 4,
+                                  fontWeight: 800,
+                                  fontSize: '0.75rem',
+                                  padding: '2px 8px'
+                                }}>
+                                  #{originalIndex + 1}
+                                </span>
+                                <span className={`badge ${isMC ? 'badge-primary' : 'badge-neutral'}`} style={{ fontSize: '0.72rem' }}>
+                                  {isMC ? 'Pilihan Ganda' : 'Esai / Uraian'}
+                                </span>
+                                <span className="badge badge-neutral" style={{ fontSize: '0.72rem' }}>
+                                  Poin: {q.points || 10}
+                                </span>
+                                <span className="badge" style={{ fontSize: '0.72rem', background: '#f1f5f9', color: '#475569' }}>
+                                  {q.difficulty || 'SEDANG'}
+                                </span>
+                                {!q.isValid && (
+                                  <span style={{ fontSize: '0.72rem', color: '#dc2626', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700 }}>
+                                    <AlertCircle size={13} /> {q.errors?.join(', ')}
+                                  </span>
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveQuestionFromPreview(originalIndex)}
+                                title="Hapus soal ini dari daftar impor"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: 'var(--danger)',
+                                  cursor: 'pointer',
+                                  padding: 4
+                                }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+
+                            {/* Question text */}
+                            <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: 8, whiteSpace: 'pre-wrap' }}>
+                              {q.question_text || <span style={{ color: '#ef4444', fontStyle: 'italic' }}>Pertanyaan kosong</span>}
+                            </div>
+
+                            {/* Options with interactive key switcher for MC */}
+                            {isMC && q.options && q.options.length > 0 && (
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 6, marginBottom: 6 }}>
+                                {q.options.map(opt => {
+                                  const isKey = q.correct_answer === opt.id;
+                                  return (
+                                    <div
+                                      key={opt.id}
+                                      onClick={() => handleToggleCorrectAnswerInPreview(originalIndex, opt.id)}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        padding: '5px 10px',
+                                        borderRadius: 4,
+                                        border: isKey ? '1.5px solid #10b981' : '1px solid #e2e8f0',
+                                        background: isKey ? '#ecfdf5' : '#f8fafc',
+                                        cursor: 'pointer',
+                                        fontSize: '0.8rem',
+                                        transition: 'all 0.15s ease'
+                                      }}
+                                      title="Klik untuk jadikan kunci jawaban"
+                                    >
+                                      <span style={{
+                                        width: 20,
+                                        height: 20,
+                                        borderRadius: '50%',
+                                        background: isKey ? '#10b981' : '#cbd5e1',
+                                        color: isKey ? 'white' : '#475569',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 800,
+                                        flexShrink: 0
+                                      }}>
+                                        {opt.id}
+                                      </span>
+                                      <span style={{
+                                        flex: 1,
+                                        fontWeight: isKey ? 700 : 400,
+                                        color: isKey ? '#065f46' : 'var(--text-main)',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        {opt.text}
+                                      </span>
+                                      {isKey && (
+                                        <span style={{ fontSize: '0.7rem', color: '#059669', fontWeight: 800 }}>KUNCI</span>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Essay Key & Explanation */}
+                            {!isMC && q.correct_answer && (
+                              <div style={{ fontSize: '0.8rem', color: '#047857', background: '#ecfdf5', padding: '4px 8px', borderRadius: 4, marginBottom: 4 }}>
+                                <strong>Kunci Esai:</strong> {q.correct_answer}
+                              </div>
+                            )}
+
+                            {q.explanation && (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                Pembahasan: {q.explanation}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="modal-footer" style={{ padding: '14px 22px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                {importPreviewSummary ? (
+                  <span>
+                    Siap mengimpor <strong>{importPreviewSummary.valid}</strong> butir soal valid ke paket <strong>{importTargetPackage || '-'}</strong>
+                  </span>
+                ) : (
+                  <span>Unggah file Excel atau Word untuk melihat pratinjau</span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setShowImportModal(false)}
+                  disabled={isImporting}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleExecuteImportQuestions}
+                  disabled={isImporting || !importPreviewSummary || importPreviewSummary.valid === 0}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  {isImporting ? (
+                    <>Sedang Mengimpor Soal...</>
+                  ) : (
+                    <>
+                      <Upload size={16} /> Simpan {importPreviewSummary?.valid || ''} Soal ke Bank Soal
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -676,7 +676,46 @@ export function handleMockRequest(endpoint, options = {}) {
     }
   }
 
-  if (path.startsWith('/management/students/')) {
+  if (path === '/management/students/batch-import') {
+    const list = Array.isArray(body.students) ? body.students : [];
+    let importedCount = 0;
+    list.forEach(st => {
+      if (st.name && st.nis && st.kelas) {
+        let username = (st.username || `siswa_${st.nis}`).trim().toLowerCase();
+        let candidate = username;
+        let counter = 1;
+        while (users.some(u => u.username === candidate)) {
+          candidate = `${username}_${counter}`;
+          counter++;
+        }
+        username = candidate;
+
+        const newStudent = {
+          id: Date.now() + Math.floor(Math.random() * 100000),
+          username,
+          name: st.name.trim(),
+          role: 'siswa',
+          nis: String(st.nis).trim(),
+          nis_nip: String(st.nis).trim(),
+          kelas: String(st.kelas).trim(),
+          email: st.email ? st.email.trim() : `${username}@siswa.sekolah.sch.id`,
+          phone: st.phone ? st.phone.trim() : '',
+          avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${username}`,
+          created_at: new Date().toISOString().split('T')[0]
+        };
+        users.push(newStudent);
+        importedCount++;
+      }
+    });
+    setStored(STORAGE_KEYS.USERS, users);
+    return {
+      success: true,
+      importedCount,
+      message: `Berhasil mengimpor ${importedCount} data siswa ke database!`
+    };
+  }
+
+  if (path.match(/^\/management\/students\/\d+$/)) {
     const id = Number(path.split('/')[3]);
     if (method === 'PUT') {
       const updatedUsers = users.map(u => u.id === id ? { ...u, ...body, nis_nip: body.nis || u.nis } : u);
@@ -972,6 +1011,49 @@ export function handleMockRequest(endpoint, options = {}) {
       easy: qb.filter(q => q.difficulty === 'MUDAH').length,
       medium: qb.filter(q => q.difficulty === 'SEDANG').length,
       hard: qb.filter(q => q.difficulty === 'SULIT' || q.difficulty === 'HOTS').length
+    };
+  }
+
+  if (path === '/question-bank/batch-import') {
+    let qb = getStored(STORAGE_KEYS.QUESTION_BANK, DEFAULT_QUESTION_BANK);
+    const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);
+    const list = Array.isArray(body.questions) ? body.questions : [];
+    let importedCount = 0;
+
+    list.forEach(q => {
+      if (q.question_text && q.question_text.trim()) {
+        const subjectId = Number(q.subject_id || body.default_subject_id || 1);
+        const subj = subjects.find(s => s.id === subjectId);
+        const qType = q.question_type || 'MULTIPLE_CHOICE';
+        const newItem = {
+          id: Date.now() + Math.floor(Math.random() * 100000),
+          teacher_id: currentUser.id,
+          teacher_name: currentUser.name,
+          subject_id: subjectId,
+          subject_name: subj ? subj.name : 'Matematika Wajib',
+          grade_level: q.grade_level || body.default_grade_level || 'Kelas X',
+          topic: q.topic || body.default_topic || 'Umum',
+          question_text: q.question_text.trim(),
+          question_type: qType,
+          options: qType === 'MULTIPLE_CHOICE' ? (q.options || []) : [],
+          options_json: JSON.stringify(qType === 'MULTIPLE_CHOICE' ? (q.options || []) : []),
+          correct_answer: qType === 'ESSAY' ? '' : (q.correct_answer || 'A'),
+          points: Number(q.points) || (qType === 'ESSAY' ? 20 : 10),
+          explanation: q.explanation || '',
+          difficulty: q.difficulty || 'SEDANG',
+          source_exam_title: q.source_exam_title || body.default_package_title || 'Bank Soal Mandiri Guru',
+          created_at: new Date().toISOString().split('T')[0]
+        };
+        qb.unshift(newItem);
+        importedCount++;
+      }
+    });
+
+    setStored(STORAGE_KEYS.QUESTION_BANK, qb);
+    return {
+      success: true,
+      importedCount,
+      message: `Berhasil mengimpor ${importedCount} butir soal ke Bank Soal!`
     };
   }
 
