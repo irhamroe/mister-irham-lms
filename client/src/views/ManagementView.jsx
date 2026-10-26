@@ -22,11 +22,28 @@ import {
   BookOpen,
   FileSpreadsheet,
   Upload,
-  Download
+  Download,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { downloadStudentExcelTemplate, parseStudentExcel } from '../services/fileImportHelper';
+
+function getPageNumbers(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, '...', totalPages];
+  }
+  if (currentPage >= totalPages - 3) {
+    return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+  return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+}
 
 export default function ManagementView({ initialTab = 'classes' }) {
   const { user } = useAuth();
@@ -69,6 +86,8 @@ export default function ManagementView({ initialTab = 'classes' }) {
   const [studentClassFilter, setStudentClassFilter] = useState('');
   const [studentGenderFilter, setStudentGenderFilter] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
+  const [studentPage, setStudentPage] = useState(1);
+  const [studentPageSize, setStudentPageSize] = useState(25);
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [studentForm, setStudentForm] = useState({
@@ -306,6 +325,10 @@ export default function ManagementView({ initialTab = 'classes' }) {
     }
   }, [studentClassFilter, studentGenderFilter, studentSearch]);
 
+  useEffect(() => {
+    setStudentPage(1);
+  }, [studentClassFilter, studentGenderFilter, studentSearch, studentPageSize]);
+
   function handleOpenCreateStudent() {
     setEditingStudent(null);
     const defaultClass = classesList[0]?.name || 'X-IPA-1';
@@ -522,6 +545,14 @@ export default function ManagementView({ initialTab = 'classes' }) {
       }
     });
   }
+
+  // Student Pagination Calculations
+  const totalStudents = studentsList.length;
+  const totalStudentPages = Math.max(1, Math.ceil(totalStudents / studentPageSize));
+  const safeStudentPage = Math.min(Math.max(1, studentPage), totalStudentPages);
+  const startStudentIdx = (safeStudentPage - 1) * studentPageSize;
+  const paginatedStudents = studentsList.slice(startStudentIdx, startStudentIdx + studentPageSize);
+  const endStudentIdx = Math.min(startStudentIdx + studentPageSize, totalStudents);
 
   return (
     <div className="content-view">
@@ -824,14 +855,34 @@ export default function ManagementView({ initialTab = 'classes' }) {
               </select>
             </div>
 
-            <span className="badge badge-primary">{studentsList.length} Siswa Ditemukan</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                <span>Tampilkan:</span>
+                <select
+                  className="form-control"
+                  style={{ width: 'auto', padding: '4px 8px', fontSize: '0.82rem', height: 32 }}
+                  value={studentPageSize}
+                  onChange={(e) => {
+                    setStudentPageSize(Number(e.target.value));
+                    setStudentPage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span>/ hal</span>
+              </div>
+              <span className="badge badge-primary">{studentsList.length} Siswa Ditemukan</span>
+            </div>
           </div>
 
           <div className="table-container" style={{ border: 'none' }}>
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: 50 }}>No</th>
+                  <th style={{ width: 60 }}>No</th>
                   <th>Peserta Didik</th>
                   <th>NIS</th>
                   <th>Kelas</th>
@@ -842,94 +893,183 @@ export default function ManagementView({ initialTab = 'classes' }) {
                 </tr>
               </thead>
               <tbody>
-                {studentsList.map((st, idx) => (
-                  <tr key={st.id}>
-                    <td>{idx + 1}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <img src={st.avatar} alt={st.name} style={{ width: 32, height: 32, borderRadius: '50%' }} />
-                        <div>
-                          <strong style={{ fontSize: '0.9rem', display: 'block' }}>{st.name}</strong>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Role: Siswa</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{st.nis}</span>
-                    </td>
-                    <td>
-                      <span className="badge badge-neutral">Kelas {st.kelas}</span>
-                    </td>
-                    <td>
-                      {st.gender === 'P' || st.gender === 'Perempuan' || st.gender === 'female' ? (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            background: '#FDF2F8',
-                            color: '#DB2777',
-                            border: '1px solid #FBCFE8'
-                          }}
-                        >
-                          <span>♀</span>
-                          <span>Perempuan (P)</span>
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            background: '#EFF6FF',
-                            color: '#2563EB',
-                            border: '1px solid #BFDBFE'
-                          }}
-                        >
-                          <span>♂</span>
-                          <span>Laki-laki (L)</span>
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      <code style={{ fontSize: '0.8rem', background: 'var(--bg-subtle)', padding: '2px 6px', borderRadius: 4 }}>
-                        {st.username}
-                      </code>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: '0.8rem' }}>
-                        <div>{st.email || '-'}</div>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{st.phone || '-'}</span>
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'right', paddingRight: 24 }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
-                        <button className="btn btn-outline btn-sm" onClick={() => handleOpenEditStudent(st)} title="Edit Siswa">
-                          <Edit2 size={13} /> Edit
-                        </button>
-                        <button
-                          className="btn btn-outline btn-sm"
-                          style={{ color: 'var(--danger)' }}
-                          onClick={() => handleDeleteStudent(st.id, st.name)}
-                          title="Hapus Siswa"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                {paginatedStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                        <Users size={36} color="var(--text-subtle)" />
+                        <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Tidak ada data siswa ditemukan</div>
+                        <span style={{ fontSize: '0.82rem' }}>Coba ubah kata kunci pencarian atau filter kelas</span>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  paginatedStudents.map((st, idx) => (
+                    <tr key={st.id}>
+                      <td>
+                        <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{startStudentIdx + idx + 1}</div>
+                        {st.no_absen ? (
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }} title={`Nomor Absen Kelas: ${st.no_absen}`}>
+                            Absen #{st.no_absen}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <img src={st.avatar} alt={st.name} style={{ width: 32, height: 32, borderRadius: '50%' }} />
+                          <div>
+                            <strong style={{ fontSize: '0.9rem', display: 'block' }}>{st.name}</strong>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Role: Siswa</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{st.nis}</span>
+                      </td>
+                      <td>
+                        <span className="badge badge-neutral">Kelas {st.kelas}</span>
+                      </td>
+                      <td>
+                        {st.gender === 'P' || st.gender === 'Perempuan' || st.gender === 'female' ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              background: '#FDF2F8',
+                              color: '#DB2777',
+                              border: '1px solid #FBCFE8'
+                            }}
+                          >
+                            <span>♀</span>
+                            <span>Perempuan (P)</span>
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              background: '#EFF6FF',
+                              color: '#2563EB',
+                              border: '1px solid #BFDBFE'
+                            }}
+                          >
+                            <span>♂</span>
+                            <span>Laki-laki (L)</span>
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <code style={{ fontSize: '0.8rem', background: 'var(--bg-subtle)', padding: '2px 6px', borderRadius: 4 }}>
+                          {st.username}
+                        </code>
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '0.8rem' }}>
+                          <div>{st.email || '-'}</div>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{st.phone || '-'}</span>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'right', paddingRight: 24 }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                          <button className="btn btn-outline btn-sm" onClick={() => handleOpenEditStudent(st)} title="Edit Siswa">
+                            <Edit2 size={13} /> Edit
+                          </button>
+                          <button
+                            className="btn btn-outline btn-sm"
+                            style={{ color: 'var(--danger)' }}
+                            onClick={() => handleDeleteStudent(st.id, st.name)}
+                            title="Hapus Siswa"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Footer */}
+          {totalStudents > 0 && (
+            <div className="pagination-footer">
+              <div className="pagination-info">
+                Menampilkan <strong>{startStudentIdx + 1} - {endStudentIdx}</strong> dari <strong>{totalStudents}</strong> siswa
+                {studentClassFilter && <span> (Kelas {studentClassFilter})</span>}
+              </div>
+
+              <div className="pagination-controls">
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setStudentPage(1)}
+                  disabled={safeStudentPage === 1}
+                  title="Halaman Pertama"
+                >
+                  <ChevronsLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setStudentPage(p => Math.max(1, p - 1))}
+                  disabled={safeStudentPage === 1}
+                  title="Halaman Sebelumnya"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                {getPageNumbers(safeStudentPage, totalStudentPages).map((p, pIdx) => {
+                  if (p === '...') {
+                    return (
+                      <span key={`ellipsis-${pIdx}`} className="pagination-ellipsis">
+                        ...
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      key={`page-${p}`}
+                      type="button"
+                      className={`pagination-btn ${p === safeStudentPage ? 'active' : ''}`}
+                      onClick={() => setStudentPage(p)}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setStudentPage(p => Math.min(totalStudentPages, p + 1))}
+                  disabled={safeStudentPage === totalStudentPages}
+                  title="Halaman Selanjutnya"
+                >
+                  <ChevronRight size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="pagination-btn"
+                  onClick={() => setStudentPage(totalStudentPages)}
+                  disabled={safeStudentPage === totalStudentPages}
+                  title="Halaman Terakhir"
+                >
+                  <ChevronsRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
