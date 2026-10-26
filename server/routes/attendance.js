@@ -118,7 +118,7 @@ router.get('/sessions/:id', authenticateToken, (req, res) => {
 
     // Get all students in this class
     const students = db.prepare(`
-      SELECT id, name, nis_nip as nis, kelas, avatar
+      SELECT id, name, nis_nip as nis, kelas, gender, avatar
       FROM users
       WHERE role = 'siswa' AND kelas = ?
       ORDER BY name ASC
@@ -235,7 +235,7 @@ router.get('/summary', authenticateToken, (req, res) => {
     `).all(class_id, subject_id);
 
     const students = db.prepare(`
-      SELECT id, name, nis_nip as nis, kelas 
+      SELECT id, name, nis_nip as nis, kelas, gender 
       FROM users 
       WHERE role = 'siswa' AND kelas = ? 
       ORDER BY name ASC

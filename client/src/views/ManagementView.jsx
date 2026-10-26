@@ -67,6 +67,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
   // Student Management State
   const [studentsList, setStudentsList] = useState([]);
   const [studentClassFilter, setStudentClassFilter] = useState('');
+  const [studentGenderFilter, setStudentGenderFilter] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
@@ -75,6 +76,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
     username: '',
     nis: '',
     kelas: '',
+    gender: 'L',
     email: '',
     phone: '',
     password: ''
@@ -287,6 +289,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
       setLoading(true);
       const data = await api.getManagementStudents({
         kelas: studentClassFilter || undefined,
+        gender: studentGenderFilter || undefined,
         search: studentSearch ? studentSearch.trim() : undefined
       });
       setStudentsList(Array.isArray(data) ? data : []);
@@ -301,7 +304,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
     if (activeTab === 'students') {
       loadStudents();
     }
-  }, [studentClassFilter, studentSearch]);
+  }, [studentClassFilter, studentGenderFilter, studentSearch]);
 
   function handleOpenCreateStudent() {
     setEditingStudent(null);
@@ -311,6 +314,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
       username: '',
       nis: '',
       kelas: defaultClass,
+      gender: 'L',
       email: '',
       phone: '',
       password: ''
@@ -325,6 +329,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
       username: st.username,
       nis: st.nis || '',
       kelas: st.kelas || '',
+      gender: (st.gender === 'P' || st.gender === 'Perempuan' || st.gender === 'female') ? 'P' : 'L',
       email: st.email || '',
       phone: st.phone || '',
       password: ''
@@ -806,6 +811,17 @@ export default function ManagementView({ initialTab = 'classes' }) {
                 <option value="">Semua Kelas</option>
                 {classesList.map(c => <option key={c.id} value={c.name}>Kelas {c.name}</option>)}
               </select>
+
+              <select
+                className="form-control"
+                style={{ width: 'auto' }}
+                value={studentGenderFilter}
+                onChange={(e) => setStudentGenderFilter(e.target.value)}
+              >
+                <option value="">Semua Jenis Kelamin</option>
+                <option value="L">L (Laki-laki)</option>
+                <option value="P">P (Perempuan)</option>
+              </select>
             </div>
 
             <span className="badge badge-primary">{studentsList.length} Siswa Ditemukan</span>
@@ -819,6 +835,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
                   <th>Peserta Didik</th>
                   <th>NIS</th>
                   <th>Kelas</th>
+                  <th>Jenis Kelamin</th>
                   <th>Username</th>
                   <th>Kontak & Email</th>
                   <th style={{ textAlign: 'right', paddingRight: 24 }}>Aksi</th>
@@ -842,6 +859,45 @@ export default function ManagementView({ initialTab = 'classes' }) {
                     </td>
                     <td>
                       <span className="badge badge-neutral">Kelas {st.kelas}</span>
+                    </td>
+                    <td>
+                      {st.gender === 'P' || st.gender === 'Perempuan' || st.gender === 'female' ? (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            background: '#FDF2F8',
+                            color: '#DB2777',
+                            border: '1px solid #FBCFE8'
+                          }}
+                        >
+                          <span>♀</span>
+                          <span>Perempuan (P)</span>
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            background: '#EFF6FF',
+                            color: '#2563EB',
+                            border: '1px solid #BFDBFE'
+                          }}
+                        >
+                          <span>♂</span>
+                          <span>Laki-laki (L)</span>
+                        </span>
+                      )}
                     </td>
                     <td>
                       <code style={{ fontSize: '0.8rem', background: 'var(--bg-subtle)', padding: '2px 6px', borderRadius: 4 }}>
@@ -1109,6 +1165,68 @@ export default function ManagementView({ initialTab = 'classes' }) {
                     >
                       {classesList.map(c => <option key={c.id} value={c.name}>Kelas {c.name}</option>)}
                     </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Jenis Kelamin</label>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <label
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        padding: '10px 14px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: studentForm.gender === 'L' ? '2px solid #2563EB' : '1px solid #D1D5DB',
+                        background: studentForm.gender === 'L' ? '#EFF6FF' : '#FFFFFF',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        color: studentForm.gender === 'L' ? '#1D4ED8' : '#374151',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="L"
+                        checked={studentForm.gender === 'L'}
+                        onChange={() => setStudentForm({ ...studentForm, gender: 'L' })}
+                        style={{ display: 'none' }}
+                      />
+                      <span>♂ Laki-laki (L)</span>
+                    </label>
+                    <label
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        padding: '10px 14px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: studentForm.gender === 'P' ? '2px solid #DB2777' : '1px solid #D1D5DB',
+                        background: studentForm.gender === 'P' ? '#FDF2F8' : '#FFFFFF',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        color: studentForm.gender === 'P' ? '#BE185D' : '#374151',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="P"
+                        checked={studentForm.gender === 'P'}
+                        onChange={() => setStudentForm({ ...studentForm, gender: 'P' })}
+                        style={{ display: 'none' }}
+                      />
+                      <span>♀ Perempuan (P)</span>
+                    </label>
                   </div>
                 </div>
 
@@ -1511,6 +1629,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
                           <th>Nama Siswa</th>
                           <th>NIS</th>
                           <th>Kelas</th>
+                          <th>Jenis Kelamin</th>
                           <th>Username</th>
                           <th>Email</th>
                           <th style={{ width: 100 }}>Status</th>
@@ -1529,6 +1648,17 @@ export default function ManagementView({ initialTab = 'classes' }) {
                               <td><strong>{st.name || '-'}</strong></td>
                               <td><span style={{ fontFamily: 'var(--font-mono)' }}>{st.nis || '-'}</span></td>
                               <td><span className="badge badge-neutral">{st.kelas || '-'}</span></td>
+                              <td>
+                                {st.gender === 'P' ? (
+                                  <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#FDF2F8', color: '#DB2777', padding: '2px 6px', borderRadius: 4, border: '1px solid #FBCFE8' }}>
+                                    ♀ P
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#EFF6FF', color: '#2563EB', padding: '2px 6px', borderRadius: 4, border: '1px solid #BFDBFE' }}>
+                                    ♂ L
+                                  </span>
+                                )}
+                              </td>
                               <td><code>{st.username || '-'}</code></td>
                               <td style={{ fontSize: '0.78rem' }}>{st.email || '-'}</td>
                               <td>

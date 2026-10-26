@@ -150,9 +150,9 @@ router.delete('/classes/:id', requireRole(['admin', 'guru']), (req, res) => {
 // GET /api/management/students
 router.get('/students', (req, res) => {
   try {
-    const { kelas, search } = req.query;
+    const { kelas, gender, search } = req.query;
     let query = `
-      SELECT id, username, name, role, nis_nip as nis, kelas, email, phone, avatar, created_at
+      SELECT id, username, name, role, nis_nip as nis, kelas, gender, no_absen, email, phone, avatar, created_at
       FROM users
       WHERE role = 'siswa'
     `;
@@ -161,6 +161,11 @@ router.get('/students', (req, res) => {
     if (kelas && kelas !== 'undefined') {
       query += ' AND kelas = ?';
       params.push(kelas);
+    }
+
+    if (gender && gender !== 'undefined') {
+      query += ' AND gender = ?';
+      params.push(gender);
     }
 
     if (search && search.trim() && search.trim() !== 'undefined') {
@@ -179,7 +184,7 @@ router.get('/students', (req, res) => {
 // POST /api/management/students
 router.post('/students', requireRole(['admin', 'guru']), (req, res) => {
   try {
-    const { name, username, nis, kelas, email, phone, password } = req.body;
+    const { name, username, nis, kelas, gender, no_absen, email, phone, password } = req.body;
     if (!name || !username || !nis || !kelas) {
       return res.status(400).json({ error: 'Nama, username, NIS, dan kelas wajib diisi' });
     }
@@ -193,10 +198,11 @@ router.post('/students', requireRole(['admin', 'guru']), (req, res) => {
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(password || 'password123', salt);
     const avatar = `https://api.dicebear.com/7.x/micah/svg?seed=${username.trim()}`;
+    const normalizedGender = (gender === 'P' || gender === 'Perempuan' || gender === 'female') ? 'P' : 'L';
 
     const insert = db.prepare(`
-      INSERT INTO users (username, password_hash, name, role, nis_nip, kelas, email, phone, avatar)
-      VALUES (?, ?, ?, 'siswa', ?, ?, ?, ?, ?)
+      INSERT INTO users (username, password_hash, name, role, nis_nip, kelas, gender, no_absen, email, phone, avatar)
+      VALUES (?, ?, ?, 'siswa', ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = insert.run(
@@ -205,13 +211,15 @@ router.post('/students', requireRole(['admin', 'guru']), (req, res) => {
       name.trim(),
       nis.trim(),
       kelas.trim(),
+      normalizedGender,
+      no_absen ? parseInt(no_absen, 10) : null,
       email ? email.trim() : `${username.trim()}@siswa.sekolah.sch.id`,
       phone ? phone.trim() : '',
       avatar
     );
 
     const newStudent = db.prepare(`
-      SELECT id, username, name, role, nis_nip as nis, kelas, email, phone, avatar, created_at
+      SELECT id, username, name, role, nis_nip as nis, kelas, gender, no_absen, email, phone, avatar, created_at
       FROM users WHERE id = ?
     `).get(result.lastInsertRowid);
 
@@ -234,8 +242,8 @@ router.post('/students/batch-import', requireRole(['admin', 'guru']), (req, res)
 
     const checkExisting = db.prepare('SELECT id, username FROM users WHERE username = ?');
     const insert = db.prepare(`
-      INSERT INTO users (username, password_hash, name, role, nis_nip, kelas, email, phone, avatar)
-      VALUES (?, ?, ?, 'siswa', ?, ?, ?, ?, ?)
+      INSERT INTO users (username, password_hash, name, role, nis_nip, kelas, gender, no_absen, email, phone, avatar)
+      VALUES (?, ?, ?, 'siswa', ?, ?, ?, ?, ?, ?, ?)
     `);
 
     let importedCount = 0;
@@ -262,12 +270,19 @@ router.post('/students/batch-import', requireRole(['admin', 'guru']), (req, res)
         const passwordHash = st.password ? bcrypt.hashSync(st.password, salt) : defaultPasswordHash;
         const avatar = `https://api.dicebear.com/7.x/micah/svg?seed=${username}`;
 
+        const rawGender = st.gender || st['Jenis Kelamin'] || st['Gender'] || st['L/P'] || '';
+        const genderUpper = String(rawGender).trim().toUpperCase();
+        const gender = (genderUpper === 'P' || genderUpper.startsWith('PEREMPUAN') || genderUpper === 'FEMALE' || genderUpper === 'WANITA' || genderUpper === 'F') ? 'P' : 'L';
+        const noAbsen = st.no_absen ? parseInt(st.no_absen, 10) : null;
+
         insert.run(
           username,
           passwordHash,
           st.name.trim(),
           String(st.nis).trim(),
           String(st.kelas).trim(),
+          gender,
+          noAbsen,
           email,
           phone,
           avatar
@@ -292,7 +307,7 @@ router.post('/students/batch-import', requireRole(['admin', 'guru']), (req, res)
 // PUT /api/management/students/:id
 router.put('/students/:id', requireRole(['admin', 'guru']), (req, res) => {
   try {
-    const { name, username, nis, kelas, email, phone, password } = req.body;
+    const { name, username, nis, kelas, gender, no_absen, email, phone, password } = req.body;
     const target = db.prepare("SELECT * FROM users WHERE id = ? AND role = 'siswa'").get(req.params.id);
     if (!target) return res.status(404).json({ error: 'Data siswa tidak ditemukan' });
 
@@ -307,6 +322,11 @@ router.put('/students/:id', requireRole(['admin', 'guru']), (req, res) => {
       passwordHash = bcrypt.hashSync(password.trim(), salt);
     }
 
+    let normalizedGender = target.gender || 'L';
+    if (gender) {
+      normalizedGender = (gender === 'P' || gender === 'Perempuan' || gender === 'female') ? 'P' : 'L';
+    }
+
     db.prepare(`
       UPDATE users SET
         username = ?,
@@ -314,6 +334,8 @@ router.put('/students/:id', requireRole(['admin', 'guru']), (req, res) => {
         name = ?,
         nis_nip = ?,
         kelas = ?,
+        gender = ?,
+        no_absen = ?,
         email = ?,
         phone = ?
       WHERE id = ?
@@ -323,13 +345,15 @@ router.put('/students/:id', requireRole(['admin', 'guru']), (req, res) => {
       name ? name.trim() : target.name,
       nis ? nis.trim() : target.nis_nip,
       kelas ? kelas.trim() : target.kelas,
+      normalizedGender,
+      no_absen !== undefined ? (no_absen ? parseInt(no_absen, 10) : null) : target.no_absen,
       email !== undefined ? email.trim() : target.email,
       phone !== undefined ? phone.trim() : target.phone,
       req.params.id
     );
 
     const updated = db.prepare(`
-      SELECT id, username, name, role, nis_nip as nis, kelas, email, phone, avatar, created_at
+      SELECT id, username, name, role, nis_nip as nis, kelas, gender, no_absen, email, phone, avatar, created_at
       FROM users WHERE id = ?
     `).get(req.params.id);
 

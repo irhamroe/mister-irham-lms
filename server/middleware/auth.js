@@ -17,7 +17,7 @@ function authenticateToken(req, res, next) {
     }
     
     // Fetch fresh user data from DB
-    const freshUser = db.prepare('SELECT id, username, name, role, nis_nip, kelas, email, avatar FROM users WHERE id = ?').get(user.id);
+    const freshUser = db.prepare('SELECT id, username, name, role, nis_nip, kelas, gender, email, avatar FROM users WHERE id = ?').get(user.id);
     if (!freshUser) {
       return res.status(404).json({ error: 'Pengguna tidak ditemukan' });
     }

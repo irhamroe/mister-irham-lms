@@ -61,6 +61,7 @@ const DEFAULT_USERS = [
     nis: '1001',
     nis_nip: '1001',
     kelas: 'X-IPA-1',
+    gender: 'L',
     email: 'siswa_ahmad@siswa.sekolah.sch.id',
     phone: '081399990001',
     avatar: 'https://api.dicebear.com/7.x/micah/svg?seed=siswa_ahmad',
@@ -74,6 +75,7 @@ const DEFAULT_USERS = [
     nis: '1002',
     nis_nip: '1002',
     kelas: 'X-IPA-1',
+    gender: 'P',
     email: 'siswa_dewi@siswa.sekolah.sch.id',
     phone: '081399990002',
     avatar: 'https://api.dicebear.com/7.x/micah/svg?seed=siswa_dewi',
@@ -87,6 +89,7 @@ const DEFAULT_USERS = [
     nis: '1003',
     nis_nip: '1003',
     kelas: 'X-IPA-1',
+    gender: 'L',
     email: 'siswa_rendy@siswa.sekolah.sch.id',
     phone: '081399990003',
     avatar: 'https://api.dicebear.com/7.x/micah/svg?seed=siswa_rendy',
@@ -100,6 +103,7 @@ const DEFAULT_USERS = [
     nis: '1004',
     nis_nip: '1004',
     kelas: 'X-IPA-1',
+    gender: 'P',
     email: 'siswa_putri@siswa.sekolah.sch.id',
     phone: '081399990004',
     avatar: 'https://api.dicebear.com/7.x/micah/svg?seed=siswa_putri',
@@ -113,6 +117,7 @@ const DEFAULT_USERS = [
     nis: '1005',
     nis_nip: '1005',
     kelas: 'X-IPA-1',
+    gender: 'L',
     email: 'siswa_reza@siswa.sekolah.sch.id',
     phone: '081399990005',
     avatar: 'https://api.dicebear.com/7.x/micah/svg?seed=siswa_reza',
@@ -126,6 +131,7 @@ const DEFAULT_USERS = [
     nis: '1006',
     nis_nip: '1006',
     kelas: 'X-IPA-1',
+    gender: 'P',
     email: 'siswa_zahra@siswa.sekolah.sch.id',
     phone: '081399990006',
     avatar: 'https://api.dicebear.com/7.x/micah/svg?seed=siswa_zahra',
@@ -139,6 +145,7 @@ const DEFAULT_USERS = [
     nis: '1007',
     nis_nip: '1007',
     kelas: 'X-IPA-1',
+    gender: 'L',
     email: 'siswa_dimas@siswa.sekolah.sch.id',
     phone: '081399990007',
     avatar: 'https://api.dicebear.com/7.x/micah/svg?seed=siswa_dimas',
@@ -152,6 +159,7 @@ const DEFAULT_USERS = [
     nis: '1008',
     nis_nip: '1008',
     kelas: 'X-IPA-1',
+    gender: 'P',
     email: 'siswa_naya@siswa.sekolah.sch.id',
     phone: '081399990008',
     avatar: 'https://api.dicebear.com/7.x/micah/svg?seed=siswa_naya',
@@ -648,8 +656,10 @@ export async function handleMockRequest(endpoint, options = {}) {
     if (method === 'GET') {
       let students = users.filter(u => u.role === 'siswa');
       const kelas = params.get('kelas');
+      const gender = params.get('gender');
       const search = params.get('search');
       if (kelas) students = students.filter(s => s.kelas === kelas);
+      if (gender) students = students.filter(s => s.gender === gender);
       if (search) {
         const q = search.toLowerCase();
         students = students.filter(s => s.name.toLowerCase().includes(q) || s.nis?.includes(q) || s.username?.toLowerCase().includes(q));
@@ -665,6 +675,7 @@ export async function handleMockRequest(endpoint, options = {}) {
         nis: body.nis.trim(),
         nis_nip: body.nis.trim(),
         kelas: body.kelas.trim(),
+        gender: body.gender || 'L',
         email: body.email ? body.email.trim() : `${body.username}@siswa.sekolah.sch.id`,
         phone: body.phone ? body.phone.trim() : '',
         avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${body.username.trim()}`,
@@ -698,6 +709,7 @@ export async function handleMockRequest(endpoint, options = {}) {
           nis: String(st.nis).trim(),
           nis_nip: String(st.nis).trim(),
           kelas: String(st.kelas).trim(),
+          gender: st.gender || 'L',
           email: st.email ? st.email.trim() : `${username}@siswa.sekolah.sch.id`,
           phone: st.phone ? st.phone.trim() : '',
           avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${username}`,

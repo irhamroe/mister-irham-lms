@@ -14,6 +14,7 @@ export function downloadStudentExcelTemplate() {
       'Nama Lengkap': 'Ahmad Faiz Pratama',
       'NIS': '1001',
       'Kelas': 'X-IPA-1',
+      'Jenis Kelamin': 'L',
       'Username': 'siswa_ahmad',
       'Password': 'password123',
       'Email': 'siswa_ahmad@sekolah.sch.id',
@@ -23,6 +24,7 @@ export function downloadStudentExcelTemplate() {
       'Nama Lengkap': 'Dewi Anjani Kusuma',
       'NIS': '1002',
       'Kelas': 'X-IPA-1',
+      'Jenis Kelamin': 'P',
       'Username': 'siswa_dewi',
       'Password': 'password123',
       'Email': 'siswa_dewi@sekolah.sch.id',
@@ -32,6 +34,7 @@ export function downloadStudentExcelTemplate() {
       'Nama Lengkap': 'Rendy Kurniawan',
       'NIS': '1003',
       'Kelas': 'X-IPA-1',
+      'Jenis Kelamin': 'L',
       'Username': 'siswa_rendy',
       'Password': 'password123',
       'Email': 'siswa_rendy@sekolah.sch.id',
@@ -45,6 +48,7 @@ export function downloadStudentExcelTemplate() {
     { wch: 26 }, // Nama Lengkap
     { wch: 12 }, // NIS
     { wch: 14 }, // Kelas
+    { wch: 16 }, // Jenis Kelamin (L/P)
     { wch: 18 }, // Username
     { wch: 16 }, // Password
     { wch: 30 }, // Email
@@ -91,6 +95,16 @@ export async function parseStudentExcel(file, defaultClass = '') {
           const name = getVal(['Nama Lengkap', 'Nama', 'Name', 'Nama Siswa', 'Peserta Didik']);
           const nis = getVal(['NIS', 'NISN', 'Nomor Induk', 'No Induk', 'Nis_Nip']);
           const kelas = getVal(['Kelas', 'Class', 'Rombel', 'Tingkat']) || defaultClass;
+          const rawGender = getVal(['Jenis Kelamin', 'Gender', 'JK', 'L/P', 'Kelamin', 'Sex']);
+          let gender = 'L';
+          if (rawGender) {
+            const gUpper = rawGender.trim().toUpperCase();
+            if (gUpper === 'P' || gUpper.startsWith('PEREMPUAN') || gUpper === 'FEMALE' || gUpper === 'WANITA' || gUpper === 'F') {
+              gender = 'P';
+            } else {
+              gender = 'L';
+            }
+          }
           let username = getVal(['Username', 'User']);
           const password = getVal(['Password', 'Sandi', 'Kata Sandi']) || 'password123';
           let email = getVal(['Email', 'Surel', 'E-mail']);
@@ -119,6 +133,7 @@ export async function parseStudentExcel(file, defaultClass = '') {
             name,
             nis,
             kelas,
+            gender,
             username: username.toLowerCase(),
             password,
             email,

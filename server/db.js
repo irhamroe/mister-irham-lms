@@ -26,6 +26,8 @@ function initDatabase() {
       role TEXT CHECK(role IN ('admin', 'guru', 'siswa')) NOT NULL,
       nis_nip TEXT,
       kelas TEXT,
+      gender TEXT DEFAULT 'L',
+      no_absen INTEGER,
       email TEXT,
       phone TEXT,
       avatar TEXT,
@@ -267,6 +269,19 @@ function initDatabase() {
     db.exec('ALTER TABLE users ADD COLUMN no_absen INTEGER');
   } catch (e) {}
   try {
+    db.exec("ALTER TABLE users ADD COLUMN gender TEXT DEFAULT 'L'");
+  } catch (e) {}
+  try {
+    db.prepare(`
+      UPDATE users SET gender = 'P' 
+      WHERE (gender IS NULL OR gender = '' OR gender = 'female' OR gender = 'L') AND username IN ('siswa_dewi', 'siswa_putri', 'siswa_zahra', 'siswa_naya', 'guru_siti')
+    `).run();
+    db.prepare(`
+      UPDATE users SET gender = 'L' 
+      WHERE gender IS NULL OR gender = '' OR gender = 'male'
+    `).run();
+  } catch (e) {}
+  try {
     db.exec('ALTER TABLE assignments ADD COLUMN drive_folder_url TEXT');
   } catch (e) {}
   try {
@@ -295,27 +310,27 @@ function seedData() {
 
   // 2. Users (Admin, Guru, Siswa)
   const insertUser = db.prepare(`
-    INSERT INTO users (username, password_hash, name, role, nis_nip, kelas, email, phone, avatar)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO users (username, password_hash, name, role, nis_nip, kelas, gender, email, phone, avatar)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   // Admin
-  insertUser.run('admin', passwordHash, 'Administrator LMS', 'admin', 'ADM001', null, 'admin@sekolah.sch.id', '08120000001', 'https://api.dicebear.com/7.x/bottts/svg?seed=admin');
+  insertUser.run('admin', passwordHash, 'Administrator LMS', 'admin', 'ADM001', null, 'L', 'admin@sekolah.sch.id', '08120000001', 'https://api.dicebear.com/7.x/bottts/svg?seed=admin');
 
   // Teachers
-  const g1 = insertUser.run('guru_budi', passwordHash, 'Budi Santoso, S.Pd.', 'guru', '198501012010011001', 'X-IPA-1', 'budi@sekolah.sch.id', '08120000002', 'https://api.dicebear.com/7.x/avataaars/svg?seed=budi').lastInsertRowid;
-  const g2 = insertUser.run('guru_siti', passwordHash, 'Siti Rahmawati, M.Pd.', 'guru', '198705122011012002', 'X-IPA-2', 'siti@sekolah.sch.id', '08120000003', 'https://api.dicebear.com/7.x/avataaars/svg?seed=siti').lastInsertRowid;
+  const g1 = insertUser.run('guru_budi', passwordHash, 'Budi Santoso, S.Pd.', 'guru', '198501012010011001', 'X-IPA-1', 'L', 'budi@sekolah.sch.id', '08120000002', 'https://api.dicebear.com/7.x/avataaars/svg?seed=budi').lastInsertRowid;
+  const g2 = insertUser.run('guru_siti', passwordHash, 'Siti Rahmawati, M.Pd.', 'guru', '198705122011012002', 'X-IPA-2', 'P', 'siti@sekolah.sch.id', '08120000003', 'https://api.dicebear.com/7.x/avataaars/svg?seed=siti').lastInsertRowid;
 
   // Students (Class X-IPA-1)
   const students = [
-    { u: 'siswa_ahmad', name: 'Ahmad Faiz Pratama', nis: '1001', gender: 'male', c: 'X-IPA-1' },
-    { u: 'siswa_dewi', name: 'Dewi Anjani Kusuma', nis: '1002', gender: 'female', c: 'X-IPA-1' },
-    { u: 'siswa_rendy', name: 'Rendy Kurniawan', nis: '1003', gender: 'male', c: 'X-IPA-1' },
-    { u: 'siswa_putri', name: 'Putri Ayu Wandira', nis: '1004', gender: 'female', c: 'X-IPA-1' },
-    { u: 'siswa_reza', name: 'Reza Aditya Nugraha', nis: '1005', gender: 'male', c: 'X-IPA-1' },
-    { u: 'siswa_zahra', name: 'Zahra Nurul Izzah', nis: '1006', gender: 'female', c: 'X-IPA-1' },
-    { u: 'siswa_dimas', name: 'Dimas Bagus Anggoro', nis: '1007', gender: 'male', c: 'X-IPA-1' },
-    { u: 'siswa_naya', name: 'Kanaya Safitri', nis: '1008', gender: 'female', c: 'X-IPA-1' },
+    { u: 'siswa_ahmad', name: 'Ahmad Faiz Pratama', nis: '1001', gender: 'L', c: 'X-IPA-1' },
+    { u: 'siswa_dewi', name: 'Dewi Anjani Kusuma', nis: '1002', gender: 'P', c: 'X-IPA-1' },
+    { u: 'siswa_rendy', name: 'Rendy Kurniawan', nis: '1003', gender: 'L', c: 'X-IPA-1' },
+    { u: 'siswa_putri', name: 'Putri Ayu Wandira', nis: '1004', gender: 'P', c: 'X-IPA-1' },
+    { u: 'siswa_reza', name: 'Reza Aditya Nugraha', nis: '1005', gender: 'L', c: 'X-IPA-1' },
+    { u: 'siswa_zahra', name: 'Zahra Nurul Izzah', nis: '1006', gender: 'P', c: 'X-IPA-1' },
+    { u: 'siswa_dimas', name: 'Dimas Bagus Anggoro', nis: '1007', gender: 'L', c: 'X-IPA-1' },
+    { u: 'siswa_naya', name: 'Kanaya Safitri', nis: '1008', gender: 'P', c: 'X-IPA-1' },
   ];
 
   const studentIds = [];
@@ -327,11 +342,12 @@ function seedData() {
       'siswa',
       s.nis,
       s.c,
+      s.gender,
       `${s.u}@siswa.sekolah.sch.id`,
       '08139999000' + s.nis,
       `https://api.dicebear.com/7.x/micah/svg?seed=${s.u}`
     ).lastInsertRowid;
-    studentIds.push({ id: sid, name: s.name, nis: s.nis, username: s.u });
+    studentIds.push({ id: sid, name: s.name, nis: s.nis, username: s.u, gender: s.gender });
   }
 
   // 3. Subjects

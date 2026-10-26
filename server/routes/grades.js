@@ -111,7 +111,7 @@ router.get('/ledger', authenticateToken, (req, res) => {
 
     // Fetch students
     let studentQuery = `
-      SELECT id, name, nis_nip as nis, kelas, avatar 
+      SELECT id, name, nis_nip as nis, kelas, gender, avatar 
       FROM users 
       WHERE role = 'siswa' AND kelas = ?
     `;
