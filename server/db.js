@@ -253,7 +253,22 @@ function initDatabase() {
       FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
     );
+
+    -- SYSTEM SETTINGS TABLE (Google Drive, App Configs, etc.)
+    CREATE TABLE IF NOT EXISTS system_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  // Safe schema migrations
+  try {
+    db.exec('ALTER TABLE users ADD COLUMN no_absen INTEGER');
+  } catch (e) {}
+  try {
+    db.exec('ALTER TABLE assignments ADD COLUMN drive_folder_url TEXT');
+  } catch (e) {}
 
   seedData();
   seedQuestionBank();

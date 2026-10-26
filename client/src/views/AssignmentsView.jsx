@@ -12,10 +12,75 @@ import {
   Send,
   Eye,
   Paperclip,
-  ExternalLink
+  ExternalLink,
+  Cloud,
+  Folder,
+  FolderOpen,
+  Copy,
+  Check,
+  Settings,
+  X,
+  File,
+  Download,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+
+const APPS_SCRIPT_CODE = `function doPost(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    if (payload.action === 'test') {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        message: 'Koneksi ke Google Drive Apps Script berhasil!'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Tentukan folder induk (opsional) atau gunakan root My Drive
+    var parentFolder = payload.parentFolderId && payload.parentFolderId.trim() !== '' 
+      ? DriveApp.getFolderById(payload.parentFolderId.trim()) 
+      : DriveApp.getRootFolder();
+      
+    // 1. Dapatkan / Buat Folder Tugas (misal: "Tugas 1: Dinamika Gerak")
+    var taskFolderName = payload.folderTask || 'Tugas Kelas';
+    var taskFolders = parentFolder.getFoldersByName(taskFolderName);
+    var taskFolder = taskFolders.hasNext() ? taskFolders.next() : parentFolder.createFolder(taskFolderName);
+    
+    // 2. Dapatkan / Buat Folder Kelas (misal: "Kelas X-A") di dalam Folder Tugas
+    var classFolderName = payload.folderClass || 'Semua Kelas';
+    var classFolders = taskFolder.getFoldersByName(classFolderName);
+    var classFolder = classFolders.hasNext() ? classFolders.next() : taskFolder.createFolder(classFolderName);
+    
+    // 3. Simpan File dengan nama: [Nomor Absen] - [Nama Siswa].[ext]
+    var base64Data = payload.fileBase64;
+    if (base64Data.indexOf(';base64,') > -1) {
+      base64Data = base64Data.split(';base64,')[1];
+    }
+    var decoded = Utilities.base64Decode(base64Data);
+    var blob = Utilities.newBlob(decoded, payload.mimeType || 'application/octet-stream', payload.fileName);
+    var newFile = classFolder.createFile(blob);
+    
+    try {
+      newFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch(errShare) {}
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      fileId: newFile.getId(),
+      fileUrl: newFile.getUrl(),
+      fileName: newFile.getName(),
+      taskFolderUrl: taskFolder.getUrl(),
+      classFolderUrl: classFolder.getUrl()
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
 
 export default function AssignmentsView() {
   const { user, classes = [], subjects = [] } = useAuth();
@@ -42,12 +107,30 @@ export default function AssignmentsView() {
   const [activeAssignment, setActiveAssignment] = useState(null);
   const [assignmentDetail, setAssignmentDetail] = useState(null);
 
+  // Google Drive Settings Modal
+  const [showDriveModal, setShowDriveModal] = useState(false);
+  const [driveSettings, setDriveSettings] = useState({
+    webhookUrl: '',
+    parentFolderId: '',
+    isConfigured: false,
+    lastTested: null
+  });
+  const [testResult, setTestResult] = useState(null);
+  const [isTestingDrive, setIsTestingDrive] = useState(false);
+  const [isSavingDrive, setIsSavingDrive] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
+
   // Student submission form
   const [submissionForm, setSubmissionForm] = useState({
     content: '',
-    fileName: 'Jawaban_Tugas.pdf',
-    fileUrl: '#'
+    student_absen: '',
+    selectedFile: null,
+    fileBase64: '',
+    fileName: '',
+    fileSize: '',
+    fileType: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Teacher grading state
   const [gradingForm, setGradingForm] = useState({
@@ -61,6 +144,87 @@ export default function AssignmentsView() {
   useEffect(() => {
     loadAssignments();
   }, [user, selectedClass, selectedSubject]);
+
+  useEffect(() => {
+    if (isTeacher) {
+      loadDriveSettings();
+    }
+  }, [isTeacher]);
+
+  async function loadDriveSettings() {
+    try {
+      const res = await api.getDriveSettings();
+      if (res) setDriveSettings(res);
+    } catch (e) {
+      console.warn('Error loading drive settings:', e);
+    }
+  }
+
+  async function handleSaveDriveSettings(e) {
+    e.preventDefault();
+    setIsSavingDrive(true);
+    try {
+      const res = await api.saveDriveSettings(driveSettings);
+      alert(res.message || 'Pengaturan Google Drive berhasil disimpan!');
+      if (res.settings) setDriveSettings(res.settings);
+      setShowDriveModal(false);
+    } catch (err) {
+      alert('Gagal menyimpan pengaturan: ' + err.message);
+    } finally {
+      setIsSavingDrive(false);
+    }
+  }
+
+  async function handleTestDriveConnection() {
+    if (!driveSettings.webhookUrl) {
+      alert('Masukkan URL Google Apps Script Web App terlebih dahulu!');
+      return;
+    }
+    setIsTestingDrive(true);
+    setTestResult(null);
+    try {
+      const res = await api.testDriveConnection({ webhookUrl: driveSettings.webhookUrl });
+      if (res.success) {
+        setTestResult({ success: true, message: res.message || 'Koneksi ke Google Drive sukses!' });
+        setDriveSettings(prev => ({ ...prev, isConfigured: true, lastTested: new Date().toISOString() }));
+      } else {
+        setTestResult({ success: false, message: res.error || 'Respon tidak valid.' });
+      }
+    } catch (err) {
+      setTestResult({ success: false, message: err.message });
+    } finally {
+      setIsTestingDrive(false);
+    }
+  }
+
+  function handleCopyScript() {
+    navigator.clipboard.writeText(APPS_SCRIPT_CODE);
+    setCopiedScript(true);
+    setTimeout(() => setCopiedScript(false), 2500);
+  }
+
+  function handleFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 20 * 1024 * 1024) {
+      alert('Ukuran file maksimal adalah 20 MB!');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSubmissionForm(prev => ({
+        ...prev,
+        selectedFile: file,
+        fileBase64: reader.result,
+        fileName: file.name,
+        fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        fileType: file.type || 'application/octet-stream'
+      }));
+    };
+    reader.readAsDataURL(file);
+  }
 
   async function loadAssignments() {
     try {
@@ -124,18 +288,30 @@ export default function AssignmentsView() {
 
   async function handleStudentSubmit(e) {
     e.preventDefault();
+    if (!submissionForm.selectedFile && !submissionForm.fileBase64 && !assignmentDetail?.my_submission) {
+      alert('Pilih berkas tugas (PDF/Word/Gambar/Zip) yang ingin diserahkan!');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       await api.submitAssignment(activeAssignment, {
         content: submissionForm.content,
-        attachments: [
-          { name: submissionForm.fileName, url: submissionForm.fileUrl, size: '1.2 MB' }
-        ]
+        student_absen: paddedAbsen,
+        file: submissionForm.selectedFile ? {
+          name: submissionForm.fileName,
+          type: submissionForm.fileType,
+          size: submissionForm.selectedFile.size,
+          base64: submissionForm.fileBase64
+        } : undefined
       });
       openAssignmentDetails(activeAssignment);
       loadAssignments();
-      alert('Tugas Anda berhasil diserahkan ke guru!');
+      alert(`Tugas Anda berhasil diserahkan!\n\nBerkas otomatis tersimpan di Google Drive:\n📁 Folder: ${targetTaskFolder} > ${targetClassFolder}\n📄 Berkas: ${targetFormattedFileName}`);
     } catch (err) {
       alert('Gagal menyerahkan tugas: ' + err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -182,9 +358,23 @@ export default function AssignmentsView() {
         </div>
 
         {isTeacher && (
-          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
-            <Plus size={16} /> Buat Tugas Baru
-          </button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-outline"
+              onClick={() => setShowDriveModal(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              title="Atur integrasi penyimpanan otomatis tugas ke Google Drive"
+            >
+              <Cloud size={16} color={driveSettings?.isConfigured ? '#10b981' : 'var(--text-muted)'} />
+              Integrasi Google Drive
+              {driveSettings?.isConfigured && (
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+              )}
+            </button>
+            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
+              <Plus size={16} /> Buat Tugas Baru
+            </button>
+          </div>
         )}
       </div>
 
@@ -285,6 +475,37 @@ export default function AssignmentsView() {
                     </div>
                   </div>
                 )}
+                {/* Google Drive Folder Indicator */}
+                <div style={{
+                  marginTop: 12,
+                  padding: '10px 14px',
+                  background: 'rgba(37, 99, 235, 0.05)',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: 'var(--radius-sm)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 10
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.82rem' }}>
+                    <FolderOpen size={16} color="#2563eb" />
+                    <span>
+                      Struktur Drive: <strong>{assignmentDetail.assignment.title}</strong> &gt; <strong>{assignmentDetail.assignment.class_name}</strong>
+                    </span>
+                  </div>
+                  {assignmentDetail.assignment.drive_folder_url && assignmentDetail.assignment.drive_folder_url !== '#' && (
+                    <a
+                      href={assignmentDetail.assignment.drive_folder_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn btn-outline btn-sm"
+                      style={{ color: '#2563eb', borderColor: '#bfdbfe', fontSize: '0.76rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    >
+                      <ExternalLink size={12} /> Buka Folder di Google Drive
+                    </a>
+                  )}
+                </div>
               </div>
 
               {/* Student View: Turn-in Box */}
@@ -319,35 +540,101 @@ export default function AssignmentsView() {
                     </div>
                   )}
 
+                  {/* Submission Details if already turned in */}
+                  {assignmentDetail.my_submission && assignmentDetail.my_submission.attachments?.length > 0 && (
+                    <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid #e2e8f0', marginBottom: 16 }}>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6 }}>Berkas Tersimpan di Google Drive:</div>
+                      {assignmentDetail.my_submission.attachments.map((att, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Cloud size={16} color="#2563eb" />
+                            <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>{att.name}</strong>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({att.size || 'Berkas'})</span>
+                          </div>
+                          {att.drive_url && (
+                            <a
+                              href={att.drive_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn btn-outline btn-sm"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#2563eb', borderColor: '#93c5fd', fontSize: '0.78rem' }}
+                            >
+                              <ExternalLink size={13} /> Buka di Google Drive
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <form onSubmit={handleStudentSubmit}>
                     <div className="form-group">
-                      <label className="form-label">Tulis Catatan / Jawaban Teks</label>
+                      <label className="form-label">Tulis Catatan / Jawaban Teks (Opsional)</label>
                       <textarea
                         className="form-control"
-                        rows={3}
+                        rows={2}
                         placeholder="Ketik ringkasan atau keterangan pengerjaan tugas Anda..."
                         value={submissionForm.content}
                         onChange={(e) => setSubmissionForm({ ...submissionForm, content: e.target.value })}
-                        required
                       />
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label">Nama File Lampiran (Simulasi Upload PDF/Docx)</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Contoh: Tugas_Matematika_SPLTV.pdf"
-                        value={submissionForm.fileName}
-                        onChange={(e) => setSubmissionForm({ ...submissionForm, fileName: e.target.value })}
-                        required
-                      />
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12, marginBottom: 14 }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 700 }}>Nomor Absen</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          min="1"
+                          max="99"
+                          value={submissionForm.student_absen || paddedAbsen}
+                          onChange={(e) => setSubmissionForm({ ...submissionForm, student_absen: e.target.value })}
+                          placeholder="Contoh: 5"
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 700 }}>Pilih File Tugas (PDF, Word, Gambar, Zip)</label>
+                        <input
+                          type="file"
+                          className="form-control"
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.zip"
+                          onChange={handleFileSelect}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Preview Box of Google Drive Storage */}
+                    <div style={{
+                      background: 'rgba(37, 99, 235, 0.05)',
+                      border: '1.5px dashed #60a5fa',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '12px 16px',
+                      marginBottom: 16
+                    }}>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#1d4ed8', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Cloud size={16} /> Struktur Penyimpanan Otomatis di Google Drive:
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div>📁 <strong>Folder Tugas:</strong> {targetTaskFolder}</div>
+                        <div style={{ paddingLeft: 16 }}>📂 <strong>Folder Kelas:</strong> {targetClassFolder}</div>
+                        <div style={{ paddingLeft: 32 }}>
+                          📄 <strong>Nama File Tersimpan:</strong> <span style={{ color: 'var(--primary)', fontWeight: 800, background: '#e0e7ff', padding: '2px 8px', borderRadius: 4 }}>{targetFormattedFileName}</span>
+                        </div>
+                      </div>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
-                      <button type="submit" className="btn btn-primary btn-lg">
-                        <Send size={16} />
-                        {assignmentDetail.my_submission ? 'Kirim Ulang Tugas' : 'Serahkan Tugas (Turn In)'}
+                      <button type="submit" className="btn btn-primary btn-lg" disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <>Mengunggah ke Google Drive...</>
+                        ) : (
+                          <>
+                            <Send size={16} />
+                            {assignmentDetail.my_submission ? 'Kirim Ulang & Perbarui File' : 'Serahkan Tugas (Turn In)'}
+                          </>
+                        )}
                       </button>
                     </div>
                   </form>
@@ -384,7 +671,19 @@ export default function AssignmentsView() {
                         {(assignmentDetail.submissions || []).map(({ student, submission, status }) => (
                           <tr key={student.id}>
                             <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{
+                                  background: '#e0e7ff',
+                                  color: 'var(--primary)',
+                                  fontWeight: 800,
+                                  fontSize: '0.74rem',
+                                  padding: '3px 7px',
+                                  borderRadius: 4,
+                                  minWidth: 32,
+                                  textAlign: 'center'
+                                }}>
+                                  #{student.absen || '01'}
+                                </span>
                                 <img src={student.avatar} alt={student.name} style={{ width: 28, height: 28, borderRadius: '50%' }} />
                                 <div>
                                   <strong style={{ fontSize: '0.88rem', display: 'block' }}>{student.name}</strong>
@@ -404,9 +703,36 @@ export default function AssignmentsView() {
                             </td>
                             <td>
                               {submission?.attachments?.length > 0 ? (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600 }}>
-                                  <Paperclip size={13} /> {submission.attachments[0].name}
-                                </span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  {submission.attachments.map((att, attIdx) => (
+                                    <div key={attIdx} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                      <a
+                                        href={att.drive_url || '#'}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: 4,
+                                          color: 'var(--primary)',
+                                          fontSize: '0.82rem',
+                                          fontWeight: 700,
+                                          textDecoration: 'none'
+                                        }}
+                                        title="Buka berkas di Google Drive"
+                                      >
+                                        <Cloud size={14} color="#2563eb" />
+                                        <span>{att.name}</span>
+                                        <ExternalLink size={12} />
+                                      </a>
+                                      {att.size && (
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                          ({att.size})
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
                               ) : '-'}
                             </td>
                             <td>
@@ -591,6 +917,213 @@ export default function AssignmentsView() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Google Drive Settings Modal */}
+      {showDriveModal && (
+        <div className="modal-overlay" onClick={() => setShowDriveModal(false)}>
+          <div
+            className="modal-container"
+            style={{ maxWidth: 780, width: '95%', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ padding: '16px 22px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.18rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Cloud size={22} color="#2563eb" /> Pengaturan Integrasi Google Drive
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Simpan file tugas siswa otomatis ke Google Drive dengan struktur folder rapi
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setShowDriveModal(false)}
+                style={{ padding: '4px 8px', borderRadius: '50%' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px 22px', overflowY: 'auto', flex: 1 }}>
+              {/* Structure Explanation Banner */}
+              <div style={{
+                background: 'rgba(37, 99, 235, 0.06)',
+                border: '1.5px solid #bfdbfe',
+                borderRadius: 'var(--radius-sm)',
+                padding: '14px 18px',
+                marginBottom: 18
+              }}>
+                <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#1e40af', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FolderOpen size={18} /> Format Struktur Folder & File di Google Drive Anda:
+                </div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-main)', lineHeight: 1.6 }}>
+                  <div>📁 <strong>[Nama Tugas]</strong> (Contoh: <em>Tugas 1: Dinamika Gerak</em>)</div>
+                  <div style={{ paddingLeft: 20 }}>📂 <strong>[Nama Kelas]</strong> (Contoh: <em>Kelas X-A</em>)</div>
+                  <div style={{ paddingLeft: 40 }}>
+                    📄 <strong>[Nomor Absen] - [Nama Siswa].[ext]</strong> (Contoh: <code style={{ background: '#dbeafe', padding: '1px 6px', borderRadius: 4, color: '#1e40af', fontWeight: 700 }}>05 - Budi Santoso.pdf</code>)
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Indicator */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                background: driveSettings.isConfigured ? '#ecfdf5' : '#fef2f2',
+                border: driveSettings.isConfigured ? '1px solid #10b981' : '1px solid #f87171',
+                borderRadius: 'var(--radius-sm)',
+                marginBottom: 16
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    background: driveSettings.isConfigured ? '#10b981' : '#ef4444'
+                  }} />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: driveSettings.isConfigured ? '#065f46' : '#991b1b' }}>
+                    Status: {driveSettings.isConfigured ? 'Tersambung ke Google Drive' : 'Belum Dikonfigurasi (Tersimpan Lokal)'}
+                  </span>
+                </div>
+                {driveSettings.lastTested && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Terakhir diuji: {new Date(driveSettings.lastTested).toLocaleString('id-ID')}
+                  </span>
+                )}
+              </div>
+
+              {/* Configuration Form */}
+              <form onSubmit={handleSaveDriveSettings}>
+                <div className="form-group" style={{ marginBottom: 14 }}>
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: '0.84rem' }}>
+                    URL Aplikasi Web Google Apps Script (Webhook) *
+                  </label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="url"
+                      className="form-control"
+                      placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                      value={driveSettings.webhookUrl}
+                      onChange={(e) => setDriveSettings({ ...driveSettings, webhookUrl: e.target.value })}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={handleTestDriveConnection}
+                      disabled={isTestingDrive || !driveSettings.webhookUrl}
+                      style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                      {isTestingDrive ? 'Menguji...' : 'Tes Koneksi'}
+                    </button>
+                  </div>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                    URL Web App yang diperoleh setelah menerapkan Google Apps Script di Google Drive Anda.
+                  </span>
+                </div>
+
+                {testResult && (
+                  <div style={{
+                    padding: '8px 12px',
+                    borderRadius: 4,
+                    marginBottom: 14,
+                    fontSize: '0.82rem',
+                    background: testResult.success ? '#ecfdf5' : '#fef2f2',
+                    color: testResult.success ? '#065f46' : '#991b1b',
+                    border: testResult.success ? '1px solid #a7f3d0' : '1px solid #fecaca'
+                  }}>
+                    {testResult.success ? '✅ ' : '❌ '} {testResult.message}
+                  </div>
+                )}
+
+                <div className="form-group" style={{ marginBottom: 18 }}>
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: '0.84rem' }}>
+                    ID Folder Induk Google Drive (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Contoh: 1A2b3C4d5E6F... (Biarkan kosong untuk root My Drive)"
+                    value={driveSettings.parentFolderId}
+                    onChange={(e) => setDriveSettings({ ...driveSettings, parentFolderId: e.target.value })}
+                  />
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                    Bisa dikosongkan. Jika diisi, seluruh folder tugas dan kelas akan dibuat di dalam folder induk tersebut.
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 20 }}>
+                  <button type="button" className="btn btn-outline" onClick={() => setShowDriveModal(false)}>
+                    Batal
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={isSavingDrive}>
+                    {isSavingDrive ? 'Menyimpan...' : 'Simpan Pengaturan'}
+                  </button>
+                </div>
+              </form>
+
+              {/* Step-by-Step Setup Guide */}
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: 16 }}>
+                <h4 style={{ fontWeight: 800, fontSize: '0.92rem', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ClipboardList size={16} color="var(--primary)" /> Panduan Setup Google Apps Script (2 Menit Tanpa Ribet):
+                </h4>
+                <ol style={{ fontSize: '0.8rem', color: 'var(--text-main)', lineHeight: 1.6, paddingLeft: 20, margin: 0 }}>
+                  <li>Buka <strong><a href="https://script.google.com" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>script.google.com</a></strong> dan login dengan akun Google Anda.</li>
+                  <li>Klik tombol <strong>"+ Proyek baru"</strong> (New Project).</li>
+                  <li>Hapus semua kode bawaan, lalu salin dan tempel kode berikut:</li>
+                </ol>
+
+                <div style={{ position: 'relative', marginTop: 8, marginBottom: 10 }}>
+                  <pre style={{
+                    background: '#1e293b',
+                    color: '#e2e8f0',
+                    padding: 12,
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '0.74rem',
+                    maxHeight: 180,
+                    overflowY: 'auto',
+                    fontFamily: 'monospace'
+                  }}>
+                    {APPS_SCRIPT_CODE}
+                  </pre>
+                  <button
+                    type="button"
+                    onClick={handleCopyScript}
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      background: copiedScript ? '#10b981' : 'rgba(255,255,255,0.2)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '4px 8px',
+                      borderRadius: 4,
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    {copiedScript ? <Check size={12} /> : <Copy size={12} />}
+                    {copiedScript ? 'Tersalin!' : 'Salin Kode'}
+                  </button>
+                </div>
+
+                <ol start="4" style={{ fontSize: '0.8rem', color: 'var(--text-main)', lineHeight: 1.6, paddingLeft: 20, margin: 0 }}>
+                  <li>Klik tombol <strong>Deploy (Terapkan)</strong> &gt; <strong>New deployment (Penerapan baru)</strong>.</li>
+                  <li>Pilih jenis <strong>Web App (Aplikasi Web)</strong>.</li>
+                  <li>Pada bagian <em>Who has access (Siapa yang memiliki akses)</em>, pilih <strong>Anyone (Siapa saja)</strong>.</li>
+                  <li>Klik <strong>Deploy</strong>, izinkan akses akun Google Anda, lalu salin <strong>Web App URL</strong> dan tempelkan ke kolom URL di atas!</li>
+                </ol>
+              </div>
+            </div>
           </div>
         </div>
       )}

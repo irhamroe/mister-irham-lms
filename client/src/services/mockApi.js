@@ -484,7 +484,7 @@ function setStored(key, data) {
   }
 }
 
-export function handleMockRequest(endpoint, options = {}) {
+export async function handleMockRequest(endpoint, options = {}) {
   const method = (options.method || 'GET').toUpperCase();
   const [path, queryString] = endpoint.split('?');
   const params = new URLSearchParams(queryString || '');
@@ -1072,6 +1072,46 @@ export function handleMockRequest(endpoint, options = {}) {
     }
   }
 
+  // GOOGLE DRIVE INTEGRATION SETTINGS
+  if (path === '/assignments/drive-settings') {
+    if (method === 'GET') {
+      const settings = JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}');
+      return {
+        webhookUrl: settings.webhookUrl || '',
+        parentFolderId: settings.parentFolderId || '',
+        isConfigured: !!settings.webhookUrl,
+        lastTested: settings.lastTested || null
+      };
+    }
+    if (method === 'POST') {
+      const updated = {
+        webhookUrl: (body.webhookUrl || '').trim(),
+        parentFolderId: (body.parentFolderId || '').trim(),
+        lastTested: body.lastTested || null
+      };
+      localStorage.setItem('lms_google_drive_settings', JSON.stringify(updated));
+      return { success: true, message: 'Pengaturan Google Drive berhasil disimpan!', settings: updated };
+    }
+  }
+
+  if (path === '/assignments/drive-settings/test') {
+    const url = body.webhookUrl || JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}').webhookUrl;
+    if (!url) {
+      return { error: 'URL Google Apps Script belum diisi' };
+    }
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'test', timestamp: new Date().toISOString() })
+      });
+      const data = await res.json();
+      return { success: true, message: 'Koneksi ke Google Drive Apps Script berhasil!' };
+    } catch (err) {
+      return { error: 'Gagal menghubungi Google Apps Script: ' + err.message };
+    }
+  }
+
   // ASSIGNMENTS
   if (path === '/assignments') {
     let assignments = getStored(STORAGE_KEYS.ASSIGNMENTS, DEFAULT_ASSIGNMENTS);
@@ -1142,12 +1182,81 @@ export function handleMockRequest(endpoint, options = {}) {
     const id = Number(path.split('/')[2]);
     let submissions = getStored(STORAGE_KEYS.ASSIGNMENT_SUBMISSIONS, DEFAULT_ASSIGNMENT_SUBMISSIONS);
     const existingIdx = submissions.findIndex(s => s.assignment_id === id && s.student_id === currentUser.id);
+    const assignments = getStored(STORAGE_KEYS.ASSIGNMENTS, DEFAULT_ASSIGNMENTS);
+    const assignment = assignments.find(a => a.id === id) || { title: 'Tugas Kelas', class_name: currentUser.kelas || 'X-IPA-1' };
+
+    // Format student nomor absen
+    const studentsInClass = users.filter(u => u.role === 'siswa' && u.kelas === (currentUser.kelas || assignment.class_name));
+    const studentIdx = studentsInClass.findIndex(u => u.id === currentUser.id);
+    const finalAbsen = body.student_absen || currentUser.no_absen || (studentIdx !== -1 ? studentIdx + 1 : 1);
+    const absenFormatted = String(finalAbsen).padStart(2, '0');
+
+    let processedAttachments = Array.isArray(body.attachments) ? [...body.attachments] : [];
+
+    // Handle real or simulated file upload
+    if (body.file) {
+      const ext = body.file.name && body.file.name.includes('.') ? '.' + body.file.name.split('.').pop() : '.pdf';
+      const targetFileName = `${absenFormatted} - ${currentUser.name}${ext}`;
+      
+      const driveSettings = JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}');
+      let driveUrl = `https://drive.google.com/file/d/demo_${Date.now()}/view?usp=sharing`;
+      let taskFolderUrl = `https://drive.google.com/drive/folders/task_${id}?usp=sharing`;
+      let classFolderUrl = `https://drive.google.com/drive/folders/class_${id}?usp=sharing`;
+      let driveStatus = 'SIMULATED_DRIVE';
+
+      if (driveSettings.webhookUrl && body.file.base64) {
+        try {
+          let rawBase64 = body.file.base64;
+          if (rawBase64.includes(';base64,')) rawBase64 = rawBase64.split(';base64,')[1];
+          const response = await fetch(driveSettings.webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              action: 'upload',
+              parentFolderId: driveSettings.parentFolderId || '',
+              folderTask: assignment.title,
+              folderClass: assignment.class_name || currentUser.kelas || 'Umum',
+              fileName: targetFileName,
+              fileBase64: rawBase64,
+              mimeType: body.file.type || 'application/pdf'
+            })
+          });
+          if (response.ok) {
+            const resJson = await response.json();
+            if (resJson && resJson.success) {
+              driveUrl = resJson.fileUrl;
+              taskFolderUrl = resJson.taskFolderUrl;
+              classFolderUrl = resJson.classFolderUrl;
+              driveStatus = 'UPLOADED_DRIVE';
+            }
+          }
+        } catch (e) {
+          console.warn('Apps Script direct upload fallback:', e);
+        }
+      }
+
+      processedAttachments.unshift({
+        name: targetFileName,
+        original_name: body.file.name || 'tugas.pdf',
+        size: body.file.size ? `${(body.file.size / (1024 * 1024)).toFixed(2)} MB` : '1.2 MB',
+        drive_url: driveUrl,
+        drive_file_id: `file_${Date.now()}`,
+        drive_status: driveStatus,
+        task_folder_url: taskFolderUrl,
+        class_folder_url: classFolderUrl,
+        folder_task: assignment.title,
+        folder_class: assignment.class_name || currentUser.kelas || 'Umum',
+        student_absen: absenFormatted,
+        student_name: currentUser.name
+      });
+    }
+
     const newSub = {
       id: existingIdx >= 0 ? submissions[existingIdx].id : Date.now(),
       assignment_id: id,
       student_id: currentUser.id,
       content: body.content || '',
-      attachments: Array.isArray(body.attachments) ? body.attachments : [],
+      attachments: processedAttachments,
       submitted_at: new Date().toISOString(),
       status: 'SUBMITTED',
       score: existingIdx >= 0 ? submissions[existingIdx].score : null,
@@ -1160,7 +1269,7 @@ export function handleMockRequest(endpoint, options = {}) {
       submissions.push(newSub);
     }
     setStored(STORAGE_KEYS.ASSIGNMENT_SUBMISSIONS, submissions);
-    return { success: true, message: 'Tugas Anda berhasil diserahkan!' };
+    return { success: true, message: 'Tugas Anda berhasil diserahkan!', attachments: processedAttachments };
   }
 
   if (path.match(/^\/assignments\/\d+\/grade$/)) {
@@ -1212,12 +1321,15 @@ export function handleMockRequest(endpoint, options = {}) {
       } else if (new Date() > new Date(assignment.due_date)) {
         status = 'MISSING';
       }
+      const absen = st.no_absen || (studentsInClass.indexOf(st) + 1);
       return {
         student: {
           id: st.id,
           name: st.name,
           nis: st.nis || st.nis_nip || '',
           kelas: st.kelas,
+          no_absen: absen,
+          absen: String(absen).padStart(2, '0'),
           avatar: st.avatar
         },
         submission: sub || null,

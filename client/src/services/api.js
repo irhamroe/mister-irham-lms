@@ -32,9 +32,9 @@ async function request(endpoint, options = {}) {
     if (response.ok && contentType.includes('application/json')) {
       return await response.json();
     }
-    return handleMockRequest(endpoint, options);
+    return await handleMockRequest(endpoint, options);
   } catch (err) {
-    return handleMockRequest(endpoint, options);
+    return await handleMockRequest(endpoint, options);
   }
 }
 
@@ -79,12 +79,15 @@ export const api = {
   saveGrade: (payload) => request('/grades', { method: 'POST', body: JSON.stringify(payload) }),
   saveBatchGrades: (payload) => request('/grades/batch', { method: 'POST', body: JSON.stringify(payload) }),
 
-  // Assignments
+  // Assignments & Google Drive Integration
   getAssignments: (params = {}) => request(`/assignments${toQueryString(params)}`),
   createAssignment: (payload) => request('/assignments', { method: 'POST', body: JSON.stringify(payload) }),
   getAssignmentDetails: (id) => request(`/assignments/${id}`),
   submitAssignment: (id, payload) => request(`/assignments/${id}/submit`, { method: 'POST', body: JSON.stringify(payload) }),
   gradeAssignment: (id, payload) => request(`/assignments/${id}/grade`, { method: 'POST', body: JSON.stringify(payload) }),
+  getDriveSettings: () => request('/assignments/drive-settings'),
+  saveDriveSettings: (payload) => request('/assignments/drive-settings', { method: 'POST', body: JSON.stringify(payload) }),
+  testDriveConnection: (payload) => request('/assignments/drive-settings/test', { method: 'POST', body: JSON.stringify(payload) }),
 
   // CBT
   getCbtExams: (params = {}) => request(`/cbt/exams${toQueryString(params)}`),
