@@ -321,33 +321,12 @@ function seedData() {
   const g1 = insertUser.run('guru_budi', passwordHash, 'Budi Santoso, S.Pd.', 'guru', '198501012010011001', 'X-IPA-1', 'L', 'budi@sekolah.sch.id', '08120000002', 'https://api.dicebear.com/7.x/avataaars/svg?seed=budi').lastInsertRowid;
   const g2 = insertUser.run('guru_siti', passwordHash, 'Siti Rahmawati, M.Pd.', 'guru', '198705122011012002', 'X-IPA-2', 'P', 'siti@sekolah.sch.id', '08120000003', 'https://api.dicebear.com/7.x/avataaars/svg?seed=siti').lastInsertRowid;
 
-  // Students (Class X-IPA-1)
-  const students = [
-    { u: 'siswa_ahmad', name: 'Ahmad Faiz Pratama', nis: '1001', gender: 'L', c: 'X-IPA-1' },
-    { u: 'siswa_dewi', name: 'Dewi Anjani Kusuma', nis: '1002', gender: 'P', c: 'X-IPA-1' },
-    { u: 'siswa_rendy', name: 'Rendy Kurniawan', nis: '1003', gender: 'L', c: 'X-IPA-1' },
-    { u: 'siswa_putri', name: 'Putri Ayu Wandira', nis: '1004', gender: 'P', c: 'X-IPA-1' },
-    { u: 'siswa_reza', name: 'Reza Aditya Nugraha', nis: '1005', gender: 'L', c: 'X-IPA-1' },
-    { u: 'siswa_zahra', name: 'Zahra Nurul Izzah', nis: '1006', gender: 'P', c: 'X-IPA-1' },
-    { u: 'siswa_dimas', name: 'Dimas Bagus Anggoro', nis: '1007', gender: 'L', c: 'X-IPA-1' },
-    { u: 'siswa_naya', name: 'Kanaya Safitri', nis: '1008', gender: 'P', c: 'X-IPA-1' },
-  ];
-
-  const studentIds = [];
-  for (const s of students) {
-    const sid = insertUser.run(
-      s.u,
-      passwordHash,
-      s.name,
-      'siswa',
-      s.nis,
-      s.c,
-      s.gender,
-      `${s.u}@siswa.sekolah.sch.id`,
-      '08139999000' + s.nis,
-      `https://api.dicebear.com/7.x/micah/svg?seed=${s.u}`
-    ).lastInsertRowid;
-    studentIds.push({ id: sid, name: s.name, nis: s.nis, username: s.u, gender: s.gender });
+  // Students (Imported Real Students)
+  try {
+    const { parseAndSeed } = require('./scripts/seed_students');
+    parseAndSeed();
+  } catch (e) {
+    console.error('Error seeding students:', e);
   }
 
   // 3. Subjects

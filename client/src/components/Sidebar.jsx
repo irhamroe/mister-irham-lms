@@ -182,10 +182,10 @@ export default function Sidebar({ activeTab, setActiveTab }) {
                 </option>
               ))}
             </optgroup>
-            <optgroup label="Akun Siswa (X-IPA-1)">
+            <optgroup label="Akun Siswa">
               {demoUsers.filter(u => u.role === 'siswa').map(u => (
                 <option key={u.id} value={u.id}>
-                  {u.name} (Siswa)
+                  {u.name} (Kelas {u.kelas || '-'})
                 </option>
               ))}
             </optgroup>

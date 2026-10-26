@@ -45,7 +45,7 @@ router.get('/me', authenticateToken, (req, res) => {
 router.get('/demo-users', (req, res) => {
   try {
     const users = db.prepare(`
-      SELECT id, username, name, role, nis_nip, kelas, gender, email, avatar
+      SELECT id, username, name, role, nis_nip, kelas, gender, no_absen, email, avatar
       FROM users
       ORDER BY 
         CASE role 

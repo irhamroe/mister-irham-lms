@@ -11,33 +11,33 @@ import mammoth from 'mammoth';
 export function downloadStudentExcelTemplate() {
   const sampleData = [
     {
-      'Nama Lengkap': 'Ahmad Faiz Pratama',
-      'NIS': '1001',
-      'Kelas': 'X-IPA-1',
+      'Nama Lengkap': 'Achmad Zakky Fanani',
+      'NIS': '0111956420',
+      'Kelas': 'X-8',
       'Jenis Kelamin': 'L',
-      'Username': 'siswa_ahmad',
+      'Username': '0111956420',
       'Password': 'password123',
-      'Email': 'siswa_ahmad@sekolah.sch.id',
+      'Email': '0111956420@siswa.sekolah.sch.id',
       'No HP': '081234567890'
     },
     {
-      'Nama Lengkap': 'Dewi Anjani Kusuma',
-      'NIS': '1002',
-      'Kelas': 'X-IPA-1',
+      'Nama Lengkap': 'Afiqah Liyana Zahira',
+      'NIS': '0118373709',
+      'Kelas': 'X-8',
       'Jenis Kelamin': 'P',
-      'Username': 'siswa_dewi',
+      'Username': '0118373709',
       'Password': 'password123',
-      'Email': 'siswa_dewi@sekolah.sch.id',
+      'Email': '0118373709@siswa.sekolah.sch.id',
       'No HP': '081234567891'
     },
     {
-      'Nama Lengkap': 'Rendy Kurniawan',
-      'NIS': '1003',
-      'Kelas': 'X-IPA-1',
+      'Nama Lengkap': 'Ata Rayya Andromeda',
+      'NIS': '0101992863',
+      'Kelas': 'X-8',
       'Jenis Kelamin': 'L',
-      'Username': 'siswa_rendy',
+      'Username': '0101992863',
       'Password': 'password123',
-      'Email': 'siswa_rendy@sekolah.sch.id',
+      'Email': '0101992863@siswa.sekolah.sch.id',
       'No HP': '081234567892'
     }
   ];
