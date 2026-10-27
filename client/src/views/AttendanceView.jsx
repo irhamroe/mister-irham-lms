@@ -21,8 +21,6 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { StudentAvatar } from '../components/StudentAvatar';
 import { sortClassesNatural } from '../utils/sortHelper';
-import { ref, onValue } from 'firebase/database';
-import { database } from '../services/firebase';
 
 function getSessionTimeWarning(dateStr, startStr, endStr) {
   if (!dateStr) return null;
@@ -82,19 +80,55 @@ function getSessionTimeWarning(dateStr, startStr, endStr) {
 export default function AttendanceView() {
   const { user, classes, subjects } = useAuth();
   const sortedClasses = React.useMemo(() => sortClassesNatural(classes), [classes]);
+  const isTeacher = user?.role === 'guru' || user?.role === 'admin';
+
+  const displaySubjects = React.useMemo(() => {
+    if (user?.role === 'siswa' && user?.kelas) {
+      const k = user.kelas.toUpperCase();
+      if (k.startsWith('X-') || k.startsWith('X ') || k === 'X') {
+        const xSubs = subjects.filter(s => s.code === 'INF-10' || s.code?.includes('-10'));
+        if (xSubs.length > 0) return xSubs;
+      } else if (k.startsWith('XI-') || k.startsWith('XI ') || k === 'XI') {
+        const xiSubs = subjects.filter(s => s.code === 'INF-11' || s.code?.includes('-11'));
+        if (xiSubs.length > 0) return xiSubs;
+      } else if (k.startsWith('XII-') || k.startsWith('XII ') || k === 'XII') {
+        const xiiSubs = subjects.filter(s => s.code === 'INF-12' || s.code?.includes('-12'));
+        if (xiiSubs.length > 0) return xiiSubs;
+      }
+    }
+    return subjects;
+  }, [subjects, user]);
+
+  const initialClassId = React.useMemo(() => {
+    if (user?.role === 'siswa' && user?.kelas) {
+      const studentCls = sortedClasses.find(c => c.name === user.kelas);
+      return studentCls ? studentCls.id.toString() : (sortedClasses[0]?.id?.toString() || '');
+    }
+    return sortedClasses[0]?.id?.toString() || '';
+  }, [sortedClasses, user]);
+
+  const initialSubjectId = React.useMemo(() => {
+    return displaySubjects[0]?.id?.toString() || '';
+  }, [displaySubjects]);
+
+  // Filter states - initialized synchronously to avoid empty fetch and flash
+  const [selectedClass, setSelectedClass] = useState(initialClassId);
+  const [selectedSubject, setSelectedSubject] = useState(initialSubjectId);
+
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('sessions'); // 'sessions' | 'recap'
-  
-  // Filter states
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
 
   // Selected session for details/marking
   const [activeSession, setActiveSession] = useState(null);
+  const activeSessionRef = React.useRef(activeSession);
+  activeSessionRef.current = activeSession;
+
   const [sessionDetail, setSessionDetail] = useState(null);
   const [studentRecords, setStudentRecords] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
+  const isFetchingSessions = React.useRef(false);
+  const isFetchingDetails = React.useRef(false);
 
   // Student check-in state
   const [checkInCode, setCheckInCode] = useState('');
@@ -153,78 +187,50 @@ export default function AttendanceView() {
   // Recap data
   const [recapData, setRecapData] = useState(null);
 
-  const isTeacher = user?.role === 'guru' || user?.role === 'admin';
-
-  const displaySubjects = React.useMemo(() => {
-    if (user?.role === 'siswa' && user?.kelas) {
-      const k = user.kelas.toUpperCase();
-      if (k.startsWith('X-') || k.startsWith('X ') || k === 'X') {
-        const xSubs = subjects.filter(s => s.code === 'INF-10' || s.code?.includes('-10'));
-        if (xSubs.length > 0) return xSubs;
-      } else if (k.startsWith('XI-') || k.startsWith('XI ') || k === 'XI') {
-        const xiSubs = subjects.filter(s => s.code === 'INF-11' || s.code?.includes('-11'));
-        if (xiSubs.length > 0) return xiSubs;
-      } else if (k.startsWith('XII-') || k.startsWith('XII ') || k === 'XII') {
-        const xiiSubs = subjects.filter(s => s.code === 'INF-12' || s.code?.includes('-12'));
-        if (xiiSubs.length > 0) return xiiSubs;
-      }
+  // Synchronize filters if metadata arrives asynchronously
+  useEffect(() => {
+    if (!selectedClass && initialClassId) {
+      setSelectedClass(initialClassId);
     }
-    return subjects;
-  }, [subjects, user]);
+    if (!selectedSubject && initialSubjectId) {
+      setSelectedSubject(initialSubjectId);
+    }
+  }, [initialClassId, initialSubjectId, selectedClass, selectedSubject]);
 
   useEffect(() => {
-    if (sortedClasses.length > 0 && !selectedClass) {
-      if (user?.role === 'siswa' && user?.kelas) {
-        const studentCls = sortedClasses.find(c => c.name === user.kelas);
-        setSelectedClass(studentCls ? studentCls.id.toString() : sortedClasses[0].id.toString());
-      } else {
-        setSelectedClass(sortedClasses[0].id.toString());
-      }
-    }
-    if (displaySubjects.length > 0 && !selectedSubject) {
-      setSelectedSubject(displaySubjects[0].id.toString());
-    }
-  }, [sortedClasses, displaySubjects, user]);
-
-  useEffect(() => {
+    // Only load sessions once class and subject are ready
+    if (sortedClasses.length > 0 && !selectedClass) return;
+    if (displaySubjects.length > 0 && !selectedSubject) return;
     loadSessions();
   }, [user, selectedClass, selectedSubject]);
 
-  // Realtime synchronization across all devices via Firebase
+  // Realtime synchronization across all devices via Firebase with debouncing
   useEffect(() => {
+    let syncTimer = null;
+
     const handleSync = (e) => {
       const { storageKey } = e.detail || {};
-      if (storageKey === 'lms_mock_attendance_sessions_v3' || storageKey === 'lms_mock_attendance_records_v3') {
-        loadSessions();
+      if (storageKey === 'lms_mock_attendance_sessions_v3') {
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(() => {
+          loadSessions(true);
+        }, 300);
+      } else if (storageKey === 'lms_mock_attendance_records_v3') {
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(() => {
+          if (activeSessionRef.current) {
+            silentRefreshSessionDetails(activeSessionRef.current);
+          }
+        }, 300);
       }
     };
+
     window.addEventListener('lms-sync-update', handleSync);
-    return () => window.removeEventListener('lms-sync-update', handleSync);
-  }, [user, selectedClass, selectedSubject]);
-
-  useEffect(() => {
-    if (!database) return;
-    try {
-      const sessRef = ref(database, 'lms_v3/attendance_sessions');
-      const recRef = ref(database, 'lms_v3/attendance_records');
-
-      const unsubSess = onValue(sessRef, () => {
-        loadSessions();
-      });
-      const unsubRec = onValue(recRef, () => {
-        if (activeSession) {
-          openSessionDetails(activeSession);
-        }
-      });
-
-      return () => {
-        unsubSess();
-        unsubRec();
-      };
-    } catch (e) {
-      console.warn('Attendance Firebase realtime listener setup failed:', e);
-    }
-  }, [selectedClass, selectedSubject, activeSession]);
+    return () => {
+      window.removeEventListener('lms-sync-update', handleSync);
+      if (syncTimer) clearTimeout(syncTimer);
+    };
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'recap' && selectedClass && selectedSubject) {
@@ -232,19 +238,50 @@ export default function AttendanceView() {
     }
   }, [activeTab, selectedClass, selectedSubject]);
 
-  async function loadSessions() {
+  function sortStudentList(rawList) {
+    const mapped = (rawList || []).map(s => {
+      const rec = s.record || (s.status ? { status: s.status, notes: s.notes } : {});
+      const status = rec.status || s.status || 'Belum Presensi';
+      return {
+        student_id: s.student_id || s.id,
+        name: s.student_name || s.name || '',
+        nis: s.nis || s.nis_nip || '',
+        no_absen: s.no_absen || null,
+        avatar: s.avatar,
+        status,
+        notes: rec.notes || s.notes || ''
+      };
+    });
+
+    mapped.sort((a, b) => {
+      const numA = (a.no_absen && Number(a.no_absen) > 0) ? Number(a.no_absen) : 9999;
+      const numB = (b.no_absen && Number(b.no_absen) > 0) ? Number(b.no_absen) : 9999;
+      if (numA !== numB) return numA - numB;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    return mapped;
+  }
+
+  async function loadSessions(isSilent = false) {
+    if (isFetchingSessions.current) return;
     try {
-      setLoading(true);
+      isFetchingSessions.current = true;
+      if (!isSilent) setLoading(true);
+
       const data = await api.getAttendanceSessions({
         class_id: selectedClass || undefined,
         subject_id: selectedSubject || undefined
       });
       const sessionList = Array.isArray(data) ? data : [];
       setSessions(sessionList);
+
       if (sessionList.length > 0) {
-        const stillValid = sessionList.some(s => s.id === activeSession);
-        if (!stillValid || !activeSession) {
+        const stillValid = sessionList.some(s => s.id === activeSessionRef.current);
+        if (!stillValid || !activeSessionRef.current) {
           openSessionDetails(sessionList[0].id);
+        } else {
+          silentRefreshSessionDetails(activeSessionRef.current);
         }
       } else {
         setActiveSession(null);
@@ -254,36 +291,67 @@ export default function AttendanceView() {
     } catch (err) {
       console.error('Load sessions error:', err);
     } finally {
-      setLoading(false);
+      isFetchingSessions.current = false;
+      if (!isSilent) setLoading(false);
     }
   }
 
   async function openSessionDetails(sessionId) {
+    if (!sessionId) return;
     try {
       setCheckInError('');
+      setActiveSession(sessionId);
       const data = await api.getAttendanceSessionDetails(sessionId);
       if (!data) return;
-      setActiveSession(sessionId);
       if (data.session) {
         setSessionDetail(data.session);
       }
       const rawList = data.students || data.records || [];
-      setStudentRecords(rawList.map(s => {
-        const rec = s.record || (s.status ? { status: s.status, notes: s.notes } : {});
-        const status = rec.status || s.status || 'Belum Presensi';
-        return {
-          student_id: s.student_id || s.id,
-          name: s.student_name || s.name || '',
-          nis: s.nis || s.nis_nip || '',
-          no_absen: s.no_absen || null,
-          avatar: s.avatar,
-          status,
-          notes: rec.notes || s.notes || ''
-        };
-      }));
+      const sorted = sortStudentList(rawList);
+      setStudentRecords(sorted);
     } catch (err) {
       console.error('Error openSessionDetails:', err);
       showToast('error', 'Gagal memuat detail sesi: ' + (err.message || 'Terjadi kesalahan'));
+    }
+  }
+
+  async function silentRefreshSessionDetails(sessionId) {
+    if (!sessionId || isFetchingDetails.current) return;
+    try {
+      isFetchingDetails.current = true;
+      const data = await api.getAttendanceSessionDetails(sessionId);
+      if (!data || activeSessionRef.current !== sessionId) return;
+
+      if (data.session) {
+        setSessionDetail(prev => {
+          if (!prev) return data.session;
+          if (
+            prev.id === data.session.id &&
+            prev.is_open === data.session.is_open &&
+            prev.session_title === data.session.session_title &&
+            prev.session_code === data.session.session_code
+          ) {
+            return prev;
+          }
+          return data.session;
+        });
+      }
+
+      const rawList = data.students || data.records || [];
+      const sorted = sortStudentList(rawList);
+
+      setStudentRecords(prev => {
+        if (prev.length !== sorted.length) return sorted;
+        const hasDiff = sorted.some((item, i) => {
+          const old = prev[i];
+          return !old || old.student_id !== item.student_id || old.status !== item.status || old.notes !== item.notes;
+        });
+        return hasDiff ? sorted : prev;
+      });
+    } catch (err) {
+      console.warn('Silent refresh error:', err);
+    } finally {
+      isFetchingDetails.current = false;
     }
   }
 
@@ -680,7 +748,7 @@ export default function AttendanceView() {
                     </thead>
                     <tbody>
                       {studentRecords.map((st, idx) => (
-                        <tr key={st.student_id}>
+                        <tr key={st.student_id || idx}>
                           <td style={{ fontWeight: 700, textAlign: 'center' }}>{st.no_absen || (idx + 1)}</td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

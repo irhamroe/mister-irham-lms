@@ -5710,7 +5710,13 @@ export async function handleMockRequest(endpoint, options = {}) {
     sessionRecords.forEach(r => { recordMap[r.student_id] = r; });
 
     const className = session.class_name || 'X-IPA-1';
-    const studentsInClass = users.filter(u => u.role === 'siswa' && (u.kelas === className || !className));
+    let studentsInClass = users.filter(u => u.role === 'siswa' && (u.kelas === className || !className));
+    studentsInClass.sort((a, b) => {
+      const absA = (a.no_absen && a.no_absen > 0) ? a.no_absen : 9999;
+      const absB = (b.no_absen && b.no_absen > 0) ? b.no_absen : 9999;
+      if (absA !== absB) return absA - absB;
+      return (a.name || '').localeCompare(b.name || '');
+    });
 
     const studentList = studentsInClass.map(s => ({
       id: s.id,
