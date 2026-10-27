@@ -268,7 +268,7 @@ export default function AttendanceView() {
       const rawList = data.students || data.records || [];
       setStudentRecords(rawList.map(s => {
         const rec = s.record || (s.status ? { status: s.status, notes: s.notes } : {});
-        const status = (rec.status && rec.status !== 'Belum Presensi') ? rec.status : 'Hadir';
+        const status = rec.status || s.status || 'Belum Presensi';
         return {
           student_id: s.student_id || s.id,
           name: s.student_name || s.name || '',
