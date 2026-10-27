@@ -10,7 +10,6 @@ import {
   CalendarCheck,
   Award,
   GraduationCap,
-  Sparkles,
   LogIn
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -58,12 +57,6 @@ export default function LoginView() {
             alt="Logo LMS"
             className="school-logo-img"
           />
-        </div>
-
-        {/* Pill Badge */}
-        <div className="login-auth-pill">
-          <Sparkles size={14} strokeWidth={2.4} />
-          <span>Portal Akademik & Ujian Mandiri</span>
         </div>
 
         {/* App Title & Subtitle */}
