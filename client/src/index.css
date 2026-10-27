@@ -1267,7 +1267,7 @@ a {
 }
 
 /* ===================================================================
-   Login View Styles (Light Blue Palette matching Reference UI)
+   Login View Styles (Rich Blue Palette matching Reference UI)
    =================================================================== */
 .login-screen-wrapper {
   min-height: 100vh;
@@ -1278,15 +1278,15 @@ a {
   align-items: center;
   justify-content: center;
   padding: 48px 20px;
-  background: radial-gradient(circle at 50% 15%, #F0F9FF 0%, #E0F2FE 40%, #BAE6FD 85%, #93C5FD 100%);
+  background: radial-gradient(ellipse at 50% 18%, #0284C7 0%, #0369A1 50%, #1E40AF 100%);
   background-attachment: fixed;
 }
 
 /* Watermark background icons */
 .watermark-icon {
   position: absolute;
-  color: #0284C7;
-  opacity: 0.12;
+  color: #FFFFFF;
+  opacity: 0.10;
   pointer-events: none;
   z-index: 1;
 }
@@ -1322,20 +1322,20 @@ a {
   align-items: center;
   gap: 14px;
   padding: 14px 20px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  border: 1.5px solid rgba(255, 255, 255, 0.30);
   border-radius: 18px;
-  box-shadow: 0 12px 30px -6px rgba(2, 132, 199, 0.15);
+  box-shadow: 0 14px 34px -6px rgba(0, 0, 0, 0.20);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 5;
 }
 
 .corner-feature-card:hover {
   transform: translateY(-3px);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 16px 36px -6px rgba(2, 132, 199, 0.22);
+  background: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 18px 40px -6px rgba(0, 0, 0, 0.28);
 }
 
 .card-top-left {
@@ -1362,8 +1362,8 @@ a {
   width: 44px;
   height: 44px;
   border-radius: 13px;
-  background: #E0F2FE;
-  color: #0284C7;
+  background: rgba(255, 255, 255, 0.22);
+  color: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1371,17 +1371,17 @@ a {
 }
 
 .corner-text-box h4 {
-  font-size: 0.88rem;
+  font-size: 0.90rem;
   font-weight: 700;
-  color: #0F172A;
+  color: #FFFFFF;
   margin: 0 0 2px 0;
   letter-spacing: -0.01em;
 }
 
 .corner-text-box p {
-  font-size: 0.74rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  color: #64748B;
+  color: #BAE6FD;
   margin: 0;
 }
 
@@ -1398,15 +1398,15 @@ a {
 }
 
 .school-logo-card {
-  width: 92px;
-  height: 92px;
+  width: 96px;
+  height: 96px;
   background: #FFFFFF;
   border-radius: 26px;
   padding: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 14px 34px -6px rgba(2, 132, 199, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.8);
+  box-shadow: 0 16px 40px -6px rgba(0, 0, 0, 0.30), 0 0 0 2px rgba(255, 255, 255, 0.9);
   margin-bottom: 16px;
   transition: transform 0.3s ease;
 }
@@ -1426,33 +1426,35 @@ a {
   align-items: center;
   gap: 7px;
   padding: 6px 16px;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(186, 230, 253, 0.95);
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.32);
   border-radius: 9999px;
-  color: #0369A1;
-  font-size: 0.79rem;
+  color: #FFFFFF;
+  font-size: 0.80rem;
   font-weight: 700;
   margin-bottom: 12px;
-  box-shadow: 0 3px 10px rgba(2, 132, 199, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .login-institution-title {
-  font-size: 1.95rem;
+  font-size: 2.15rem;
   font-weight: 800;
-  color: #0F172A;
+  color: #FFFFFF;
   margin: 0 0 4px 0;
   letter-spacing: -0.02em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.20);
 }
 
 .login-institution-subtitle {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-weight: 500;
-  color: #334155;
+  color: #E0F2FE;
   margin: 0 0 24px 0;
   max-width: 410px;
   line-height: 1.45;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 /* Main Card */
@@ -1461,7 +1463,7 @@ a {
   background: #FFFFFF;
   border-radius: 26px;
   padding: 32px 36px;
-  box-shadow: 0 22px 50px -10px rgba(2, 132, 199, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.9);
+  box-shadow: 0 25px 60px -10px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.9);
   text-align: left;
 }
 
@@ -1630,24 +1632,24 @@ a {
   margin-top: 20px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #0369A1;
+  color: #E0F2FE;
   text-align: center;
 }
 
 .login-quick-hint {
   margin-top: 14px;
   font-size: 0.78rem;
-  color: #0369A1;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  padding: 8px 16px;
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 8px 18px;
   border-radius: 9999px;
-  border: 1px solid rgba(186, 230, 253, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.32);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.08);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
 
 /* Responsive Rules for Login View */

@@ -120,10 +120,8 @@ export default function LoginView() {
         </div>
 
         {/* App Title & Subtitle */}
-        <h1 className="login-institution-title">EduSmart LMS</h1>
-        <p className="login-institution-subtitle">
-          Platform Terpadu Pembelajaran, Presensi Kehadiran & Asesmen CBT
-        </p>
+        <h1 className="login-institution-title">Mister Irham</h1>
+        <p className="login-institution-subtitle">Learning Management System</p>
 
         {/* Main Authentication Card */}
         <div className="main-auth-card">

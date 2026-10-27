@@ -31,7 +31,7 @@ function MainApp() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-canvas)' }}>
         <div className="card" style={{ textAlign: 'center', padding: '36px 44px', maxWidth: 420, width: '90%', border: '2px solid var(--border-color)' }}>
           <div className="pulse-dot green" style={{ width: 12, height: 12, margin: '0 auto 16px', display: 'block' }}></div>
-          <h2 style={{ fontWeight: 800, fontSize: '1.25rem', marginBottom: 6 }}>EduSmart LMS</h2>
+          <h2 style={{ fontWeight: 800, fontSize: '1.25rem', marginBottom: 6 }}>Mister Irham</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
             Menghubungkan ke layanan real-time...
           </p>

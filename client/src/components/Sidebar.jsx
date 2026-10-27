@@ -138,8 +138,8 @@ export default function Sidebar({ activeTab, setActiveTab }) {
           <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
         <div className="logo-text">
-          <h1>EduSmart</h1>
-          <p>LMS & CBT Platform</p>
+          <h1>Mister Irham</h1>
+          <p>Learning Management System</p>
         </div>
       </div>
 
