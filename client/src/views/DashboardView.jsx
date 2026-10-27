@@ -13,7 +13,8 @@ import {
   Play,
   MonitorPlay,
   Layers,
-  ChevronRight
+  ChevronRight,
+  School
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -62,7 +63,7 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
           =================================================================== */}
       <div
         style={{
-          background: '#3B82F6',
+          background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 50%, #4F46E5 100%)',
           borderRadius: 'var(--radius-md)',
           padding: '36px 40px',
           color: '#FFFFFF',
@@ -73,10 +74,34 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '24px'
+          gap: '24px',
+          boxShadow: '0 12px 30px -8px rgba(37, 99, 235, 0.35)'
         }}
       >
-        {/* Flat Abstract Geometric Decoration (Poster Look) */}
+        {/* Floating Abstract & School Icon Decorative Background */}
+        <School
+          size={170}
+          color="#FFFFFF"
+          style={{
+            position: 'absolute',
+            right: '120px',
+            bottom: '-45px',
+            opacity: 0.12,
+            transform: 'rotate(-8deg)',
+            pointerEvents: 'none'
+          }}
+        />
+        <Sparkles
+          size={75}
+          color="#FDE047"
+          style={{
+            position: 'absolute',
+            right: '30px',
+            top: '18px',
+            opacity: 0.22,
+            pointerEvents: 'none'
+          }}
+        />
         <div
           style={{
             position: 'absolute',
@@ -92,13 +117,12 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
         <div
           style={{
             position: 'absolute',
-            right: '120px',
-            bottom: '-60px',
-            width: '160px',
-            height: '160px',
-            borderRadius: 'var(--radius-lg)',
-            background: 'rgba(255, 255, 255, 0.06)',
-            transform: 'rotate(25deg)',
+            left: '35%',
+            bottom: '-70px',
+            width: '180px',
+            height: '180px',
+            borderRadius: '50%',
+            background: 'rgba(255, 255, 255, 0.05)',
             pointerEvents: 'none'
           }}
         />
@@ -159,60 +183,152 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
       </div>
 
       {/* ===================================================================
-          Metrics Grid: Multi-Color Flat Blocks
+          Metrics Grid: Multi-Color Cards with Watermark Icons
           =================================================================== */}
       <div className="stats-grid">
-        {/* Attendance Rate */}
-        <div className="stat-card" style={{ background: '#FFFFFF' }}>
-          <div className="stat-icon emerald">
-            <CalendarCheck2 size={24} strokeWidth={2.2} />
+        {/* Attendance Rate (Emerald Theme) */}
+        <div
+          className="stat-card"
+          style={{
+            background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
+            border: '1px solid #A7F3D0',
+            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
+          }}
+        >
+          <CalendarCheck2 size={105} color="#059669" className="stat-watermark-icon" />
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 14,
+              background: '#10B981',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: '0 8px 16px -4px rgba(16, 185, 129, 0.35)',
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            <CalendarCheck2 size={26} strokeWidth={2.4} />
           </div>
-          <div className="stat-details">
-            <h4>Tingkat Kehadiran</h4>
-            <div className="stat-value" style={{ color: '#10B981' }}>{stats.todayAttendance}</div>
-            <div className="stat-desc">Rata-rata presensi harian</div>
+          <div className="stat-details" style={{ position: 'relative', zIndex: 2 }}>
+            <h4 style={{ color: '#065F46', fontWeight: 800 }}>Tingkat Kehadiran</h4>
+            <div className="stat-value" style={{ color: '#047857', fontWeight: 800 }}>{stats.todayAttendance}</div>
+            <div className="stat-desc" style={{ color: '#059669', fontWeight: 600 }}>Rata-rata presensi harian</div>
           </div>
         </div>
 
-        {/* Active CBT Exam */}
-        <div className="stat-card" style={{ background: '#FFFFFF' }}>
-          <div className="stat-icon indigo">
-            <GraduationCap size={24} strokeWidth={2.2} />
+        {/* Active CBT Exam (Royal Blue Theme) */}
+        <div
+          className="stat-card"
+          style={{
+            background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
+            border: '1px solid #BFDBFE',
+            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.08)'
+          }}
+        >
+          <GraduationCap size={105} color="#1D4ED8" className="stat-watermark-icon" />
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 14,
+              background: '#2563EB',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: '0 8px 16px -4px rgba(37, 99, 235, 0.35)',
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            <GraduationCap size={26} strokeWidth={2.4} />
           </div>
-          <div className="stat-details">
-            <h4>Ujian CBT Aktif</h4>
-            <div className="stat-value" style={{ color: '#3B82F6' }}>
+          <div className="stat-details" style={{ position: 'relative', zIndex: 2 }}>
+            <h4 style={{ color: '#1E40AF', fontWeight: 800 }}>Ujian CBT Aktif</h4>
+            <div className="stat-value" style={{ color: '#1D4ED8', fontWeight: 800 }}>
               {activeExamCount} Sesi
             </div>
-            <div className="stat-desc">Siap dipantau live</div>
+            <div className="stat-desc" style={{ color: '#2563EB', fontWeight: 600 }}>Siap dipantau live</div>
           </div>
         </div>
 
-        {/* Class Assignments */}
-        <div className="stat-card" style={{ background: '#FFFFFF' }}>
-          <div className="stat-icon amber">
-            <BookOpenCheck size={24} strokeWidth={2.2} />
+        {/* Class Assignments (Amber / Orange Theme) */}
+        <div
+          className="stat-card"
+          style={{
+            background: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)',
+            border: '1px solid #FDE68A',
+            boxShadow: '0 4px 14px rgba(245, 158, 11, 0.08)'
+          }}
+        >
+          <BookOpenCheck size={105} color="#D97706" className="stat-watermark-icon" />
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 14,
+              background: '#F59E0B',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: '0 8px 16px -4px rgba(245, 158, 11, 0.35)',
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            <BookOpenCheck size={26} strokeWidth={2.4} />
           </div>
-          <div className="stat-details">
-            <h4>Tugas Menunggu</h4>
-            <div className="stat-value" style={{ color: '#F59E0B' }}>
+          <div className="stat-details" style={{ position: 'relative', zIndex: 2 }}>
+            <h4 style={{ color: '#92400E', fontWeight: 800 }}>Tugas Menunggu</h4>
+            <div className="stat-value" style={{ color: '#B45309', fontWeight: 800 }}>
               {assignments.length} Tugas
             </div>
-            <div className="stat-desc">Tenggat pengumpulan pekan ini</div>
+            <div className="stat-desc" style={{ color: '#D97706', fontWeight: 600 }}>Tenggat pengumpulan pekan ini</div>
           </div>
         </div>
 
-        {/* Active Classes */}
-        <div className="stat-card" style={{ background: '#FFFFFF' }}>
-          <div className="stat-icon cyan">
-            <FileSpreadsheet size={24} strokeWidth={2.2} />
+        {/* Active Classes (Violet / Purple Theme) */}
+        <div
+          className="stat-card"
+          style={{
+            background: 'linear-gradient(135deg, #FAF5FF 0%, #EDE9FE 100%)',
+            border: '1px solid #DDD6FE',
+            boxShadow: '0 4px 14px rgba(139, 92, 246, 0.08)'
+          }}
+        >
+          <FileSpreadsheet size={105} color="#7C3AED" className="stat-watermark-icon" />
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: 14,
+              background: '#8B5CF6',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              boxShadow: '0 8px 16px -4px rgba(139, 92, 246, 0.35)',
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            <FileSpreadsheet size={26} strokeWidth={2.4} />
           </div>
-          <div className="stat-details">
-            <h4>Kelas Binaan</h4>
-            <div className="stat-value" style={{ color: '#0284C7' }}>
+          <div className="stat-details" style={{ position: 'relative', zIndex: 2 }}>
+            <h4 style={{ color: '#5B21B6', fontWeight: 800 }}>Kelas Binaan</h4>
+            <div className="stat-value" style={{ color: '#6D28D9', fontWeight: 800 }}>
               {classes.length || 3} Rombel
             </div>
-            <div className="stat-desc">Fase E & Fase F Kurikulum</div>
+            <div className="stat-desc" style={{ color: '#7C3AED', fontWeight: 600 }}>Fase E & Fase F Kurikulum</div>
           </div>
         </div>
       </div>

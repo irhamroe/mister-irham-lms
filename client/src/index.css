@@ -198,42 +198,54 @@ a {
   padding: 10px 14px 4px;
 }
 
-/* Flat Nav Item with snappy scale feedback */
+/* Colorful Nav Items with distinctive icon badges */
 .nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 16px;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all var(--transition-fast);
   user-select: none;
+  margin-bottom: 4px;
+  border: 1px solid transparent;
 }
 
 .nav-item:hover {
   background: var(--bg-muted);
   color: var(--text-main);
-  transform: scale(1.02);
+  transform: translateX(3px);
 }
 
 .nav-item.active {
-  background: var(--primary);
-  color: #FFFFFF;
+  background: #EFF6FF;
+  color: #1D4ED8;
   font-weight: 700;
-  transform: scale(1.02);
+  border-color: #BFDBFE;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
 }
 
-.nav-item svg {
-  width: 19px;
-  height: 19px;
-  transition: transform var(--transition-fast);
+.nav-icon-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.nav-item:hover svg {
-  transform: scale(1.1);
+.nav-item:hover .nav-icon-badge {
+  transform: scale(1.12);
+}
+
+.nav-item.active .nav-icon-badge {
+  transform: scale(1.06);
 }
 
 .nav-badge {
@@ -437,11 +449,30 @@ a {
   align-items: center;
   gap: 18px;
   border: 1px solid var(--border-color);
-  transition: transform var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .stat-card:hover {
-  transform: scale(1.025);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.08);
+}
+
+.stat-watermark-icon {
+  position: absolute;
+  right: -12px;
+  bottom: -16px;
+  opacity: 0.12;
+  transform: rotate(-10deg);
+  pointer-events: none;
+  z-index: 1;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.stat-card:hover .stat-watermark-icon {
+  transform: rotate(-4deg) scale(1.08);
+  opacity: 0.18;
 }
 
 .stat-icon {
