@@ -30,11 +30,12 @@ export default function JournalView() {
   // Modal form state
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [selectedHours, setSelectedHours] = useState([1, 2]);
   const [form, setForm] = useState({
     class_id: '',
     subject_id: '',
     date: new Date().toISOString().split('T')[0],
-    time_slot: 'Jam ke 1-2 (07.30 - 09.00)',
+    time_slot: 'Jam ke 1-2',
     topic: '',
     learning_outcomes: '',
     activities: '',
@@ -64,13 +65,54 @@ export default function JournalView() {
     }
   }
 
+  function formatHoursToSlot(hours) {
+    if (!hours || hours.length === 0) return '';
+    const sorted = [...hours].sort((a, b) => a - b);
+    const isConsecutive = sorted.length > 1 && sorted.every((val, idx) => idx === 0 || val === sorted[idx - 1] + 1);
+    if (isConsecutive) {
+      return `Jam ke ${sorted[0]}-${sorted[sorted.length - 1]}`;
+    }
+    return `Jam ke ${sorted.join(', ')}`;
+  }
+
+  function parseSlotToHours(str) {
+    if (!str || typeof str !== 'string') return [1, 2];
+    const rangeMatch = str.match(/(\d+)\s*(?:-|s\.?d\.?|sampai)\s*(\d+)/i);
+    if (rangeMatch) {
+      const start = parseInt(rangeMatch[1], 10);
+      const end = parseInt(rangeMatch[2], 10);
+      if (start >= 1 && end <= 10 && start <= end) {
+        const res = [];
+        for (let i = start; i <= end; i++) res.push(i);
+        return res;
+      }
+    }
+    const matches = str.match(/\b([1-9]|10)\b/g);
+    if (matches && matches.length > 0) {
+      return [...new Set(matches.map(Number))].sort((a, b) => a - b);
+    }
+    return [1, 2];
+  }
+
+  function toggleHour(h) {
+    setSelectedHours(prev => {
+      const next = prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h];
+      const sorted = next.sort((a, b) => a - b);
+      const slotStr = formatHoursToSlot(sorted);
+      setForm(f => ({ ...f, time_slot: slotStr }));
+      return sorted;
+    });
+  }
+
   function handleOpenCreate() {
     setEditId(null);
+    const initialHours = [1, 2];
+    setSelectedHours(initialHours);
     setForm({
       class_id: classes[0]?.id || '',
       subject_id: subjects[0]?.id || '',
       date: new Date().toISOString().split('T')[0],
-      time_slot: 'Jam ke 1-2 (07.30 - 09.00)',
+      time_slot: formatHoursToSlot(initialHours),
       topic: '',
       learning_outcomes: '',
       activities: '',
@@ -82,11 +124,13 @@ export default function JournalView() {
 
   function handleOpenEdit(j) {
     setEditId(j.id);
+    const hours = parseSlotToHours(j.time_slot);
+    setSelectedHours(hours);
     setForm({
       class_id: j.class_id,
       subject_id: j.subject_id,
       date: j.date,
-      time_slot: j.time_slot,
+      time_slot: j.time_slot || formatHoursToSlot(hours),
       topic: j.topic,
       learning_outcomes: j.learning_outcomes || '',
       activities: j.activities,
@@ -98,6 +142,10 @@ export default function JournalView() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!form.time_slot) {
+      showToast('error', 'Silakan pilih minimal satu jam pelajaran.');
+      return;
+    }
     try {
       if (editId) {
         await api.updateJournal(editId, form);
@@ -323,15 +371,56 @@ export default function JournalView() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Jam Pelajaran (Slot)</label>
+                    <label className="form-label">Jam Pelajaran Terpilih (Slot)</label>
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="Contoh: Jam ke 1-2 (07.30 - 09.00)"
                       value={form.time_slot}
-                      onChange={(e) => setForm({ ...form, time_slot: e.target.value })}
-                      required
+                      readOnly
+                      placeholder="Pilih checklist jam di bawah..."
+                      style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--bg-subtle)' }}
                     />
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginTop: -2 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <label className="form-label" style={{ marginBottom: 0 }}>Ceklis Jam Pelajaran (Jam ke 1 s/d 10)</label>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Pilih satu atau lebih jam ke-</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(h => {
+                      const isChecked = selectedHours.includes(h);
+                      return (
+                        <label
+                          key={h}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            padding: '9px 8px',
+                            borderRadius: '8px',
+                            border: isChecked ? '1.5px solid var(--primary)' : '1px solid var(--border-color)',
+                            background: isChecked ? 'var(--primary-light)' : 'var(--bg-surface)',
+                            color: isChecked ? 'var(--primary)' : 'var(--text-main)',
+                            cursor: 'pointer',
+                            fontSize: '0.82rem',
+                            fontWeight: isChecked ? 700 : 500,
+                            transition: 'all 0.15s ease',
+                            userSelect: 'none'
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleHour(h)}
+                            style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--primary)' }}
+                          />
+                          <span>Jam ke {h}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
