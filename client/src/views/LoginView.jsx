@@ -6,13 +6,11 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  GraduationCap,
-  CalendarCheck,
-  FileSpreadsheet,
   BookOpen,
+  CalendarCheck,
   Award,
+  GraduationCap,
   Sparkles,
-  Layers,
   LogIn
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -28,7 +26,7 @@ export default function LoginView() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!username.trim() || !password) {
-      setError('Mohon masukkan Username / NIS dan Kata Sandi.');
+      setError('Mohon masukkan Username dan Kata Sandi.');
       return;
     }
 
@@ -45,64 +43,13 @@ export default function LoginView() {
 
   return (
     <div className="login-screen-wrapper">
-      {/* =========================================================
-          Decorative Background Watermark Icons
-          ========================================================= */}
+      {/* Decorative Background Watermark Icons */}
       <BookOpen className="watermark-icon wm-top-center" size={130} />
       <CalendarCheck className="watermark-icon wm-mid-right" size={140} />
       <Award className="watermark-icon wm-bot-right" size={120} />
       <GraduationCap className="watermark-icon wm-mid-left" size={140} />
 
-      {/* =========================================================
-          Four Floating Corner Cards (Fitur Inti LMS)
-          ========================================================= */}
-      {/* 1. Top Left - Presensi Siswa */}
-      <div className="corner-feature-card card-top-left">
-        <div className="corner-icon-box">
-          <CalendarCheck size={22} strokeWidth={2.2} />
-        </div>
-        <div className="corner-text-box">
-          <h4>Presensi Siswa</h4>
-          <p>Kehadiran & Rekap Real-time</p>
-        </div>
-      </div>
-
-      {/* 2. Top Right - Ujian Online CBT */}
-      <div className="corner-feature-card card-top-right">
-        <div className="corner-icon-box">
-          <GraduationCap size={22} strokeWidth={2.2} />
-        </div>
-        <div className="corner-text-box">
-          <h4>Ujian Online CBT</h4>
-          <p>Anti-Cheat & Live Proctoring</p>
-        </div>
-      </div>
-
-      {/* 3. Bottom Left - Tugas & Jurnal */}
-      <div className="corner-feature-card card-bottom-left">
-        <div className="corner-icon-box">
-          <BookOpen size={22} strokeWidth={2.2} />
-        </div>
-        <div className="corner-text-box">
-          <h4>Tugas & Jurnal</h4>
-          <p>Agenda Mengajar & Evaluasi</p>
-        </div>
-      </div>
-
-      {/* 4. Bottom Right - Daftar Nilai & Rapor */}
-      <div className="corner-feature-card card-bottom-right">
-        <div className="corner-icon-box">
-          <FileSpreadsheet size={22} strokeWidth={2.2} />
-        </div>
-        <div className="corner-text-box">
-          <h4>Daftar Nilai</h4>
-          <p>Kalkulasi Bobot Otomatis</p>
-        </div>
-      </div>
-
-      {/* =========================================================
-          Central Login Container
-          ========================================================= */}
+      {/* Central Login Container */}
       <div className="login-center-container">
         {/* Logo Card */}
         <div className="school-logo-card">
@@ -132,7 +79,7 @@ export default function LoginView() {
                 <KeyRound size={20} className="auth-key-icon" />
                 <h3>Masuk ke Akun</h3>
               </div>
-              <p className="auth-header-desc">Gunakan Username / NIS dan Kata Sandi Anda</p>
+              <p className="auth-header-desc">Gunakan Username dan Kata Sandi Anda</p>
             </div>
             <div className="auth-header-right">
               <span className="live-status-dot" title="Server Aktif & Terhubung" />
@@ -153,13 +100,13 @@ export default function LoginView() {
             <div className="auth-input-group">
               <label className="auth-field-label">
                 <User size={15} />
-                <span>Username / NIS</span>
+                <span>Username</span>
               </label>
               <div className="auth-input-wrapper">
                 <input
                   type="text"
                   className="auth-text-input"
-                  placeholder="Masukkan username atau NIS..."
+                  placeholder="Masukkan username..."
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   autoFocus
@@ -211,7 +158,7 @@ export default function LoginView() {
               ) : (
                 <>
                   <LogIn size={18} strokeWidth={2.4} />
-                  <span>Masuk ke Sistem</span>
+                  <span>Masuk</span>
                 </>
               )}
             </button>
@@ -223,10 +170,6 @@ export default function LoginView() {
           <Lock size={14} />
           <span>Sistem terenkripsi. Sesi pembelajaran dan data akademik terlindungi.</span>
         </div>
-
-        <p className="login-quick-hint">
-          💡 Siswa dapat login menggunakan nomor <strong>NIS</strong> sebagai Username dan Kata Sandi awal.
-        </p>
       </div>
     </div>
   );
