@@ -13,15 +13,13 @@ import {
   Users,
   UserCog,
   Layers,
-  BookOpen,
-  LogOut
+  BookOpen
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { FlatStatusDot, FlatBadge } from './common/FlatComponents';
-import { StudentAvatar } from './StudentAvatar';
 
 export default function Sidebar({ activeTab, setActiveTab }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const isTeacherOrAdmin = user && (user.role === 'guru' || user.role === 'admin');
 
@@ -214,33 +212,6 @@ export default function Sidebar({ activeTab, setActiveTab }) {
           </>
         )}
       </nav>
-
-      {/* User profile & Logout in Sidebar Footer */}
-      {user && (
-        <div className="sidebar-footer">
-          <div className="user-profile-card">
-            <div className="user-profile-info">
-              <StudentAvatar name={user.name} size={36} className="user-profile-avatar" />
-              <div className="user-profile-details">
-                <span className="user-profile-name" title={user.name}>{user.name}</span>
-                <span className="user-profile-role">
-                  {user.role === 'guru' && 'Guru Mapel'}
-                  {user.role === 'admin' && 'Administrator'}
-                  {user.role === 'siswa' && `Siswa (${user.kelas || '-'})`}
-                </span>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="btn-logout"
-              onClick={logout}
-              title="Keluar dari akun"
-            >
-              <LogOut size={16} strokeWidth={2.2} />
-            </button>
-          </div>
-        </div>
-      )}
     </aside>
   );
 }
