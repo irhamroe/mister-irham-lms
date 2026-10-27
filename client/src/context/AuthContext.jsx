@@ -6,7 +6,6 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [demoUsers, setDemoUsers] = useState([]);
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
 
@@ -14,55 +13,40 @@ export function AuthProvider({ children }) {
     initAuth();
   }, []);
 
-  async function initAuth() {
+  async function fetchMetadata() {
     try {
-      // 1. Fetch demo users
-      const demos = await api.getDemoUsers();
-      setDemoUsers(demos);
-
-      // 2. Check existing token or auto login as Guru Budi by default for instant wow experience
-      const token = getToken();
-      if (token) {
-        try {
-          const res = await api.getMe();
-          setUser(res.user);
-        } catch (e) {
-          // Token expired, fallback to default teacher
-          await autoLoginDefaultTeacher(demos);
-        }
-      } else {
-        await autoLoginDefaultTeacher(demos);
-      }
-
-      // 3. Fetch classes and subjects meta
       const meta = await api.getMeta();
       setClasses(meta.classes || []);
       setSubjects(meta.subjects || []);
     } catch (err) {
-      console.error('Init auth error:', err);
-    } finally {
-      setLoading(false);
+      console.error('Failed to load classes and subjects meta:', err);
     }
   }
 
-  async function autoLoginDefaultTeacher(demos) {
-    const teacher = demos.find(d => d.username === 'guru_budi') || demos[0];
-    if (teacher) {
-      const res = await api.switchAccount(teacher.id);
-      setToken(res.token);
-      setUser(res.user);
-    }
-  }
-
-  async function switchUser(userId) {
-    setLoading(true);
+  async function initAuth() {
     try {
-      const res = await api.switchAccount(userId);
-      setToken(res.token);
-      setUser(res.user);
-      return res.user;
+      const token = getToken();
+      if (token) {
+        try {
+          const res = await api.getMe();
+          if (res && res.user) {
+            setUser(res.user);
+            await fetchMetadata();
+          } else {
+            setToken(null);
+            setUser(null);
+          }
+        } catch (e) {
+          console.warn('Session expired or invalid, clearing credentials:', e.message);
+          setToken(null);
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
     } catch (err) {
-      alert('Gagal beralih akun: ' + err.message);
+      console.error('Init auth error:', err);
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -72,24 +56,26 @@ export function AuthProvider({ children }) {
     const res = await api.login(username, password);
     setToken(res.token);
     setUser(res.user);
+    await fetchMetadata();
     return res.user;
   }
 
   function logout() {
     setToken(null);
     setUser(null);
+    setClasses([]);
+    setSubjects([]);
   }
 
   return (
     <AuthContext.Provider value={{
       user,
       loading,
-      demoUsers,
       classes,
       subjects,
-      switchUser,
       login,
-      logout
+      logout,
+      fetchMetadata
     }}>
       {children}
     </AuthContext.Provider>

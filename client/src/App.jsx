@@ -12,6 +12,7 @@ import QuestionBankView from './views/QuestionBankView';
 import CbtMonitorView from './views/CbtMonitorView';
 import CbtExamView from './views/CbtExamView';
 import ManagementView from './views/ManagementView';
+import LoginView from './views/LoginView';
 
 function MainApp() {
   const { user, loading } = useAuth();
@@ -37,6 +38,11 @@ function MainApp() {
         </div>
       </div>
     );
+  }
+
+  // If user is not logged in, show Login Screen
+  if (!user) {
+    return <LoginView />;
   }
 
   // If in student exam mode, show full distraction-free exam screen

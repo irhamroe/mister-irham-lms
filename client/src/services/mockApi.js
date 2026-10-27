@@ -4450,26 +4450,15 @@ export async function handleMockRequest(endpoint, options = {}) {
   // ==========================================
   // AUTH ENDPOINTS
   // ==========================================
-  if (path === '/auth/demo-users') {
-    // Only return the 4 prominent personas for switching
-    const demoIds = [1, 2, 3, 4];
-    const demos = users.filter(u => demoIds.includes(u.id));
-    return demos.length ? demos : users.slice(0, 4);
-  }
-
-  if (path === '/auth/switch-account') {
-    const targetId = Number(body.userId || body.id);
-    const target = users.find(u => u.id === targetId) || users[0];
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, target.id.toString());
-    return {
-      token: `mock_token_${target.id}`,
-      user: target
-    };
-  }
-
   if (path === '/auth/login') {
-    const { username } = body;
-    const target = users.find(u => u.username === username) || users[1];
+    const { username, password } = body;
+    const target = users.find(u => u.username === username || (u.nis_nip && u.nis_nip === username));
+    if (!target) {
+      throw new Error('Username atau kata sandi salah');
+    }
+    if (password && password !== 'password123' && password !== target.username && password !== target.nis_nip) {
+      throw new Error('Username atau kata sandi salah');
+    }
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, target.id.toString());
     return {
       token: `mock_token_${target.id}`,

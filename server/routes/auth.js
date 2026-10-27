@@ -13,7 +13,7 @@ router.post('/login', (req, res) => {
       return res.status(400).json({ error: 'Username dan kata sandi wajib diisi' });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+    const user = db.prepare("SELECT * FROM users WHERE username = ? OR (nis_nip IS NOT NULL AND nis_nip != '' AND nis_nip = ?)").get(username, username);
     if (!user) {
       return res.status(400).json({ error: 'Username atau kata sandi salah' });
     }
@@ -41,49 +41,7 @@ router.get('/me', authenticateToken, (req, res) => {
   res.json({ user: req.user });
 });
 
-// GET /api/auth/demo-users (For quick testing/demo role switcher)
-router.get('/demo-users', (req, res) => {
-  try {
-    const users = db.prepare(`
-      SELECT id, username, name, role, nis_nip, kelas, gender, no_absen, email, avatar
-      FROM users
-      ORDER BY 
-        CASE role 
-          WHEN 'admin' THEN 1 
-          WHEN 'guru' THEN 2 
-          WHEN 'siswa' THEN 3 
-        END, id ASC
-    `).all();
-
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/auth/switch-account (Quick login as any user for testing)
-router.post('/switch-account', (req, res) => {
-  try {
-    const { userId } = req.body;
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User tidak ditemukan' });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    const { password_hash, ...userData } = user;
-    res.json({ token, user: userData });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/auth/classes-subjects
+// GET /api/auth/meta
 router.get('/meta', authenticateToken, (req, res) => {
   try {
     const classes = db.prepare('SELECT * FROM classes ORDER BY name ASC').all();

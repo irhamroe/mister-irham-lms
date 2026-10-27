@@ -1,9 +1,10 @@
 import React from 'react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { FlatBadge } from './common/FlatComponents';
 
 export default function Topbar({ activeTab }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const titles = {
     dashboard: { tag: 'Ringkasan', title: 'Dashboard Utama', desc: 'Pusat kontrol dan informasi aktivitas akademik' },
@@ -32,23 +33,48 @@ export default function Topbar({ activeTab }) {
         </div>
       </div>
 
-      <div className="topbar-actions">
+      <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {user && (
-          <div className="user-pill">
-            <img
-              src={user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.username}
-              alt={user.name}
-              className="user-avatar"
-            />
-            <div className="user-info">
-              <div className="user-name">{user.name}</div>
-              <div className="user-role-badge">
-                {user.role === 'guru' && 'Guru Mapel'}
-                {user.role === 'admin' && 'Administrator'}
-                {user.role === 'siswa' && `Siswa (${user.kelas || 'X-8'})`}
+          <>
+            <div className="user-pill">
+              <img
+                src={user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.username}
+                alt={user.name}
+                className="user-avatar"
+              />
+              <div className="user-info">
+                <div className="user-name">{user.name}</div>
+                <div className="user-role-badge">
+                  {user.role === 'guru' && 'Guru Mapel'}
+                  {user.role === 'admin' && 'Administrator'}
+                  {user.role === 'siswa' && `Siswa (${user.kelas || 'X-8'})`}
+                </div>
               </div>
             </div>
-          </div>
+
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={logout}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                fontSize: '0.82rem',
+                color: '#EF4444',
+                borderColor: '#FCA5A5',
+                background: '#FEF2F2',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+              title="Keluar dari akun"
+            >
+              <LogOut size={14} />
+              <span>Keluar</span>
+            </button>
+          </>
         )}
       </div>
     </header>

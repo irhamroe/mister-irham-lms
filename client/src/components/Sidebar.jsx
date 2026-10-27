@@ -13,13 +13,14 @@ import {
   Users,
   UserCog,
   Layers,
-  BookOpen
+  BookOpen,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { FlatStatusDot, FlatBadge } from './common/FlatComponents';
 
 export default function Sidebar({ activeTab, setActiveTab }) {
-  const { user, demoUsers, switchUser } = useAuth();
+  const { user, logout } = useAuth();
 
   const isTeacherOrAdmin = user && (user.role === 'guru' || user.role === 'admin');
 
@@ -205,35 +206,36 @@ export default function Sidebar({ activeTab, setActiveTab }) {
         )}
       </nav>
 
-      {/* Role Switcher in Sidebar */}
-      <div className="sidebar-footer">
-        <div className="role-switcher-box">
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <UserCheck size={14} color="var(--primary)" strokeWidth={2.5} />
-            <span>Ganti Peran (Demo)</span>
-          </label>
-          <select
-            className="role-select"
-            value={user?.id || ''}
-            onChange={(e) => switchUser(Number(e.target.value))}
-          >
-            <optgroup label="Akun Guru & Admin">
-              {demoUsers.filter(u => u.role !== 'siswa').map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.role.toUpperCase()})
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Akun Siswa">
-              {demoUsers.filter(u => u.role === 'siswa').map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.kelas || '-'})
-                </option>
-              ))}
-            </optgroup>
-          </select>
+      {/* User profile & Logout in Sidebar Footer */}
+      {user && (
+        <div className="sidebar-footer">
+          <div className="user-profile-card">
+            <div className="user-profile-info">
+              <img
+                src={user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.username}
+                alt={user.name}
+                className="user-profile-avatar"
+              />
+              <div className="user-profile-details">
+                <span className="user-profile-name" title={user.name}>{user.name}</span>
+                <span className="user-profile-role">
+                  {user.role === 'guru' && 'Guru Mapel'}
+                  {user.role === 'admin' && 'Administrator'}
+                  {user.role === 'siswa' && `Siswa (${user.kelas || '-'})`}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn-logout"
+              onClick={logout}
+              title="Keluar dari akun"
+            >
+              <LogOut size={16} strokeWidth={2.2} />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 }

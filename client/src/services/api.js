@@ -32,8 +32,23 @@ async function request(endpoint, options = {}) {
     if (response.ok && contentType.includes('application/json')) {
       return await response.json();
     }
+
+    // Server returned an error response (e.g. 400, 401, 403, 404, 500)
+    if (!response.ok) {
+      if (contentType.includes('application/json')) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+      }
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+
     return await handleMockRequest(endpoint, options);
   } catch (err) {
+    // If it's an explicit API / HTTP error thrown above, re-throw so callers can display it
+    if (err.message && !err.message.includes('fetch') && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError')) {
+      throw err;
+    }
+    // Only fall back to mockApi if the backend server is unreachable
     return await handleMockRequest(endpoint, options);
   }
 }
@@ -53,8 +68,6 @@ export const api = {
   // Auth
   login: (username, password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
   getMe: () => request('/auth/me'),
-  getDemoUsers: () => request('/auth/demo-users'),
-  switchAccount: (userId) => request('/auth/switch-account', { method: 'POST', body: JSON.stringify({ userId }) }),
   getMeta: () => request('/auth/meta'),
 
   // Attendance
