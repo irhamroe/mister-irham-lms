@@ -510,13 +510,15 @@ export default function AttendanceView() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {/* Session Code Display */}
-                    <div style={{ background: 'var(--bg-subtle)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--primary)', textAlign: 'center' }}>
-                      <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', fontWeight: 700 }}>Kode Presensi</span>
-                      <strong style={{ fontSize: '1.1rem', letterSpacing: '2px', color: 'var(--primary)' }}>
-                        {sessionDetail.session_code}
-                      </strong>
-                    </div>
+                    {/* Session Code Display - ONLY visible to Guru and Admin */}
+                    {isTeacher && (
+                      <div style={{ background: 'var(--bg-subtle)', padding: '6px 12px', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--primary)', textAlign: 'center' }}>
+                        <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', fontWeight: 700 }}>Kode Presensi</span>
+                        <strong style={{ fontSize: '1.1rem', letterSpacing: '2px', color: 'var(--primary)' }}>
+                          {sessionDetail.session_code}
+                        </strong>
+                      </div>
+                    )}
 
                     {isTeacher && (
                       <button
@@ -530,35 +532,69 @@ export default function AttendanceView() {
                   </div>
                 </div>
 
-                {/* If Student logged in: Show Check-in Box */}
-                {!isTeacher && sessionDetail.is_open && (
-                  <div style={{ background: 'var(--primary-light)', padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                    <div>
-                      <h5 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary)' }}>
-                        Presensi Mandiri Siswa
-                      </h5>
-                      <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                        Masukkan kode 6-digit yang diberikan oleh guru di kelas untuk mencatat kehadiran Anda.
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Kode Presensi"
-                        maxLength={6}
-                        style={{ width: 140, textTransform: 'uppercase', fontWeight: 700, textAlign: 'center' }}
-                        value={checkInCode}
-                        onChange={(e) => setCheckInCode(e.target.value)}
-                      />
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => handleStudentCheckIn(sessionDetail.id)}
-                      >
-                        Hadir Sekarang
-                      </button>
-                    </div>
-                  </div>
+                {/* If Student logged in: Show Check-in Box or Status Banner */}
+                {!isTeacher && (
+                  (() => {
+                    const myRecord = studentRecords.find(st => st.student_id === user?.id);
+                    const isAlreadyHadir = myRecord && myRecord.status === 'Hadir';
+
+                    if (isAlreadyHadir) {
+                      return (
+                        <div style={{ background: 'var(--success-light)', padding: '14px 18px', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #a7f3d0' }}>
+                          <CheckCircle size={22} color="#059669" />
+                          <div>
+                            <strong style={{ fontSize: '0.92rem', color: '#065f46', display: 'block' }}>
+                              Kehadiran Anda Telah Dicatat: Hadir
+                            </strong>
+                            <span style={{ fontSize: '0.78rem', color: '#047857' }}>
+                              Terima kasih, kehadiran Anda pada sesi ini telah tersimpan secara resmi.
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (!sessionDetail.is_open) {
+                      return (
+                        <div style={{ background: 'var(--bg-muted)', padding: '14px 18px', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid var(--border-color)' }}>
+                          <AlertCircle size={20} color="var(--text-muted)" />
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            Sesi presensi ini telah ditutup oleh guru pengampu.
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{ background: 'var(--primary-light)', padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, border: '1px solid #bfdbfe' }}>
+                        <div>
+                          <h5 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary)' }}>
+                            Presensi Mandiri Siswa
+                          </h5>
+                          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                            Masukkan kode 6-digit yang diberikan oleh guru di kelas untuk mencatat kehadiran Anda.
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="KODE"
+                            maxLength={6}
+                            style={{ width: 120, textTransform: 'uppercase', fontWeight: 700, textAlign: 'center', letterSpacing: '2px', fontSize: '1rem' }}
+                            value={checkInCode}
+                            onChange={(e) => setCheckInCode(e.target.value)}
+                          />
+                          <button
+                            className="btn btn-primary"
+                            onClick={() => handleStudentCheckIn(sessionDetail.id)}
+                          >
+                            Hadir Sekarang
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()
                 )}
 
                 {checkInSuccess && (
