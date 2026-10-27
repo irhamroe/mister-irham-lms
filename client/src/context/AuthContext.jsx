@@ -97,6 +97,26 @@ export function AuthProvider({ children }) {
     return res.user;
   }
 
+  function updateUser(updatedData) {
+    if (!updatedData) return;
+    setUser(prev => prev ? ({ ...prev, ...updatedData }) : prev);
+  }
+
+  // Keep active logged-in user in sync if profile/name is updated
+  useEffect(() => {
+    const handleSync = (e) => {
+      const { storageKey, data } = e.detail || {};
+      if (storageKey === 'lms_mock_users_v3' && Array.isArray(data) && user) {
+        const fresh = data.find(u => u.id === user.id || (u.username && u.username.toLowerCase() === user.username.toLowerCase()));
+        if (fresh && (fresh.name !== user.name || fresh.role !== user.role || fresh.avatar !== user.avatar)) {
+          setUser(prev => ({ ...prev, ...fresh }));
+        }
+      }
+    };
+    window.addEventListener('lms-sync-update', handleSync);
+    return () => window.removeEventListener('lms-sync-update', handleSync);
+  }, [user]);
+
   function logout() {
     setToken(null);
     setUser(null);
@@ -112,7 +132,8 @@ export function AuthProvider({ children }) {
       subjects,
       login,
       logout,
-      fetchMetadata
+      fetchMetadata,
+      updateUser
     }}>
       {children}
     </AuthContext.Provider>

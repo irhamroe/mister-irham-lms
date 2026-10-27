@@ -49,7 +49,7 @@ function getPageNumbers(currentPage, totalPages) {
 }
 
 export default function ManagementView({ initialTab = 'classes' }) {
-  const { user, fetchMetadata } = useAuth();
+  const { user, fetchMetadata, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState(initialTab); // 'classes' | 'subjects' | 'teachers' | 'students' | 'users'
   const [stats, setStats] = useState(null);
 
@@ -556,8 +556,11 @@ export default function ManagementView({ initialTab = 'classes' }) {
     e.preventDefault();
     try {
       if (editingUser) {
-        await api.updateManagementUser(editingUser.id, userForm);
+        const updated = await api.updateManagementUser(editingUser.id, userForm);
         showToast('success', 'Data pengguna berhasil diperbarui!');
+        if (user && (user.id === editingUser.id || user.username === editingUser.username)) {
+          if (updateUser) updateUser(updated || userForm);
+        }
       } else {
         await api.createManagementUser(userForm);
         showToast('success', 'Akun pengguna baru berhasil ditambahkan!');

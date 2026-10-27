@@ -108,14 +108,14 @@ const DEFAULT_USERS = [
   {
     "id": 1,
     "username": "admin",
-    "name": "Administrator LMS",
+    "name": "Administrator",
     "role": "admin",
     "nis_nip": "ADM001",
     "kelas": null,
     "gender": "L",
     "email": "admin@sekolah.sch.id",
     "phone": "08120000001",
-    "avatar": generateInitialsAvatarDataUrl("Administrator LMS"),
+    "avatar": generateInitialsAvatarDataUrl("Administrator"),
     "created_at": "2026-10-01"
   },
   {
@@ -4552,11 +4552,15 @@ export async function handleMockRequest(endpoint, options = {}) {
   let hasAvatarMigrated = false;
   const users = rawUsers.map(u => {
     let updated = u;
-    if (!u.avatar || u.avatar.includes('dicebear')) {
+    if (u.username === 'admin' && (u.name === 'Administrator LMS' || !u.name)) {
       hasAvatarMigrated = true;
-      updated = { ...updated, avatar: generateInitialsAvatarDataUrl(u.name) };
+      updated = { ...updated, name: 'Administrator', avatar: generateInitialsAvatarDataUrl('Administrator') };
     }
-    if (u.username === 'irham' && u.nis_nip !== '198910212022211017') {
+    if (!updated.avatar || updated.avatar.includes('dicebear')) {
+      hasAvatarMigrated = true;
+      updated = { ...updated, avatar: generateInitialsAvatarDataUrl(updated.name) };
+    }
+    if (updated.username === 'irham' && updated.nis_nip !== '198910212022211017') {
       hasAvatarMigrated = true;
       updated = { ...updated, nis_nip: '198910212022211017' };
     }
@@ -4895,6 +4899,10 @@ export async function handleMockRequest(endpoint, options = {}) {
       const updated = users.map(u => {
         if (u.id === id) {
           const updatedUser = { ...u, ...body };
+          if (body.name && body.name.trim()) {
+            updatedUser.name = body.name.trim();
+            updatedUser.avatar = generateInitialsAvatarDataUrl(updatedUser.name);
+          }
           if (body.password && body.password.trim()) {
             updatedUser.password = body.password.trim();
           } else if (u.password) {

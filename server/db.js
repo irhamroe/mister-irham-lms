@@ -319,6 +319,12 @@ function initDatabase() {
       db.prepare("UPDATE users SET nis_nip = '198910212022211017', avatar = ? WHERE username = 'irham'").run(generateInitialsAvatarDataUrl('Moh. Irham Rozaqi, S.Kom. Gr.'));
     }
 
+    // Ensure admin user name is Administrator
+    const adminUser = db.prepare("SELECT id, name FROM users WHERE username = 'admin'").get();
+    if (adminUser && adminUser.name === 'Administrator LMS') {
+      db.prepare("UPDATE users SET name = 'Administrator', avatar = ? WHERE username = 'admin'").run(generateInitialsAvatarDataUrl('Administrator'));
+    }
+
     // Ensure INF-10, INF-11, INF-12 are assigned to teacher irham
     const irhamUser = db.prepare("SELECT id FROM users WHERE username = 'irham'").get();
     if (irhamUser) {
@@ -365,7 +371,7 @@ function seedData() {
   `);
 
   // Admin
-  insertUser.run('admin', passwordHash, 'Administrator LMS', 'admin', 'ADM001', null, 'L', 'admin@sekolah.sch.id', '08120000001', 'https://api.dicebear.com/7.x/bottts/svg?seed=admin');
+  insertUser.run('admin', passwordHash, 'Administrator', 'admin', 'ADM001', null, 'L', 'admin@sekolah.sch.id', '08120000001', generateInitialsAvatarDataUrl('Administrator'));
 
   // Teachers (Teachers do not have student class/kelas = null)
   const g1 = insertUser.run('guru_budi', passwordHash, 'Budi Santoso, S.Pd.', 'guru', '198501012010011001', null, 'L', 'budi@sekolah.sch.id', '08120000002', 'https://api.dicebear.com/7.x/avataaars/svg?seed=budi').lastInsertRowid;

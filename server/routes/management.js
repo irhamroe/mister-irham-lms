@@ -482,6 +482,9 @@ router.put('/users/:id', requireRole(['admin']), (req, res) => {
       passwordHash = bcrypt.hashSync(password.trim(), salt);
     }
 
+    const newName = name ? name.trim() : target.name;
+    const newAvatar = (name && name.trim() !== target.name) ? generateInitialsAvatarDataUrl(newName) : target.avatar;
+
     db.prepare(`
       UPDATE users SET
         username = ?,
@@ -491,17 +494,19 @@ router.put('/users/:id', requireRole(['admin']), (req, res) => {
         nis_nip = ?,
         kelas = ?,
         email = ?,
-        phone = ?
+        phone = ?,
+        avatar = ?
       WHERE id = ?
     `).run(
       username ? username.trim().toLowerCase() : target.username,
       passwordHash,
-      name ? name.trim() : target.name,
+      newName,
       role || target.role,
       nis_nip !== undefined ? nis_nip.trim() : target.nis_nip,
       kelas !== undefined ? kelas : target.kelas,
       email !== undefined ? email.trim() : target.email,
       phone !== undefined ? phone.trim() : target.phone,
+      newAvatar,
       req.params.id
     );
 
