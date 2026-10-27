@@ -2187,60 +2187,133 @@ export default function ManagementView({ initialTab = 'classes' }) {
       )}
 
       {/* ========================================================
-          MODERN CONFIRM MODAL (FLAT DESIGN)
+          MODERN CONFIRM MODAL DIALOG (CENTERED POPUP OVERLAY)
          ======================================================== */}
       {confirmDialog && (
-        <div className="modal-backdrop" style={{ zIndex: 99990 }}>
+        <div
+          className="modal-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(5px)',
+            WebkitBackdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: 20,
+            animation: 'fadeIn 0.15s ease-out'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setConfirmDialog(null);
+          }}
+        >
           <div
-            className="modal-content"
+            className="modal-dialog"
             style={{
-              maxWidth: 440,
-              padding: '24px 28px',
-              borderRadius: 12,
-              border: '2px solid var(--border-color)',
-              textAlign: 'center'
+              maxWidth: 420,
+              width: '100%',
+              background: '#FFFFFF',
+              borderRadius: 18,
+              border: '1px solid #E2E8F0',
+              padding: '28px 24px 22px',
+              textAlign: 'center',
+              boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+              animation: 'modal-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+              position: 'relative'
             }}
           >
-            <div
+            {/* Close X Button */}
+            <button
+              type="button"
+              onClick={() => setConfirmDialog(null)}
               style={{
-                width: 52,
-                height: 52,
-                borderRadius: 12,
-                background: confirmDialog.type === 'danger' ? '#fee2e2' : '#dbeafe',
-                color: confirmDialog.type === 'danger' ? '#ef4444' : '#2563eb',
+                position: 'absolute',
+                top: 14,
+                right: 14,
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                background: '#F1F5F9',
+                border: 'none',
+                color: '#64748B',
+                cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto 16px'
+                transition: 'all 0.15s ease'
+              }}
+              title="Tutup dialog"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Warning / Info Icon with soft colored ring */}
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: confirmDialog.type === 'danger' ? '#FEF2F2' : '#EFF6FF',
+                border: `6px solid ${confirmDialog.type === 'danger' ? '#FEE2E2' : '#DBEAFE'}`,
+                color: confirmDialog.type === 'danger' ? '#DC2626' : '#2563EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                boxShadow: confirmDialog.type === 'danger' ? '0 8px 16px rgba(239, 68, 68, 0.15)' : '0 8px 16px rgba(37, 99, 235, 0.15)'
               }}
             >
               {confirmDialog.type === 'danger' ? (
-                <AlertTriangle size={28} strokeWidth={2.5} />
+                <AlertTriangle size={30} strokeWidth={2.4} />
               ) : (
-                <Info size={28} strokeWidth={2.5} />
+                <Info size={30} strokeWidth={2.4} />
               )}
             </div>
 
-            <h3 style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            {/* Title */}
+            <h3 style={{ margin: '0 0 8px', fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
               {confirmDialog.title}
             </h3>
-            <p style={{ margin: '0 0 24px', fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+
+            {/* Description */}
+            <p style={{ margin: '0 0 24px', fontSize: '0.88rem', color: '#64748B', lineHeight: 1.55, padding: '0 8px' }}>
               {confirmDialog.message}
             </p>
 
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            {/* Action Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <button
                 type="button"
                 className="btn btn-outline"
-                style={{ minWidth: 100 }}
+                style={{
+                  height: 44,
+                  borderRadius: 10,
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  borderColor: '#CBD5E1',
+                  color: '#475569',
+                  background: '#FFFFFF'
+                }}
                 onClick={() => setConfirmDialog(null)}
               >
                 Batal
               </button>
               <button
                 type="button"
-                className={confirmDialog.type === 'danger' ? 'btn btn-danger' : 'btn btn-primary'}
-                style={{ minWidth: 130 }}
+                style={{
+                  height: 44,
+                  borderRadius: 10,
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  color: '#FFFFFF',
+                  background: confirmDialog.type === 'danger' ? 'linear-gradient(135deg, #DC2626, #B91C1C)' : 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: confirmDialog.type === 'danger' ? '0 4px 14px rgba(220, 38, 38, 0.35)' : '0 4px 14px rgba(37, 99, 235, 0.35)',
+                  transition: 'all 0.15s ease'
+                }}
                 onClick={async () => {
                   const action = confirmDialog.onConfirm;
                   setConfirmDialog(null);
