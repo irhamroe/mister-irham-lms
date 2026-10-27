@@ -132,7 +132,7 @@ a {
 
 /* Flat Sidebar */
 .sidebar {
-  width: 260px;
+  width: 270px;
   background: var(--bg-surface);
   border-right: 2px solid var(--border-color);
   display: flex;
@@ -145,7 +145,7 @@ a {
 }
 
 .sidebar-header {
-  padding: 24px 20px;
+  padding: 20px 16px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -154,30 +154,44 @@ a {
 }
 
 .logo-badge {
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-sm);
-  background: var(--primary);
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #FFFFFF;
   flex-shrink: 0;
+  padding: 2px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.logo-text {
+  min-width: 0;
+  flex: 1;
 }
 
 .logo-text h1 {
-  font-size: 1.15rem;
+  font-size: 1.35rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   color: var(--text-main);
+  line-height: 1.15;
+  white-space: nowrap;
+  margin: 0 0 3px 0;
 }
 
 .logo-text p {
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.58rem;
+  font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: 1;
+  margin: 0;
 }
 
 .sidebar-nav {

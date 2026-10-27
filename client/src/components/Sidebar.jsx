@@ -141,7 +141,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     <aside className="sidebar">
       {/* Brand Header */}
       <div className="sidebar-header">
-        <div className="logo-badge" style={{ background: '#FFFFFF', padding: '4px', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+        <div className="logo-badge">
           <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
         <div className="logo-text">
