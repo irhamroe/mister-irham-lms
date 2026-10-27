@@ -45,7 +45,7 @@ export default function Topbar({ activeTab }) {
               <div className="user-role-badge">
                 {user.role === 'guru' && 'Guru Mapel'}
                 {user.role === 'admin' && 'Administrator'}
-                {user.role === 'siswa' && `Siswa (${user.kelas || 'X-IPA-1'})`}
+                {user.role === 'siswa' && `Siswa (${user.kelas || 'X-8'})`}
               </div>
             </div>
           </div>

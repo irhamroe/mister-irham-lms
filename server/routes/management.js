@@ -159,8 +159,9 @@ router.get('/students', (req, res) => {
     const params = [];
 
     if (kelas && kelas !== 'undefined') {
-      query += ' AND kelas = ?';
-      params.push(kelas);
+      const normalizedClass = kelas.replace(/\s+/g, '');
+      query += ' AND (kelas = ? OR REPLACE(kelas, " ", "") = ?)';
+      params.push(kelas.trim(), normalizedClass);
     }
 
     if (gender && gender !== 'undefined') {
