@@ -379,20 +379,20 @@ function seedData() {
     console.error('Error seeding students:', e);
   }
 
-  // 3. Subjects
+  // 3. Subjects (Hanya Informatika Kelas X, XI, dan XII)
   const insertSubj = db.prepare('INSERT INTO subjects (name, code, teacher_id) VALUES (?, ?, ?)');
-  const sub1 = insertSubj.run('Matematika Wajib', 'MAT-10', g1).lastInsertRowid;
-  const sub2 = insertSubj.run('Fisika Peminatan', 'FIS-10', g1).lastInsertRowid;
-  const sub3 = insertSubj.run('Bahasa Indonesia', 'BIN-10', g2).lastInsertRowid;
+  const sub1 = insertSubj.run('INFORMATIKA', 'INF-10', irhamUser.id).lastInsertRowid;
+  const sub2 = insertSubj.run('INFORMATIKA', 'INF-11', irhamUser.id).lastInsertRowid;
+  const sub3 = insertSubj.run('INFORMATIKA', 'INF-12', irhamUser.id).lastInsertRowid;
 
   // 4. Grade Weights
   const insertWeight = db.prepare(`
     INSERT INTO grade_weights (teacher_id, class_id, subject_id, attendance_weight, assignment_weight, formatif_weight, sumatif_weight, kkm)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  insertWeight.run(g1, c1, sub1, 15, 30, 25, 30, 75);
-  insertWeight.run(g1, c1, sub2, 10, 30, 30, 30, 75);
-  insertWeight.run(g2, c1, sub3, 15, 35, 25, 25, 75);
+  insertWeight.run(irhamUser.id, c1, sub1, 15, 30, 25, 30, 75);
+  insertWeight.run(irhamUser.id, c1, sub2, 10, 30, 30, 30, 75);
+  insertWeight.run(irhamUser.id, c1, sub3, 15, 35, 25, 25, 75);
 
   console.log('Database seeded successfully with Users, Classes, and Subjects!');
 }

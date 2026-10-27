@@ -44,6 +44,23 @@ export default function GradesView() {
 
   const isTeacher = user?.role === 'guru' || user?.role === 'admin';
 
+  const displaySubjects = React.useMemo(() => {
+    if (user?.role === 'siswa' && user?.kelas) {
+      const k = user.kelas.toUpperCase();
+      if (k.startsWith('X-') || k.startsWith('X ') || k === 'X') {
+        const xSubs = subjects.filter(s => s.code === 'INF-10' || s.code?.includes('-10'));
+        if (xSubs.length > 0) return xSubs;
+      } else if (k.startsWith('XI-') || k.startsWith('XI ') || k === 'XI') {
+        const xiSubs = subjects.filter(s => s.code === 'INF-11' || s.code?.includes('-11'));
+        if (xiSubs.length > 0) return xiSubs;
+      } else if (k.startsWith('XII-') || k.startsWith('XII ') || k === 'XII') {
+        const xiiSubs = subjects.filter(s => s.code === 'INF-12' || s.code?.includes('-12'));
+        if (xiiSubs.length > 0) return xiiSubs;
+      }
+    }
+    return subjects;
+  }, [subjects, user]);
+
   useEffect(() => {
     if (classes.length > 0 && !selectedClass) {
       if (user?.role === 'siswa' && user?.kelas) {
@@ -53,10 +70,10 @@ export default function GradesView() {
         setSelectedClass(classes[0].id.toString());
       }
     }
-    if (subjects.length > 0 && !selectedSubject) {
-      setSelectedSubject(subjects[0].id.toString());
+    if (displaySubjects.length > 0 && !selectedSubject) {
+      setSelectedSubject(displaySubjects[0].id.toString());
     }
-  }, [classes, subjects, user]);
+  }, [classes, displaySubjects, user]);
 
   useEffect(() => {
     if (selectedClass && selectedSubject) {
@@ -190,7 +207,7 @@ export default function GradesView() {
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
           >
-            {subjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
+            {displaySubjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
           </select>
         </div>
 

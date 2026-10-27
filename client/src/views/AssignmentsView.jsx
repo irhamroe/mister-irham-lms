@@ -194,6 +194,35 @@ export default function AssignmentsView() {
 
   const isTeacher = user?.role === 'guru' || user?.role === 'admin';
 
+  const displaySubjects = React.useMemo(() => {
+    if (user?.role === 'siswa' && user?.kelas) {
+      const k = user.kelas.toUpperCase();
+      if (k.startsWith('X-') || k.startsWith('X ') || k === 'X') {
+        const xSubs = subjects.filter(s => s.code === 'INF-10' || s.code?.includes('-10'));
+        if (xSubs.length > 0) return xSubs;
+      } else if (k.startsWith('XI-') || k.startsWith('XI ') || k === 'XI') {
+        const xiSubs = subjects.filter(s => s.code === 'INF-11' || s.code?.includes('-11'));
+        if (xiSubs.length > 0) return xiSubs;
+      } else if (k.startsWith('XII-') || k.startsWith('XII ') || k === 'XII') {
+        const xiiSubs = subjects.filter(s => s.code === 'INF-12' || s.code?.includes('-12'));
+        if (xiiSubs.length > 0) return xiiSubs;
+      }
+    }
+    return subjects;
+  }, [subjects, user]);
+
+  useEffect(() => {
+    if (user?.role === 'siswa') {
+      if (user?.kelas && classes.length > 0 && !selectedClass) {
+        const myCls = classes.find(c => c.name === user.kelas);
+        if (myCls) setSelectedClass(myCls.id.toString());
+      }
+      if (displaySubjects.length > 0 && !selectedSubject) {
+        setSelectedSubject(displaySubjects[0].id.toString());
+      }
+    }
+  }, [user, classes, displaySubjects, selectedClass, selectedSubject]);
+
   useEffect(() => {
     loadAssignments();
   }, [user, selectedClass, selectedSubject]);
@@ -485,15 +514,21 @@ export default function AssignmentsView() {
       {/* Header and Filter */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <select
-            className="form-control"
-            style={{ width: 'auto' }}
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-          >
-            <option value="">Semua Kelas</option>
-            {classes.map(c => <option key={c.id} value={c.id}>Kelas {c.name}</option>)}
-          </select>
+          {user?.role === 'siswa' ? (
+            <div className="badge badge-primary" style={{ padding: '8px 14px', fontSize: '0.9rem', fontWeight: 700 }}>
+              Kelas {user.kelas || (classes.find(c => c.id.toString() === selectedClass)?.name || '')}
+            </div>
+          ) : (
+            <select
+              className="form-control"
+              style={{ width: 'auto' }}
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+            >
+              <option value="">Semua Kelas</option>
+              {classes.map(c => <option key={c.id} value={c.id}>Kelas {c.name}</option>)}
+            </select>
+          )}
 
           <select
             className="form-control"
@@ -501,8 +536,8 @@ export default function AssignmentsView() {
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
           >
-            <option value="">Semua Mapel</option>
-            {subjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
+            {user?.role !== 'siswa' && <option value="">Semua Mapel</option>}
+            {displaySubjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
           </select>
         </div>
 

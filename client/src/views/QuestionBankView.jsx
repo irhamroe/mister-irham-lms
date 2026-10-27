@@ -144,13 +144,9 @@ export default function QuestionBankView({ onNavigateToCbt }) {
       let subList = Object.values(subMap);
       if (subList.length === 0) {
         subList = [
-          { id: 1, name: 'Matematika Wajib', code: 'MAT-10' },
-          { id: 2, name: 'Fisika Peminatan', code: 'FIS-10' },
-          { id: 3, name: 'Bahasa Indonesia', code: 'BIN-10' },
-          { id: 4, name: 'Biologi', code: 'BIO-10' },
-          { id: 5, name: 'Kimia', code: 'KIM-10' },
-          { id: 6, name: 'Bahasa Inggris', code: 'BIG-10' },
-          { id: 7, name: 'INFORMATIKA', code: 'INF-10' }
+          { id: 7, name: 'INFORMATIKA', code: 'INF-10' },
+          { id: 10, name: 'INFORMATIKA', code: 'INF-11' },
+          { id: 11, name: 'INFORMATIKA', code: 'INF-12' }
         ];
       }
       setSubjects(subList);

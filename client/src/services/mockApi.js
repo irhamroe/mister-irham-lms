@@ -44,6 +44,30 @@ if (typeof localStorage !== 'undefined') {
       }
     }
   } catch (e) {}
+
+  // Ensure subjects only retain Informatika and purge legacy dummy subjects (Matematika, Fisika, etc.)
+  try {
+    const cachedSubjects = localStorage.getItem(STORAGE_KEYS.SUBJECTS);
+    if (cachedSubjects) {
+      const parsed = JSON.parse(cachedSubjects);
+      if (Array.isArray(parsed)) {
+        const onlyInformatika = parsed.filter(s =>
+          s.code === 'INF-10' ||
+          s.code === 'INF-11' ||
+          s.code === 'INF-12' ||
+          (s.name && s.name.toUpperCase().includes('INFORMATIKA'))
+        );
+        if (onlyInformatika.length === 0 || onlyInformatika.length < parsed.length) {
+          const defaultInf = [
+            { id: 7, name: 'INFORMATIKA', code: 'INF-10', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' },
+            { id: 10, name: 'INFORMATIKA', code: 'INF-11', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' },
+            { id: 11, name: 'INFORMATIKA', code: 'INF-12', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' }
+          ];
+          localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(onlyInformatika.length > 0 ? onlyInformatika : defaultInf));
+        }
+      }
+    }
+  } catch (e) {}
 }
 
 function getStudentInitials(name) {
@@ -4462,15 +4486,7 @@ const DEFAULT_CLASSES = [
 ];
 
 const DEFAULT_SUBJECTS = [
-  { id: 1, name: 'Matematika Wajib', code: 'MAT-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
-  { id: 2, name: 'Fisika Peminatan', code: 'FIS-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
-  { id: 3, name: 'Bahasa Indonesia', code: 'BIN-10', teacher_id: 3, teacher_name: 'Siti Rahmawati, M.Pd.' },
-  { id: 4, name: 'Biologi', code: 'BIO-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
-  { id: 5, name: 'Kimia', code: 'KIM-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
-  { id: 6, name: 'Bahasa Inggris', code: 'BIG-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
   { id: 7, name: 'INFORMATIKA', code: 'INF-10', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' },
-  { id: 8, name: 'Seni Budaya', code: 'SBD-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
-  { id: 9, name: 'Informatika Peminatan', code: 'PM-INF-11', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
   { id: 10, name: 'INFORMATIKA', code: 'INF-11', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' },
   { id: 11, name: 'INFORMATIKA', code: 'INF-12', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' }
 ];
@@ -5105,7 +5121,7 @@ export async function handleMockRequest(endpoint, options = {}) {
         id: Date.now(),
         teacher_id: currentUser.id,
         teacher_name: currentUser.name,
-        subject_name: subj ? subj.name : 'Matematika Wajib',
+        subject_name: subj ? subj.name : 'INFORMATIKA',
         created_at: new Date().toISOString().split('T')[0],
         ...body
       };
@@ -5141,7 +5157,7 @@ export async function handleMockRequest(endpoint, options = {}) {
           teacher_id: currentUser.id,
           teacher_name: currentUser.name,
           subject_id: subjectId,
-          subject_name: subj ? subj.name : 'Matematika Wajib',
+          subject_name: subj ? subj.name : 'INFORMATIKA',
           grade_level: q.grade_level || body.default_grade_level || 'Kelas X',
           topic: q.topic || body.default_topic || 'Umum',
           question_text: q.question_text.trim(),
@@ -5272,7 +5288,7 @@ export async function handleMockRequest(endpoint, options = {}) {
       }
       if (targetClassIds.length === 0) targetClassIds = [Number(classes[0]?.id || 1)];
 
-      const subj = subjects.find(s => s.id === Number(body.subject_id)) || subjects[0] || { name: 'Matematika Wajib' };
+      const subj = subjects.find(s => s.id === Number(body.subject_id)) || subjects[0] || { name: 'INFORMATIKA' };
       const taskTitle = body.title || 'Tugas Baru';
       const targetClasses = classes.filter(c => targetClassIds.includes(c.id));
       const classNames = targetClasses.length > 0 ? targetClasses.map(c => c.name) : ['X-IPA-1'];
@@ -5486,7 +5502,7 @@ export async function handleMockRequest(endpoint, options = {}) {
       due_date: '2026-10-30 23:59',
       max_points: 100,
       class_name: 'X-IPA-1',
-      subject_name: 'Matematika Wajib',
+      subject_name: 'INFORMATIKA',
       attachments: []
     };
 
@@ -5579,7 +5595,7 @@ export async function handleMockRequest(endpoint, options = {}) {
         class_id: Number(body.class_id),
         class_name: cls ? cls.name : 'X-IPA-1',
         subject_id: Number(body.subject_id),
-        subject_name: subj ? subj.name : 'Matematika Wajib',
+        subject_name: subj ? subj.name : 'INFORMATIKA',
         teacher_id: currentUser.id,
         teacher_name: currentUser.name,
         date: body.date || new Date().toISOString().split('T')[0],
@@ -5670,7 +5686,7 @@ export async function handleMockRequest(endpoint, options = {}) {
       class_id: 1,
       class_name: 'X-IPA-1',
       subject_id: 1,
-      subject_name: 'Matematika Wajib',
+      subject_name: 'INFORMATIKA',
       date: '2026-10-22',
       time_start: '07:30',
       time_end: '09:00'

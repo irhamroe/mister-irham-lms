@@ -152,14 +152,36 @@ export default function AttendanceView() {
 
   const isTeacher = user?.role === 'guru' || user?.role === 'admin';
 
+  const displaySubjects = React.useMemo(() => {
+    if (user?.role === 'siswa' && user?.kelas) {
+      const k = user.kelas.toUpperCase();
+      if (k.startsWith('X-') || k.startsWith('X ') || k === 'X') {
+        const xSubs = subjects.filter(s => s.code === 'INF-10' || s.code?.includes('-10'));
+        if (xSubs.length > 0) return xSubs;
+      } else if (k.startsWith('XI-') || k.startsWith('XI ') || k === 'XI') {
+        const xiSubs = subjects.filter(s => s.code === 'INF-11' || s.code?.includes('-11'));
+        if (xiSubs.length > 0) return xiSubs;
+      } else if (k.startsWith('XII-') || k.startsWith('XII ') || k === 'XII') {
+        const xiiSubs = subjects.filter(s => s.code === 'INF-12' || s.code?.includes('-12'));
+        if (xiiSubs.length > 0) return xiiSubs;
+      }
+    }
+    return subjects;
+  }, [subjects, user]);
+
   useEffect(() => {
     if (sortedClasses.length > 0 && !selectedClass) {
-      setSelectedClass(sortedClasses[0].id.toString());
+      if (user?.role === 'siswa' && user?.kelas) {
+        const studentCls = sortedClasses.find(c => c.name === user.kelas);
+        setSelectedClass(studentCls ? studentCls.id.toString() : sortedClasses[0].id.toString());
+      } else {
+        setSelectedClass(sortedClasses[0].id.toString());
+      }
     }
-    if (subjects.length > 0 && !selectedSubject) {
-      setSelectedSubject(subjects[0].id.toString());
+    if (displaySubjects.length > 0 && !selectedSubject) {
+      setSelectedSubject(displaySubjects[0].id.toString());
     }
-  }, [sortedClasses, subjects]);
+  }, [sortedClasses, displaySubjects, user]);
 
   useEffect(() => {
     loadSessions();
@@ -340,16 +362,22 @@ export default function AttendanceView() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <select
-            className="form-control"
-            style={{ width: 'auto' }}
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-          >
-            {sortedClasses.map(c => (
-              <option key={c.id} value={c.id}>Kelas {c.name}</option>
-            ))}
-          </select>
+          {user?.role === 'siswa' ? (
+            <div className="badge badge-primary" style={{ padding: '8px 14px', fontSize: '0.9rem', fontWeight: 700 }}>
+              Kelas {user.kelas || (sortedClasses.find(c => c.id.toString() === selectedClass)?.name || '')}
+            </div>
+          ) : (
+            <select
+              className="form-control"
+              style={{ width: 'auto' }}
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+            >
+              {sortedClasses.map(c => (
+                <option key={c.id} value={c.id}>Kelas {c.name}</option>
+              ))}
+            </select>
+          )}
 
           <select
             className="form-control"
@@ -357,7 +385,7 @@ export default function AttendanceView() {
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
           >
-            {subjects.map(s => (
+            {displaySubjects.map(s => (
               <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
             ))}
           </select>
