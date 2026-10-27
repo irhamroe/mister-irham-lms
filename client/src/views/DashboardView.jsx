@@ -128,9 +128,24 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
         />
 
         <div style={{ position: 'relative', zIndex: 2, maxWidth: '640px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255, 255, 255, 0.2)', padding: '5px 12px', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', fontWeight: 700, marginBottom: '14px' }}>
-            <Sparkles size={15} />
-            <span>Tahun Pelajaran 2026/2027 • Semester Ganjil</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '14px', flexWrap: 'wrap' }}>
+            <div style={{
+              width: '44px',
+              height: '44px',
+              background: '#FFFFFF',
+              borderRadius: '12px',
+              padding: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }}>
+              <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255, 255, 255, 0.2)', padding: '6px 14px', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', fontWeight: 700 }}>
+              <Sparkles size={15} />
+              <span>Tahun Pelajaran 2026/2027 • Semester Ganjil</span>
+            </div>
           </div>
 
           <h1 style={{ fontSize: '2.1rem', fontWeight: 800, color: '#FFFFFF', marginBottom: '10px', lineHeight: 1.2 }}>

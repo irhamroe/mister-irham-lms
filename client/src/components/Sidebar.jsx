@@ -134,8 +134,8 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     <aside className="sidebar">
       {/* Brand Header */}
       <div className="sidebar-header">
-        <div className="logo-badge" style={{ background: 'linear-gradient(135deg, #2563EB 0%, #4F46E5 100%)', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)' }}>
-          <School size={22} strokeWidth={2.2} color="#FFFFFF" />
+        <div className="logo-badge" style={{ background: '#FFFFFF', padding: '4px', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
         <div className="logo-text">
           <h1>EduSmart</h1>
