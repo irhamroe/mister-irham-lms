@@ -1145,7 +1145,9 @@ export default function ManagementView({ initialTab = 'classes' }) {
                         <img src={u.avatar} alt={u.name} style={{ width: 32, height: 32, borderRadius: '50%' }} />
                         <div>
                           <strong style={{ fontSize: '0.9rem', display: 'block' }}>{u.name}</strong>
-                          {u.kelas && <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Kelas: {u.kelas}</span>}
+                          {u.role === 'siswa' && u.kelas && (
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Kelas: {u.kelas}</span>
+                          )}
                         </div>
                       </div>
                     </td>

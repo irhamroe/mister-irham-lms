@@ -287,6 +287,10 @@ function initDatabase() {
   try {
     db.exec('ALTER TABLE assignments ADD COLUMN task_folder_url TEXT');
   } catch (e) {}
+  try {
+    db.exec("UPDATE users SET kelas = NULL WHERE role != 'siswa'");
+    db.exec("DELETE FROM classes WHERE name LIKE '%IPA%'");
+  } catch (e) {}
 
   seedData();
   seedQuestionBank();
@@ -304,9 +308,9 @@ function seedData() {
 
   // 1. Classes
   const insertClass = db.prepare('INSERT INTO classes (name, level, academic_year) VALUES (?, ?, ?)');
-  const c1 = insertClass.run('X-IPA-1', 'Kelas 10', '2026/2027').lastInsertRowid;
-  const c2 = insertClass.run('X-IPA-2', 'Kelas 10', '2026/2027').lastInsertRowid;
-  const c3 = insertClass.run('XI-IPA-1', 'Kelas 11', '2026/2027').lastInsertRowid;
+  const c1 = insertClass.run('X-8', 'Kelas 10', '2026/2027').lastInsertRowid;
+  const c2 = insertClass.run('X-9', 'Kelas 10', '2026/2027').lastInsertRowid;
+  const c3 = insertClass.run('X-10', 'Kelas 10', '2026/2027').lastInsertRowid;
 
   // 2. Users (Admin, Guru, Siswa)
   const insertUser = db.prepare(`
@@ -317,9 +321,9 @@ function seedData() {
   // Admin
   insertUser.run('admin', passwordHash, 'Administrator LMS', 'admin', 'ADM001', null, 'L', 'admin@sekolah.sch.id', '08120000001', 'https://api.dicebear.com/7.x/bottts/svg?seed=admin');
 
-  // Teachers
-  const g1 = insertUser.run('guru_budi', passwordHash, 'Budi Santoso, S.Pd.', 'guru', '198501012010011001', 'X-8', 'L', 'budi@sekolah.sch.id', '08120000002', 'https://api.dicebear.com/7.x/avataaars/svg?seed=budi').lastInsertRowid;
-  const g2 = insertUser.run('guru_siti', passwordHash, 'Siti Rahmawati, M.Pd.', 'guru', '198705122011012002', 'X-9', 'P', 'siti@sekolah.sch.id', '08120000003', 'https://api.dicebear.com/7.x/avataaars/svg?seed=siti').lastInsertRowid;
+  // Teachers (Teachers do not have student class/kelas = null)
+  const g1 = insertUser.run('guru_budi', passwordHash, 'Budi Santoso, S.Pd.', 'guru', '198501012010011001', null, 'L', 'budi@sekolah.sch.id', '08120000002', 'https://api.dicebear.com/7.x/avataaars/svg?seed=budi').lastInsertRowid;
+  const g2 = insertUser.run('guru_siti', passwordHash, 'Siti Rahmawati, M.Pd.', 'guru', '198705122011012002', null, 'P', 'siti@sekolah.sch.id', '08120000003', 'https://api.dicebear.com/7.x/avataaars/svg?seed=siti').lastInsertRowid;
 
   // Students (Imported Real Students)
   try {

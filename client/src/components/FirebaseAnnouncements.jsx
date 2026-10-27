@@ -44,7 +44,7 @@ export default function FirebaseAnnouncements() {
   // Normalize available class names from AuthContext or fallback list
   const availableClasses = (classes && classes.length > 0)
     ? classes.map((c) => (typeof c === 'string' ? c : c.name)).filter(Boolean)
-    : ['X-8', 'X-9', 'XI-IPA-1', 'XI-IPA-2', 'XII-IPA-1'];
+    : ['X-8', 'X-9', 'X-10', 'X-11', 'X-12', 'XI-5', 'XII-7', 'XII-8'];
 
   useEffect(() => {
     // Listen to announcements node in Firebase Realtime Database

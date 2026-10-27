@@ -2,23 +2,34 @@
 // All changes are persisted to localStorage so that user interactions work seamlessly!
 
 const STORAGE_KEYS = {
-  USERS: 'lms_mock_users',
-  CLASSES: 'lms_mock_classes',
-  SUBJECTS: 'lms_mock_subjects',
-  JOURNALS: 'lms_mock_journals_v2',
-  ATTENDANCE: 'lms_mock_attendance_sessions_v2',
-  ATT_RECORDS: 'lms_mock_attendance_records_v2',
-  ASSIGNMENTS: 'lms_mock_assignments_v2',
-  ASSIGNMENT_SUBMISSIONS: 'lms_mock_assignment_submissions_v2',
-  EXAMS: 'lms_mock_cbt_exams_v2',
-  QUESTIONS: 'lms_mock_cbt_questions_v2',
-  QUESTION_BANK: 'lms_mock_question_bank',
+  USERS: 'lms_mock_users_v3',
+  CLASSES: 'lms_mock_classes_v3',
+  SUBJECTS: 'lms_mock_subjects_v3',
+  JOURNALS: 'lms_mock_journals_v3',
+  ATTENDANCE: 'lms_mock_attendance_sessions_v3',
+  ATT_RECORDS: 'lms_mock_attendance_records_v3',
+  ASSIGNMENTS: 'lms_mock_assignments_v3',
+  ASSIGNMENT_SUBMISSIONS: 'lms_mock_assignment_submissions_v3',
+  EXAMS: 'lms_mock_cbt_exams_v3',
+  QUESTIONS: 'lms_mock_cbt_questions_v3',
+  QUESTION_BANK: 'lms_mock_question_bank_v3',
   CURRENT_USER_ID: 'lms_mock_current_user_id'
 };
 
 // Clean up any stale legacy demo caches
 if (typeof localStorage !== 'undefined') {
-  ['lms_mock_journals', 'lms_mock_attendance_sessions', 'lms_mock_attendance_records', 'lms_mock_assignments', 'lms_mock_assignment_submissions', 'lms_mock_cbt_exams', 'lms_mock_cbt_questions'].forEach(k => {
+  [
+    'lms_mock_users', 'lms_mock_users_v2',
+    'lms_mock_classes', 'lms_mock_classes_v2',
+    'lms_mock_subjects', 'lms_mock_subjects_v2',
+    'lms_mock_journals', 'lms_mock_journals_v2',
+    'lms_mock_attendance_sessions', 'lms_mock_attendance_sessions_v2',
+    'lms_mock_attendance_records', 'lms_mock_attendance_records_v2',
+    'lms_mock_assignments', 'lms_mock_assignments_v2',
+    'lms_mock_assignment_submissions', 'lms_mock_assignment_submissions_v2',
+    'lms_mock_cbt_exams', 'lms_mock_cbt_exams_v2',
+    'lms_mock_cbt_questions', 'lms_mock_cbt_questions_v2'
+  ].forEach(k => {
     try { localStorage.removeItem(k); } catch (e) {}
   });
 }
@@ -43,7 +54,7 @@ const DEFAULT_USERS = [
     "name": "Budi Santoso, S.Pd.",
     "role": "guru",
     "nis_nip": "198501012010011001",
-    "kelas": "X-8",
+    "kelas": null,
     "gender": "L",
     "email": "budi@sekolah.sch.id",
     "phone": "08120000002",
@@ -56,7 +67,7 @@ const DEFAULT_USERS = [
     "name": "Siti Rahmawati, M.Pd.",
     "role": "guru",
     "nis_nip": "198705122011012002",
-    "kelas": "X-9",
+    "kelas": null,
     "gender": "P",
     "email": "siti@sekolah.sch.id",
     "phone": "08120000003",
