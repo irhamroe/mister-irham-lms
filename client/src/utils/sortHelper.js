@@ -34,3 +34,4 @@ export function sortClassesNatural(list) {
   if (!Array.isArray(list)) return [];
   return [...list].sort(compareClassesNatural);
 }
+

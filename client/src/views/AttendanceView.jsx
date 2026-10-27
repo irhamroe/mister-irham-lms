@@ -9,6 +9,9 @@ import {
   QrCode,
   FileSpreadsheet,
   AlertCircle,
+  AlertTriangle,
+  Info,
+  X,
   Lock,
   Unlock,
   Save,
@@ -18,6 +21,61 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { StudentAvatar } from '../components/StudentAvatar';
 import { sortClassesNatural } from '../utils/sortHelper';
+
+function getSessionTimeWarning(dateStr, startStr, endStr) {
+  if (!dateStr) return null;
+
+  if (startStr && endStr && endStr <= startStr) {
+    return {
+      type: 'invalid_range',
+      isError: true,
+      message: 'Jam Selesai harus lebih akhir dari Jam Mulai.'
+    };
+  }
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
+
+  const currentHours = String(now.getHours()).padStart(2, '0');
+  const currentMinutes = String(now.getMinutes()).padStart(2, '0');
+  const currentTimeStr = `${currentHours}:${currentMinutes}`;
+
+  if (dateStr < todayStr) {
+    return {
+      type: 'date_past',
+      isEnded: true,
+      currentTime: currentTimeStr,
+      todayStr,
+      message: `Tanggal yang dipilih (${dateStr}) telah lewat dari hari ini (${todayStr}).`
+    };
+  }
+
+  if (dateStr === todayStr) {
+    if (endStr && endStr <= currentTimeStr) {
+      return {
+        type: 'time_ended',
+        isEnded: true,
+        currentTime: currentTimeStr,
+        todayStr,
+        message: `Jam selesai (${endStr}) sudah terlewat dari jam saat ini (${currentTimeStr} WIB).`
+      };
+    }
+    if (startStr && startStr < currentTimeStr) {
+      return {
+        type: 'time_started',
+        isEnded: false,
+        currentTime: currentTimeStr,
+        todayStr,
+        message: `Jam mulai (${startStr}) sudah terlewat dari jam saat ini (${currentTimeStr} WIB).`
+      };
+    }
+  }
+
+  return null;
+}
 
 export default function AttendanceView() {
   const { user, classes, subjects } = useAuth();
@@ -40,6 +98,17 @@ export default function AttendanceView() {
   const [checkInCode, setCheckInCode] = useState('');
   const [checkInSuccess, setCheckInSuccess] = useState('');
 
+  // Modern Toast & Confirm Dialog State
+  const [toast, setToast] = useState(null); // { type: 'success' | 'error' | 'warning', message }
+  const [confirmDialog, setConfirmDialog] = useState(null); // { title, message, confirmText, type, onConfirm }
+
+  function showToast(type, message) {
+    setToast({ type, message });
+    setTimeout(() => {
+      setToast(prev => (prev?.message === message ? null : prev));
+    }, 3500);
+  }
+
   // New session modal state
   const [showModal, setShowModal] = useState(false);
   const [newSessionForm, setNewSessionForm] = useState({
@@ -50,6 +119,33 @@ export default function AttendanceView() {
     time_end: '09:00',
     session_title: ''
   });
+
+  function handleOpenNewSessionModal() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    const currentH = now.getHours();
+    const currentM = now.getMinutes();
+    const timeStart = `${String(currentH).padStart(2, '0')}:${String(currentM).padStart(2, '0')}`;
+
+    const endTotalMinutes = currentH * 60 + currentM + 90;
+    const endH = String(Math.floor(endTotalMinutes / 60) % 24).padStart(2, '0');
+    const endM = String(endTotalMinutes % 60).padStart(2, '0');
+    const timeEnd = `${endH}:${endM}`;
+
+    setNewSessionForm({
+      class_id: selectedClass || (sortedClasses[0]?.id ? String(sortedClasses[0].id) : ''),
+      subject_id: selectedSubject || (subjects[0]?.id ? String(subjects[0].id) : ''),
+      date: todayStr,
+      time_start: timeStart,
+      time_end: timeEnd,
+      session_title: ''
+    });
+    setShowModal(true);
+  }
 
   // Recap data
   const [recapData, setRecapData] = useState(null);
@@ -125,7 +221,7 @@ export default function AttendanceView() {
       }));
     } catch (err) {
       console.error('Error openSessionDetails:', err);
-      alert('Gagal memuat detail sesi: ' + (err.message || 'Terjadi kesalahan'));
+      showToast('error', 'Gagal memuat detail sesi: ' + (err.message || 'Terjadi kesalahan'));
     }
   }
 
@@ -140,6 +236,30 @@ export default function AttendanceView() {
 
   async function handleCreateSession(e) {
     e.preventDefault();
+    const warning = getSessionTimeWarning(newSessionForm.date, newSessionForm.time_start, newSessionForm.time_end);
+
+    if (warning?.isError) {
+      showToast('error', warning.message);
+      return;
+    }
+
+    if (warning?.isEnded) {
+      setConfirmDialog({
+        title: 'Peringatan Waktu Terlewat',
+        message: `Jam sesi presensi (${newSessionForm.time_start} - ${newSessionForm.time_end} WIB) pada tanggal ${newSessionForm.date} sudah terlewat dari jam saat ini (${warning.currentTime} WIB). Apakah Anda yakin ingin tetap membuat sesi presensi lampau ini?`,
+        confirmText: 'Ya, Tetap Buat Sesi',
+        type: 'warning',
+        onConfirm: async () => {
+          await executeCreateSession();
+        }
+      });
+      return;
+    }
+
+    await executeCreateSession();
+  }
+
+  async function executeCreateSession() {
     try {
       await api.createAttendanceSession({
         ...newSessionForm,
@@ -148,9 +268,9 @@ export default function AttendanceView() {
       });
       setShowModal(false);
       loadSessions();
-      alert('Sesi presensi baru berhasil dibuat!');
+      showToast('success', 'Sesi presensi baru berhasil dibuat!');
     } catch (err) {
-      alert('Gagal membuat sesi: ' + err.message);
+      showToast('error', 'Gagal membuat sesi: ' + err.message);
     }
   }
 
@@ -160,7 +280,7 @@ export default function AttendanceView() {
       setSessionDetail(prev => ({ ...prev, is_open: res.is_open }));
       loadSessions();
     } catch (err) {
-      alert('Gagal mengubah status sesi: ' + err.message);
+      showToast('error', 'Gagal mengubah status sesi: ' + err.message);
     }
   }
 
@@ -171,7 +291,7 @@ export default function AttendanceView() {
       openSessionDetails(sessionId);
       loadSessions();
     } catch (err) {
-      alert('Presensi gagal: ' + err.message);
+      showToast('error', 'Presensi gagal: ' + err.message);
     }
   }
 
@@ -180,9 +300,9 @@ export default function AttendanceView() {
       setIsSaving(true);
       await api.updateAttendanceRecords(activeSession, studentRecords);
       openSessionDetails(activeSession);
-      alert('Presensi kelas berhasil disimpan!');
+      showToast('success', 'Presensi kelas berhasil disimpan!');
     } catch (err) {
-      alert('Gagal menyimpan presensi: ' + err.message);
+      showToast('error', 'Gagal menyimpan presensi: ' + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -243,7 +363,7 @@ export default function AttendanceView() {
           </select>
 
           {isTeacher && (
-            <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+            <button className="btn btn-primary" onClick={handleOpenNewSessionModal}>
               <Plus size={16} /> Buka Sesi Baru
             </button>
           )}
@@ -645,6 +765,61 @@ export default function AttendanceView() {
                     />
                   </div>
                 </div>
+
+                {/* Real-time Time Warning Banner */}
+                {(() => {
+                  const warning = getSessionTimeWarning(newSessionForm.date, newSessionForm.time_start, newSessionForm.time_end);
+                  if (!warning) return null;
+                  return (
+                    <div
+                      style={{
+                        marginTop: 14,
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 10,
+                        background: warning.isError ? '#FEF2F2' : (warning.isEnded ? '#FFFBEB' : '#EFF6FF'),
+                        border: `1.5px solid ${warning.isError ? '#FECACA' : (warning.isEnded ? '#FDE68A' : '#BFDBFE')}`,
+                        color: warning.isError ? '#B91C1C' : (warning.isEnded ? '#92400E' : '#1E40AF'),
+                        fontSize: '0.85rem',
+                        lineHeight: 1.5
+                      }}
+                    >
+                      {warning.isError ? (
+                        <AlertCircle size={20} style={{ color: '#DC2626', flexShrink: 0, marginTop: 1 }} />
+                      ) : warning.isEnded ? (
+                        <AlertTriangle size={20} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
+                      ) : (
+                        <Clock size={20} style={{ color: '#2563EB', flexShrink: 0, marginTop: 1 }} />
+                      )}
+                      <div>
+                        <div style={{
+                          fontWeight: 700,
+                          color: warning.isError ? '#DC2626' : (warning.isEnded ? '#B45309' : '#1D4ED8'),
+                          marginBottom: 2
+                        }}>
+                          {warning.isError
+                            ? 'Rentang Jam Tidak Valid'
+                            : warning.isEnded
+                              ? '⚠️ Peringatan: Jam / Tanggal Telah Terlewat'
+                              : 'ℹ️ Informasi Jam Mulai'}
+                        </div>
+                        <div>{warning.message}</div>
+                        {warning.isEnded && (
+                          <div style={{ fontSize: '0.78rem', marginTop: 4, color: '#78350F' }}>
+                            * Sesi lampau tetap dapat dibuat untuk perekaman presensi susulan, namun siswa tidak dapat melakukan presensi mandiri secara realtime.
+                          </div>
+                        )}
+                        {!warning.isError && !warning.isEnded && (
+                          <div style={{ fontSize: '0.78rem', marginTop: 4, color: '#1E3A8A' }}>
+                            * Sesi presensi akan langsung aktif dibuka saat dibuat.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
@@ -656,6 +831,191 @@ export default function AttendanceView() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Modern Center Modal Confirmation Dialog */}
+      {confirmDialog && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: 16
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setConfirmDialog(null);
+          }}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: 18,
+              padding: '28px 24px',
+              maxWidth: 440,
+              width: '100%',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              textAlign: 'center',
+              position: 'relative',
+              border: '1px solid #E2E8F0'
+            }}
+          >
+            {/* Close X */}
+            <button
+              type="button"
+              style={{
+                position: 'absolute',
+                top: 14,
+                right: 14,
+                background: '#F1F5F9',
+                border: 'none',
+                borderRadius: '50%',
+                width: 30,
+                height: 30,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#64748B',
+                transition: 'all 0.15s ease'
+              }}
+              onClick={() => setConfirmDialog(null)}
+            >
+              <X size={16} />
+            </button>
+
+            {/* Icon */}
+            <div
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: confirmDialog.type === 'danger' ? '#FEF2F2' : (confirmDialog.type === 'warning' ? '#FFFBEB' : '#EFF6FF'),
+                border: `6px solid ${confirmDialog.type === 'danger' ? '#FEE2E2' : (confirmDialog.type === 'warning' ? '#FEF3C7' : '#DBEAFE')}`,
+                color: confirmDialog.type === 'danger' ? '#DC2626' : (confirmDialog.type === 'warning' ? '#D97706' : '#2563EB'),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                boxShadow: confirmDialog.type === 'danger' ? '0 8px 16px rgba(239, 68, 68, 0.15)' : '0 8px 16px rgba(217, 119, 6, 0.15)'
+              }}
+            >
+              {confirmDialog.type === 'danger' ? (
+                <AlertTriangle size={30} strokeWidth={2.4} />
+              ) : confirmDialog.type === 'warning' ? (
+                <AlertTriangle size={30} strokeWidth={2.4} />
+              ) : (
+                <Info size={30} strokeWidth={2.4} />
+              )}
+            </div>
+
+            {/* Title */}
+            <h3 style={{ margin: '0 0 8px', fontSize: '1.25rem', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.01em' }}>
+              {confirmDialog.title}
+            </h3>
+
+            {/* Description */}
+            <p style={{ margin: '0 0 24px', fontSize: '0.88rem', color: '#64748B', lineHeight: 1.55, padding: '0 8px' }}>
+              {confirmDialog.message}
+            </p>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{
+                  height: 44,
+                  borderRadius: 10,
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  borderColor: '#CBD5E1',
+                  color: '#475569',
+                  background: '#FFFFFF'
+                }}
+                onClick={() => setConfirmDialog(null)}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                style={{
+                  height: 44,
+                  borderRadius: 10,
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  color: '#FFFFFF',
+                  background: confirmDialog.type === 'danger'
+                    ? 'linear-gradient(135deg, #DC2626, #B91C1C)'
+                    : (confirmDialog.type === 'warning' ? 'linear-gradient(135deg, #D97706, #B45309)' : 'linear-gradient(135deg, #2563EB, #1D4ED8)'),
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: confirmDialog.type === 'danger'
+                    ? '0 4px 14px rgba(220, 38, 38, 0.35)'
+                    : (confirmDialog.type === 'warning' ? '0 4px 14px rgba(217, 119, 6, 0.35)' : '0 4px 14px rgba(37, 99, 235, 0.35)'),
+                  transition: 'all 0.15s ease'
+                }}
+                onClick={async () => {
+                  const action = confirmDialog.onConfirm;
+                  setConfirmDialog(null);
+                  if (action) await action();
+                }}
+              >
+                {confirmDialog.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 24,
+            right: 24,
+            zIndex: 9999999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '12px 18px',
+            borderRadius: 12,
+            backgroundColor: toast.type === 'error' ? '#FEF2F2' : (toast.type === 'warning' ? '#FFFBEB' : '#F0FDF4'),
+            color: toast.type === 'error' ? '#991B1B' : (toast.type === 'warning' ? '#92400E' : '#166534'),
+            border: `1.5px solid ${toast.type === 'error' ? '#FECACA' : (toast.type === 'warning' ? '#FDE68A' : '#BBF7D0')}`,
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15)',
+            fontWeight: 600,
+            fontSize: '0.88rem'
+          }}
+        >
+          {toast.type === 'error' && <AlertCircle size={20} color="#DC2626" />}
+          {toast.type === 'warning' && <AlertTriangle size={20} color="#D97706" />}
+          {toast.type === 'success' && <CheckCircle size={20} color="#16A34A" />}
+          <span>{toast.message}</span>
+          <button
+            onClick={() => setToast(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'inherit',
+              cursor: 'pointer',
+              padding: 0,
+              marginLeft: 8,
+              opacity: 0.7
+            }}
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
     </div>
