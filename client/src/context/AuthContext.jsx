@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api, setToken, getToken } from '../services/api';
 import { sortClassesNatural } from '../utils/sortHelper';
+import { ref, onValue } from 'firebase/database';
+import { database } from '../services/firebase';
 
 const AuthContext = createContext(null);
 
@@ -16,6 +18,36 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     initAuth();
+  }, []);
+
+  // Realtime synchronization for classes and subjects
+  useEffect(() => {
+    const handleSync = (e) => {
+      const { storageKey } = e.detail || {};
+      if (storageKey === 'lms_mock_subjects_v3' || storageKey === 'lms_mock_classes_v3') {
+        fetchMetadata();
+      }
+    };
+    window.addEventListener('lms-sync-update', handleSync);
+    return () => window.removeEventListener('lms-sync-update', handleSync);
+  }, []);
+
+  useEffect(() => {
+    if (!database) return;
+    try {
+      const subRef = ref(database, 'lms_v3/subjects');
+      const clsRef = ref(database, 'lms_v3/classes');
+
+      const unsubSub = onValue(subRef, () => fetchMetadata());
+      const unsubCls = onValue(clsRef, () => fetchMetadata());
+
+      return () => {
+        unsubSub();
+        unsubCls();
+      };
+    } catch (e) {
+      console.warn('AuthContext Firebase listener setup error:', e);
+    }
   }, []);
 
   async function fetchMetadata() {

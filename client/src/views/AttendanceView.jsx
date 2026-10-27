@@ -21,6 +21,8 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { StudentAvatar } from '../components/StudentAvatar';
 import { sortClassesNatural } from '../utils/sortHelper';
+import { ref, onValue } from 'firebase/database';
+import { database } from '../services/firebase';
 
 function getSessionTimeWarning(dateStr, startStr, endStr) {
   if (!dateStr) return null;
@@ -186,6 +188,42 @@ export default function AttendanceView() {
   useEffect(() => {
     loadSessions();
   }, [user, selectedClass, selectedSubject]);
+
+  // Realtime synchronization across all devices via Firebase
+  useEffect(() => {
+    const handleSync = (e) => {
+      const { storageKey } = e.detail || {};
+      if (storageKey === 'lms_mock_attendance_sessions_v3' || storageKey === 'lms_mock_attendance_records_v3') {
+        loadSessions();
+      }
+    };
+    window.addEventListener('lms-sync-update', handleSync);
+    return () => window.removeEventListener('lms-sync-update', handleSync);
+  }, [user, selectedClass, selectedSubject]);
+
+  useEffect(() => {
+    if (!database) return;
+    try {
+      const sessRef = ref(database, 'lms_v3/attendance_sessions');
+      const recRef = ref(database, 'lms_v3/attendance_records');
+
+      const unsubSess = onValue(sessRef, () => {
+        loadSessions();
+      });
+      const unsubRec = onValue(recRef, () => {
+        if (activeSession) {
+          openSessionDetails(activeSession);
+        }
+      });
+
+      return () => {
+        unsubSess();
+        unsubRec();
+      };
+    } catch (e) {
+      console.warn('Attendance Firebase realtime listener setup failed:', e);
+    }
+  }, [selectedClass, selectedSubject, activeSession]);
 
   useEffect(() => {
     if (activeTab === 'recap' && selectedClass && selectedSubject) {

@@ -1,6 +1,7 @@
 // Fallback mock API for standalone / offline / static deployment (e.g. Vercel)
 // All changes are persisted to localStorage so that user interactions work seamlessly!
 import { sortClassesNatural } from '../utils/sortHelper';
+import { syncToFirebase, initFirebaseSync } from './firebaseSyncService';
 
 const STORAGE_KEYS = {
   USERS: 'lms_mock_users_v3',
@@ -4518,6 +4519,17 @@ function setStored(key, data) {
   } catch (e) {
     console.warn('Storage save failed:', e);
   }
+  syncToFirebase(key, data);
+}
+
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    initFirebaseSync({
+      [STORAGE_KEYS.USERS]: DEFAULT_USERS,
+      [STORAGE_KEYS.CLASSES]: DEFAULT_CLASSES,
+      [STORAGE_KEYS.SUBJECTS]: DEFAULT_SUBJECTS
+    });
+  }, 100);
 }
 
 export async function handleMockRequest(endpoint, options = {}) {

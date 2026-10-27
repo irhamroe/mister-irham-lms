@@ -28,6 +28,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { StudentAvatar } from '../components/StudentAvatar';
+import { ref, onValue } from 'firebase/database';
+import { database } from '../services/firebase';
 
 const APPS_SCRIPT_CODE = `function doPost(e) {
   try {
@@ -225,6 +227,29 @@ export default function AssignmentsView() {
 
   useEffect(() => {
     loadAssignments();
+  }, [user, selectedClass, selectedSubject]);
+
+  // Realtime cross-device sync for assignments and submissions
+  useEffect(() => {
+    if (!database) return;
+    try {
+      const assignRef = ref(database, 'lms_v3/assignments');
+      const subRef = ref(database, 'lms_v3/assignment_submissions');
+
+      const unsubAssign = onValue(assignRef, () => {
+        loadAssignments();
+      });
+      const unsubSub = onValue(subRef, () => {
+        loadAssignments();
+      });
+
+      return () => {
+        unsubAssign();
+        unsubSub();
+      };
+    } catch (e) {
+      console.warn('Assignments Firebase realtime listener error:', e);
+    }
   }, [user, selectedClass, selectedSubject]);
 
   useEffect(() => {
