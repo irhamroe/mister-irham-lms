@@ -24,10 +24,11 @@ import FirebaseAnnouncements from '../components/FirebaseAnnouncements';
 export default function DashboardView({ setActiveTab, onStartCbt }) {
   const { user, classes, subjects } = useAuth();
   const [stats, setStats] = useState({
-    activeExams: 1,
-    pendingAssignments: 2,
-    todayAttendance: '88%',
-    totalJournals: 2
+    activeExams: 0,
+    pendingAssignments: 0,
+    todayAttendance: '0%',
+    attendanceDesc: 'Belum ada sesi presensi',
+    totalJournals: 0
   });
   const [exams, setExams] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -40,12 +41,44 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
   async function loadDashboardData() {
     try {
       setLoading(true);
-      const [examList, assignList] = await Promise.all([
-        api.getCbtExams(),
-        api.getAssignments()
+      const [examList, assignList, sessionList] = await Promise.all([
+        api.getCbtExams().catch(() => []),
+        api.getAssignments().catch(() => []),
+        api.getAttendanceSessions().catch(() => [])
       ]);
-      setExams(examList);
-      setAssignments(assignList);
+      setExams(Array.isArray(examList) ? examList : []);
+      setAssignments(Array.isArray(assignList) ? assignList : []);
+
+      // Calculate attendance rate dynamically from actual database sessions
+      const sessions = Array.isArray(sessionList) ? sessionList : [];
+      let attendanceRateStr = '0%';
+      let attendanceDescStr = 'Belum ada sesi presensi';
+
+      if (sessions.length > 0) {
+        let totalHadir = 0;
+        let totalTarget = 0;
+
+        sessions.forEach(s => {
+          totalHadir += Number(s.count_hadir || 0);
+          const target = Number(s.count_total_recorded || s.count_class_students || 0);
+          totalTarget += target;
+        });
+
+        if (totalTarget > 0) {
+          const percentage = Math.round((totalHadir / totalTarget) * 100);
+          attendanceRateStr = `${percentage}%`;
+          attendanceDescStr = `Rata-rata dari ${sessions.length} sesi pertemuan`;
+        } else {
+          attendanceRateStr = '0%';
+          attendanceDescStr = `${sessions.length} sesi (belum ada rekaman kehadiran)`;
+        }
+      }
+
+      setStats(prev => ({
+        ...prev,
+        todayAttendance: attendanceRateStr,
+        attendanceDesc: attendanceDescStr
+      }));
     } catch (err) {
       console.error('Dashboard load error:', err);
     } finally {
@@ -232,7 +265,7 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
           <div className="stat-details" style={{ position: 'relative', zIndex: 2 }}>
             <h4 style={{ color: '#065F46', fontWeight: 800 }}>Tingkat Kehadiran</h4>
             <div className="stat-value" style={{ color: '#047857', fontWeight: 800 }}>{stats.todayAttendance}</div>
-            <div className="stat-desc" style={{ color: '#059669', fontWeight: 600 }}>Rata-rata presensi harian</div>
+            <div className="stat-desc" style={{ color: '#059669', fontWeight: 600 }}>{stats.attendanceDesc}</div>
           </div>
         </div>
 
