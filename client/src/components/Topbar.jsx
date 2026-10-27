@@ -39,15 +39,7 @@ export default function Topbar({ activeTab }) {
         {user && (
           <>
             <div className="user-pill">
-              {user.role === 'siswa' ? (
-                <StudentAvatar name={user.name} size={32} className="user-avatar" />
-              ) : (
-                <img
-                  src={user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.username}
-                  alt={user.name}
-                  className="user-avatar"
-                />
-              )}
+              <StudentAvatar name={user.name} size={32} className="user-avatar" />
               <div className="user-info">
                 <div className="user-name">{user.name}</div>
                 <div className="user-role-badge">

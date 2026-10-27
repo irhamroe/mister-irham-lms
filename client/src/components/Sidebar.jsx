@@ -220,15 +220,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
         <div className="sidebar-footer">
           <div className="user-profile-card">
             <div className="user-profile-info">
-              {user.role === 'siswa' ? (
-                <StudentAvatar name={user.name} size={36} className="user-profile-avatar" />
-              ) : (
-                <img
-                  src={user.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.username}
-                  alt={user.name}
-                  className="user-profile-avatar"
-                />
-              )}
+              <StudentAvatar name={user.name} size={36} className="user-profile-avatar" />
               <div className="user-profile-details">
                 <span className="user-profile-name" title={user.name}>{user.name}</span>
                 <span className="user-profile-role">

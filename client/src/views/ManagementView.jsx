@@ -229,10 +229,11 @@ export default function ManagementView({ initialTab = 'classes' }) {
   }
 
   // ================= SUBJECTS CRUD =================
-  async function loadSubjects() {
+  async function loadSubjects(searchOverride) {
     try {
       setLoading(true);
-      const data = await api.getManagementSubjects({ search: subjectSearch ? subjectSearch.trim() : undefined });
+      const q = searchOverride !== undefined ? searchOverride : (activeTab === 'subjects' ? subjectSearch : undefined);
+      const data = await api.getManagementSubjects({ search: q ? q.trim() : undefined });
       setSubjectsList(Array.isArray(data) ? data : []);
     } catch (err) {
       showToast('error', 'Gagal memuat mata pelajaran: ' + err.message);
@@ -279,15 +280,22 @@ export default function ManagementView({ initialTab = 'classes' }) {
   async function handleSaveSubject(e) {
     e.preventDefault();
     try {
+      const selectedTeacher = teachersList.find(t => String(t.id) === String(subjectForm.teacher_id));
+      const payload = {
+        ...subjectForm,
+        teacher_id: subjectForm.teacher_id ? Number(subjectForm.teacher_id) : null,
+        teacher_name: selectedTeacher ? selectedTeacher.name : 'Belum Ditentukan'
+      };
       if (editingSubject) {
-        await api.updateManagementSubject(editingSubject.id, subjectForm);
+        await api.updateManagementSubject(editingSubject.id, payload);
         showToast('success', 'Data mata pelajaran berhasil diperbarui!');
       } else {
-        await api.createManagementSubject(subjectForm);
+        await api.createManagementSubject(payload);
         showToast('success', 'Mata pelajaran baru berhasil ditambahkan!');
       }
       setShowSubjectModal(false);
       loadSubjects();
+      loadTeachers();
       loadStats();
     } catch (err) {
       showToast('error', err.message);
@@ -305,6 +313,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
           await api.deleteManagementSubject(id);
           showToast('success', `Mata pelajaran '${name}' berhasil dihapus`);
           loadSubjects();
+          loadTeachers();
           loadStats();
         } catch (err) {
           showToast('error', err.message);
@@ -935,17 +944,17 @@ export default function ManagementView({ initialTab = 'classes' }) {
                   </tr>
                 ) : (
                   filteredTeachers.map((t, idx) => {
-                    const taughtSubjects = subjectsList.filter(s => s.teacher_id === t.id);
+                    const taughtSubjects = subjectsList.filter(s => {
+                      const idMatch = s.teacher_id && t.id && String(s.teacher_id) === String(t.id);
+                      const nameMatch = s.teacher_name && t.name && s.teacher_name.trim().toLowerCase() === t.name.trim().toLowerCase();
+                      return Boolean(idMatch || nameMatch);
+                    });
                     return (
                       <tr key={t.id}>
                         <td>{idx + 1}</td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <img
-                              src={t.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + t.username}
-                              alt={t.name}
-                              style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }}
-                            />
+                            <StudentAvatar name={t.name} size={34} />
                             <div>
                               <strong style={{ fontSize: '0.92rem', display: 'block', color: 'var(--text-main)' }}>{t.name}</strong>
                               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Tenaga Pendidik (Guru)</span>
@@ -1367,11 +1376,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
                     <td>{idx + 1}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {u.role === 'siswa' ? (
-                          <StudentAvatar name={u.name} size={32} />
-                        ) : (
-                          <img src={u.avatar} alt={u.name} style={{ width: 32, height: 32, borderRadius: '50%' }} />
-                        )}
+                        <StudentAvatar name={u.name} size={32} />
                         <div>
                           <strong style={{ fontSize: '0.9rem', display: 'block' }}>{u.name}</strong>
                           {u.role === 'siswa' && u.kelas && (

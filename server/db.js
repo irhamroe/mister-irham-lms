@@ -292,16 +292,16 @@ function initDatabase() {
     db.exec("UPDATE users SET kelas = NULL WHERE role != 'siswa'");
     db.exec("DELETE FROM classes WHERE name LIKE '%IPA%'");
     
-    // Migrate student avatars to 2-letter initials
-    const dicebearStudents = db.prepare("SELECT id, name FROM users WHERE role = 'siswa' AND (avatar LIKE '%dicebear%' OR avatar IS NULL)").all();
-    if (dicebearStudents.length > 0) {
+    // Migrate all user avatars (admin, guru, siswa) to 2-letter initials
+    const dicebearUsers = db.prepare("SELECT id, name FROM users WHERE avatar LIKE '%dicebear%' OR avatar IS NULL").all();
+    if (dicebearUsers.length > 0) {
       const updateAvatar = db.prepare("UPDATE users SET avatar = ? WHERE id = ?");
       const runAvatarUpdate = db.transaction((list) => {
-        for (const st of list) {
-          updateAvatar.run(generateInitialsAvatarDataUrl(st.name), st.id);
+        for (const u of list) {
+          updateAvatar.run(generateInitialsAvatarDataUrl(u.name), u.id);
         }
       });
-      runAvatarUpdate(dicebearStudents);
+      runAvatarUpdate(dicebearUsers);
     }
 
     // Ensure teacher irham exists
@@ -309,10 +309,32 @@ function initDatabase() {
     if (!existingIrham) {
       const salt = bcrypt.genSaltSync(10);
       const pass = bcrypt.hashSync('password123', salt);
+      const irhamAvatar = generateInitialsAvatarDataUrl('Moh. Irham Rozaqi, S.Kom. Gr.');
       db.prepare(`
         INSERT INTO users (username, password_hash, name, role, nis_nip, kelas, gender, email, phone, avatar)
-        VALUES ('irham', ?, 'Moh. Irham Rozaqi, S.Kom. Gr.', 'guru', '199001012015011001', NULL, 'L', 'irham@sekolah.sch.id', '08123456789', 'https://api.dicebear.com/7.x/avataaars/svg?seed=irham')
-      `).run(pass);
+        VALUES ('irham', ?, 'Moh. Irham Rozaqi, S.Kom. Gr.', 'guru', '198910212022211017', NULL, 'L', 'irham@sekolah.sch.id', '08123456789', ?)
+      `).run(pass, irhamAvatar);
+    } else {
+      // Update NIP and avatar if needed to match official NIP
+      db.prepare("UPDATE users SET nis_nip = '198910212022211017', avatar = ? WHERE username = 'irham'").run(generateInitialsAvatarDataUrl('Moh. Irham Rozaqi, S.Kom. Gr.'));
+    }
+
+    // Ensure INF-10, INF-11, INF-12 are assigned to teacher irham
+    const irhamUser = db.prepare("SELECT id FROM users WHERE username = 'irham'").get();
+    if (irhamUser) {
+      db.prepare("UPDATE subjects SET teacher_id = ? WHERE code = 'INF-10'").run(irhamUser.id);
+      const hasInf11 = db.prepare("SELECT id FROM subjects WHERE code = 'INF-11'").get();
+      if (!hasInf11) {
+        db.prepare("INSERT INTO subjects (name, code, teacher_id) VALUES ('INFORMATIKA', 'INF-11', ?)").run(irhamUser.id);
+      } else {
+        db.prepare("UPDATE subjects SET teacher_id = ? WHERE code = 'INF-11'").run(irhamUser.id);
+      }
+      const hasInf12 = db.prepare("SELECT id FROM subjects WHERE code = 'INF-12'").get();
+      if (!hasInf12) {
+        db.prepare("INSERT INTO subjects (name, code, teacher_id) VALUES ('INFORMATIKA', 'INF-12', ?)").run(irhamUser.id);
+      } else {
+        db.prepare("UPDATE subjects SET teacher_id = ? WHERE code = 'INF-12'").run(irhamUser.id);
+      }
     }
   } catch (e) {}
 

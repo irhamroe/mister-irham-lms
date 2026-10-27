@@ -433,11 +433,7 @@ router.post('/users', requireRole(['admin']), (req, res) => {
 
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(password || 'password123', salt);
-    const avatar = role === 'guru'
-      ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${username.trim()}`
-      : role === 'admin'
-      ? `https://api.dicebear.com/7.x/bottts/svg?seed=${username.trim()}`
-      : `https://api.dicebear.com/7.x/micah/svg?seed=${username.trim()}`;
+    const avatar = generateInitialsAvatarDataUrl(name.trim());
 
     const insert = db.prepare(`
       INSERT INTO users (username, password_hash, name, role, nis_nip, kelas, email, phone, avatar)

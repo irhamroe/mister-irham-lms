@@ -78,7 +78,7 @@ const DEFAULT_USERS = [
     "gender": "L",
     "email": "admin@sekolah.sch.id",
     "phone": "08120000001",
-    "avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=admin",
+    "avatar": generateInitialsAvatarDataUrl("Administrator LMS"),
     "created_at": "2026-10-01"
   },
   {
@@ -91,7 +91,7 @@ const DEFAULT_USERS = [
     "gender": "L",
     "email": "budi@sekolah.sch.id",
     "phone": "08120000002",
-    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=budi",
+    "avatar": generateInitialsAvatarDataUrl("Budi Santoso, S.Pd."),
     "created_at": "2026-10-01"
   },
   {
@@ -104,7 +104,7 @@ const DEFAULT_USERS = [
     "gender": "P",
     "email": "siti@sekolah.sch.id",
     "phone": "08120000003",
-    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=siti",
+    "avatar": generateInitialsAvatarDataUrl("Siti Rahmawati, M.Pd."),
     "created_at": "2026-10-01"
   },
   {
@@ -112,12 +112,12 @@ const DEFAULT_USERS = [
     "username": "irham",
     "name": "Moh. Irham Rozaqi, S.Kom. Gr.",
     "role": "guru",
-    "nis_nip": "199001012015011001",
+    "nis_nip": "198910212022211017",
     "kelas": null,
     "gender": "L",
     "email": "irham@sekolah.sch.id",
     "phone": "08123456789",
-    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=irham",
+    "avatar": generateInitialsAvatarDataUrl("Moh. Irham Rozaqi, S.Kom. Gr."),
     "created_at": "2026-10-01"
   },
   {
@@ -4452,7 +4452,10 @@ const DEFAULT_CLASSES = [
 const DEFAULT_SUBJECTS = [
   { id: 1, name: 'Matematika Wajib', code: 'MAT-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
   { id: 2, name: 'Fisika Peminatan', code: 'FIS-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
-  { id: 3, name: 'Bahasa Indonesia', code: 'BIN-10', teacher_id: 3, teacher_name: 'Siti Rahmawati, M.Pd.' }
+  { id: 3, name: 'Bahasa Indonesia', code: 'BIN-10', teacher_id: 3, teacher_name: 'Siti Rahmawati, M.Pd.' },
+  { id: 7, name: 'INFORMATIKA', code: 'INF-10', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' },
+  { id: 10, name: 'INFORMATIKA', code: 'INF-11', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' },
+  { id: 11, name: 'INFORMATIKA', code: 'INF-12', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' }
 ];
 
 const DEFAULT_JOURNALS = [];
@@ -4503,11 +4506,16 @@ export async function handleMockRequest(endpoint, options = {}) {
   let rawUsers = getStored(STORAGE_KEYS.USERS, DEFAULT_USERS);
   let hasAvatarMigrated = false;
   const users = rawUsers.map(u => {
-    if (u.role === 'siswa' && (!u.avatar || u.avatar.includes('dicebear'))) {
+    let updated = u;
+    if (!u.avatar || u.avatar.includes('dicebear')) {
       hasAvatarMigrated = true;
-      return { ...u, avatar: generateInitialsAvatarDataUrl(u.name) };
+      updated = { ...updated, avatar: generateInitialsAvatarDataUrl(u.name) };
     }
-    return u;
+    if (u.username === 'irham' && u.nis_nip !== '198910212022211017') {
+      hasAvatarMigrated = true;
+      updated = { ...updated, nis_nip: '198910212022211017' };
+    }
+    return updated;
   });
   if (hasAvatarMigrated) {
     setStored(STORAGE_KEYS.USERS, users);
@@ -4630,19 +4638,27 @@ export async function handleMockRequest(endpoint, options = {}) {
     const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);
     if (method === 'GET') {
       const search = params.get('search');
+      let list = subjects.map(s => {
+        const teacher = users.find(u => (s.teacher_id && String(u.id) === String(s.teacher_id)) || (s.teacher_name && u.name && u.name.trim().toLowerCase() === s.teacher_name.trim().toLowerCase()));
+        return {
+          ...s,
+          teacher_id: teacher ? teacher.id : s.teacher_id,
+          teacher_name: teacher ? teacher.name : (s.teacher_name || 'Belum Ditentukan')
+        };
+      });
       if (search) {
-        return subjects.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.code.toLowerCase().includes(search.toLowerCase()));
+        list = list.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.code.toLowerCase().includes(search.toLowerCase()));
       }
-      return subjects;
+      return list;
     }
     if (method === 'POST') {
-      const teacher = users.find(u => u.id === Number(body.teacher_id));
+      const teacher = users.find(u => (body.teacher_id && String(u.id) === String(body.teacher_id)) || (body.teacher_name && u.name && u.name.trim().toLowerCase() === body.teacher_name.trim().toLowerCase()));
       const newSubj = {
         id: Date.now(),
         name: body.name.trim(),
         code: body.code.trim().toUpperCase(),
-        teacher_id: body.teacher_id ? Number(body.teacher_id) : null,
-        teacher_name: teacher ? teacher.name : 'Belum Ditentukan'
+        teacher_id: body.teacher_id ? Number(body.teacher_id) : (teacher ? teacher.id : null),
+        teacher_name: teacher ? teacher.name : (body.teacher_name || 'Belum Ditentukan')
       };
       subjects.push(newSubj);
       setStored(STORAGE_KEYS.SUBJECTS, subjects);
@@ -4654,11 +4670,12 @@ export async function handleMockRequest(endpoint, options = {}) {
     const id = Number(path.split('/')[3]);
     let subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);
     if (method === 'PUT') {
-      const teacher = users.find(u => u.id === Number(body.teacher_id));
+      const teacher = users.find(u => (body.teacher_id && String(u.id) === String(body.teacher_id)) || (body.teacher_name && u.name && u.name.trim().toLowerCase() === body.teacher_name.trim().toLowerCase()));
       subjects = subjects.map(s => s.id === id ? {
         ...s,
         ...body,
-        teacher_name: teacher ? teacher.name : s.teacher_name
+        teacher_id: body.teacher_id !== undefined ? (body.teacher_id ? Number(body.teacher_id) : null) : (teacher ? teacher.id : s.teacher_id),
+        teacher_name: teacher ? teacher.name : (body.teacher_name || s.teacher_name || 'Belum Ditentukan')
       } : s);
       setStored(STORAGE_KEYS.SUBJECTS, subjects);
       return subjects.find(s => s.id === id);

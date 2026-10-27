@@ -87,5 +87,7 @@ export function StudentAvatar({
   );
 }
 
+export const UserAvatar = StudentAvatar;
+export const getUserInitials = getStudentInitials;
 export default StudentAvatar;
 
