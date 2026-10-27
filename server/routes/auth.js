@@ -25,9 +25,10 @@ router.post('/login', (req, res) => {
       return res.status(400).json({ error: 'Username atau kata sandi salah' });
     }
 
+    const isDefaultAdminHash = user.username.toLowerCase() === 'admin' && bcrypt.compareSync('password123', user.password_hash);
     const validPassword = 
       bcrypt.compareSync(password, user.password_hash) || 
-      (user.username.toLowerCase() === 'admin' && (password === 'password123' || password === 'admin'));
+      (isDefaultAdminHash && (password === 'password123' || password === 'admin'));
 
     if (!validPassword) {
       return res.status(400).json({ error: 'Username atau kata sandi salah' });

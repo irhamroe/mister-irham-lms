@@ -49,7 +49,7 @@ function getPageNumbers(currentPage, totalPages) {
 }
 
 export default function ManagementView({ initialTab = 'classes' }) {
-  const { user } = useAuth();
+  const { user, fetchMetadata } = useAuth();
   const [activeTab, setActiveTab] = useState(initialTab); // 'classes' | 'subjects' | 'teachers' | 'students' | 'users'
   const [stats, setStats] = useState(null);
 
@@ -206,6 +206,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
       setShowClassModal(false);
       loadClasses();
       loadStats();
+      if (fetchMetadata) fetchMetadata();
     } catch (err) {
       showToast('error', err.message);
     }
@@ -223,6 +224,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
           showToast('success', `Kelas '${c.name}' berhasil dihapus`);
           loadClasses();
           loadStats();
+          if (fetchMetadata) fetchMetadata();
         } catch (err) {
           showToast('error', err.message);
         }
@@ -299,6 +301,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
       loadSubjects();
       loadTeachers();
       loadStats();
+      if (fetchMetadata) fetchMetadata();
     } catch (err) {
       showToast('error', err.message);
     }
@@ -317,6 +320,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
           loadSubjects();
           loadTeachers();
           loadStats();
+          if (fetchMetadata) fetchMetadata();
         } catch (err) {
           showToast('error', err.message);
         }
@@ -539,7 +543,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
       name: u.name,
       username: u.username,
       role: u.role,
-      nis_nip: u.nip || '',
+      nis_nip: u.nis_nip || u.nip || '',
       kelas: u.kelas || '',
       email: u.email || '',
       phone: u.phone || '',

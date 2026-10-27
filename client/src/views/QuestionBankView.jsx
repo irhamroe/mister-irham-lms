@@ -41,7 +41,7 @@ import {
 } from '../services/fileImportHelper';
 
 export default function QuestionBankView({ onNavigateToCbt }) {
-  const { user } = useAuth();
+  const { user, subjects: authSubjects } = useAuth();
   const { showToast, showConfirm } = useDialog();
   const isTeacher = user && (user.role === 'guru' || user.role === 'admin');
 
@@ -129,23 +129,29 @@ export default function QuestionBankView({ onNavigateToCbt }) {
       setStats(statsData);
       setExams(examsData || []);
 
-      // Extract unique subjects from exams & defaults
+      // Extract unique subjects from master subjects, exams & defaults
       const subMap = {};
+      if (authSubjects && authSubjects.length > 0) {
+        authSubjects.forEach(s => {
+          subMap[s.id] = { id: s.id, name: s.name, code: s.code };
+        });
+      }
       (examsData || []).forEach(e => {
-        if (e.subject_id && e.subject_name) {
-          subMap[e.subject_id] = e.subject_name;
+        if (e.subject_id && e.subject_name && !subMap[e.subject_id]) {
+          subMap[e.subject_id] = { id: Number(e.subject_id), name: e.subject_name };
         }
       });
-      const subList = Object.keys(subMap).map(id => ({ id: Number(id), name: subMap[id] }));
+      let subList = Object.values(subMap);
       if (subList.length === 0) {
-        subList.push(
-          { id: 1, name: 'Matematika Wajib' },
-          { id: 2, name: 'Fisika Peminatan' },
-          { id: 3, name: 'Bahasa Indonesia' },
-          { id: 4, name: 'Biologi' },
-          { id: 5, name: 'Kimia' },
-          { id: 6, name: 'Bahasa Inggris' }
-        );
+        subList = [
+          { id: 1, name: 'Matematika Wajib', code: 'MAT-10' },
+          { id: 2, name: 'Fisika Peminatan', code: 'FIS-10' },
+          { id: 3, name: 'Bahasa Indonesia', code: 'BIN-10' },
+          { id: 4, name: 'Biologi', code: 'BIO-10' },
+          { id: 5, name: 'Kimia', code: 'KIM-10' },
+          { id: 6, name: 'Bahasa Inggris', code: 'BIG-10' },
+          { id: 7, name: 'INFORMATIKA', code: 'INF-10' }
+        ];
       }
       setSubjects(subList);
       if (subList.length > 0 && !questionForm.subject_id) {
@@ -726,7 +732,7 @@ export default function QuestionBankView({ onNavigateToCbt }) {
             >
               <option value="">Semua Mata Pelajaran</option>
               {subjects.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
               ))}
             </select>
           </div>
@@ -1408,7 +1414,7 @@ export default function QuestionBankView({ onNavigateToCbt }) {
                       required
                     >
                       {subjects.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
+                        <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
                       ))}
                     </select>
                   </div>
@@ -1738,7 +1744,7 @@ export default function QuestionBankView({ onNavigateToCbt }) {
                       required
                     >
                       {subjects.map(sub => (
-                        <option key={sub.id} value={sub.id}>{sub.name}</option>
+                        <option key={sub.id} value={sub.id}>{sub.name} {sub.code ? `(${sub.code})` : ''}</option>
                       ))}
                     </select>
                   </div>

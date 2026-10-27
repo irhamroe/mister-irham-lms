@@ -762,7 +762,7 @@ export default function CbtView({ onStartExam, onOpenMonitor }) {
                       onChange={(e) => setCreateForm({ ...createForm, subject_id: e.target.value })}
                       required
                     >
-                      {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      {subjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
                     </select>
                   </div>
                 </div>

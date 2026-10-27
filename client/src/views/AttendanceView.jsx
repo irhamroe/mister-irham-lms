@@ -358,7 +358,7 @@ export default function AttendanceView() {
             onChange={(e) => setSelectedSubject(e.target.value)}
           >
             {subjects.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+              <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
             ))}
           </select>
 
@@ -721,7 +721,7 @@ export default function AttendanceView() {
                       onChange={(e) => setNewSessionForm({ ...newSessionForm, subject_id: e.target.value })}
                       required
                     >
-                      {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      {subjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
                     </select>
                   </div>
                 </div>

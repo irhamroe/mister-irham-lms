@@ -164,7 +164,7 @@ export default function JournalView() {
             onChange={(e) => setSelectedSubject(e.target.value)}
           >
             <option value="">Semua Mapel</option>
-            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
           </select>
         </div>
 
@@ -306,7 +306,7 @@ export default function JournalView() {
                       onChange={(e) => setForm({ ...form, subject_id: e.target.value })}
                       required
                     >
-                      {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      {subjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
                     </select>
                   </div>
                 </div>

@@ -46,12 +46,17 @@ export default function GradesView() {
 
   useEffect(() => {
     if (classes.length > 0 && !selectedClass) {
-      setSelectedClass(classes[0].id.toString());
+      if (user?.role === 'siswa' && user?.kelas) {
+        const studentCls = classes.find(c => c.name === user.kelas);
+        setSelectedClass(studentCls ? studentCls.id.toString() : classes[0].id.toString());
+      } else {
+        setSelectedClass(classes[0].id.toString());
+      }
     }
     if (subjects.length > 0 && !selectedSubject) {
       setSelectedSubject(subjects[0].id.toString());
     }
-  }, [classes, subjects]);
+  }, [classes, subjects, user]);
 
   useEffect(() => {
     if (selectedClass && selectedSubject) {
@@ -164,14 +169,20 @@ export default function GradesView() {
       {/* Top Filter and Actions */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <select
-            className="form-control"
-            style={{ width: 'auto' }}
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
-          >
-            {classes.map(c => <option key={c.id} value={c.id}>Kelas {c.name}</option>)}
-          </select>
+          {user?.role === 'siswa' ? (
+            <div className="badge badge-primary" style={{ padding: '8px 14px', fontSize: '0.9rem', fontWeight: 700 }}>
+              Kelas {user.kelas || (classes.find(c => c.id.toString() === selectedClass)?.name || '')}
+            </div>
+          ) : (
+            <select
+              className="form-control"
+              style={{ width: 'auto' }}
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+            >
+              {classes.map(c => <option key={c.id} value={c.id}>Kelas {c.name}</option>)}
+            </select>
+          )}
 
           <select
             className="form-control"
@@ -179,7 +190,7 @@ export default function GradesView() {
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
           >
-            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
           </select>
         </div>
 

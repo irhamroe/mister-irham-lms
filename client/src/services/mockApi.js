@@ -4465,7 +4465,12 @@ const DEFAULT_SUBJECTS = [
   { id: 1, name: 'Matematika Wajib', code: 'MAT-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
   { id: 2, name: 'Fisika Peminatan', code: 'FIS-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
   { id: 3, name: 'Bahasa Indonesia', code: 'BIN-10', teacher_id: 3, teacher_name: 'Siti Rahmawati, M.Pd.' },
+  { id: 4, name: 'Biologi', code: 'BIO-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
+  { id: 5, name: 'Kimia', code: 'KIM-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
+  { id: 6, name: 'Bahasa Inggris', code: 'BIG-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
   { id: 7, name: 'INFORMATIKA', code: 'INF-10', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' },
+  { id: 8, name: 'Seni Budaya', code: 'SBD-10', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
+  { id: 9, name: 'Informatika Peminatan', code: 'PM-INF-11', teacher_id: 2, teacher_name: 'Budi Santoso, S.Pd.' },
   { id: 10, name: 'INFORMATIKA', code: 'INF-11', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' },
   { id: 11, name: 'INFORMATIKA', code: 'INF-12', teacher_id: 4, teacher_name: 'Moh. Irham Rozaqi, S.Kom. Gr.' }
 ];
@@ -4564,11 +4569,20 @@ export async function handleMockRequest(endpoint, options = {}) {
       throw new Error('Username atau kata sandi salah');
     }
 
-    const isValidPass = 
-      cleanPass === 'password123' || 
-      cleanPass === 'admin' || 
-      (target.username && cleanPass === target.username.toLowerCase()) || 
-      (target.nis_nip && cleanPass === target.nis_nip.toLowerCase());
+    const customPass = (target.password && target.password.trim()) ? target.password.trim() : null;
+    let isValidPass = false;
+
+    if (customPass) {
+      // User has explicitly set a custom password via Management User / Settings
+      isValidPass = (cleanPass === customPass);
+    } else {
+      // Default initial passwords before custom password is set
+      isValidPass = 
+        cleanPass === 'password123' || 
+        cleanPass === 'admin' || 
+        (target.username && cleanPass === target.username.toLowerCase()) || 
+        (target.nis_nip && cleanPass === target.nis_nip.toLowerCase());
+    }
 
     if (!isValidPass) {
       throw new Error('Username atau kata sandi salah');
@@ -4735,6 +4749,7 @@ export async function handleMockRequest(endpoint, options = {}) {
         no_absen: body.no_absen ? parseInt(body.no_absen, 10) : (users.filter(u => u.role === 'siswa' && u.kelas === body.kelas).length + 1),
         email: body.email ? body.email.trim() : `${body.username}@siswa.sekolah.sch.id`,
         phone: body.phone ? body.phone.trim() : '',
+        password: (body.password && body.password.trim()) ? body.password.trim() : 'password123',
         avatar: generateInitialsAvatarDataUrl(body.name.trim()),
         created_at: new Date().toISOString().split('T')[0]
       };
@@ -4770,6 +4785,7 @@ export async function handleMockRequest(endpoint, options = {}) {
           no_absen: st.no_absen ? parseInt(st.no_absen, 10) : (users.filter(u => u.role === 'siswa' && u.kelas === st.kelas).length + 1),
           email: st.email ? st.email.trim() : `${username}@siswa.sekolah.sch.id`,
           phone: st.phone ? st.phone.trim() : '',
+          password: (st.password && String(st.password).trim()) ? String(st.password).trim() : 'password123',
           avatar: generateInitialsAvatarDataUrl(st.name.trim()),
           created_at: new Date().toISOString().split('T')[0]
         };
@@ -4788,7 +4804,20 @@ export async function handleMockRequest(endpoint, options = {}) {
   if (path.match(/^\/management\/students\/\d+$/)) {
     const id = Number(path.split('/')[3]);
     if (method === 'PUT') {
-      const updatedUsers = users.map(u => u.id === id ? { ...u, ...body, nis_nip: body.nis || u.nis } : u);
+      const updatedUsers = users.map(u => {
+        if (u.id === id) {
+          const updated = { ...u, ...body, nis_nip: body.nis || u.nis };
+          if (body.password && body.password.trim()) {
+            updated.password = body.password.trim();
+          } else if (u.password) {
+            updated.password = u.password;
+          } else {
+            delete updated.password;
+          }
+          return updated;
+        }
+        return u;
+      });
       setStored(STORAGE_KEYS.USERS, updatedUsers);
       return updatedUsers.find(u => u.id === id);
     }
@@ -4822,9 +4851,8 @@ export async function handleMockRequest(endpoint, options = {}) {
         kelas: body.kelas || null,
         email: body.email ? body.email.trim() : `${body.username}@sekolah.sch.id`,
         phone: body.phone ? body.phone.trim() : '',
-        avatar: body.role === 'admin'
-          ? `https://api.dicebear.com/7.x/bottts/svg?seed=${body.username}`
-          : `https://api.dicebear.com/7.x/avataaars/svg?seed=${body.username}`,
+        password: (body.password && body.password.trim()) ? body.password.trim() : 'password123',
+        avatar: generateInitialsAvatarDataUrl(body.name.trim()),
         created_at: new Date().toISOString().split('T')[0]
       };
       users.push(newUser);
@@ -4836,7 +4864,20 @@ export async function handleMockRequest(endpoint, options = {}) {
   if (path.startsWith('/management/users/')) {
     const id = Number(path.split('/')[3]);
     if (method === 'PUT') {
-      const updated = users.map(u => u.id === id ? { ...u, ...body } : u);
+      const updated = users.map(u => {
+        if (u.id === id) {
+          const updatedUser = { ...u, ...body };
+          if (body.password && body.password.trim()) {
+            updatedUser.password = body.password.trim();
+          } else if (u.password) {
+            updatedUser.password = u.password;
+          } else {
+            delete updatedUser.password;
+          }
+          return updatedUser;
+        }
+        return u;
+      });
       setStored(STORAGE_KEYS.USERS, updated);
       return updated.find(u => u.id === id);
     }
