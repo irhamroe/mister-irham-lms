@@ -685,9 +685,14 @@ export default function AttendanceView() {
 
       {/* Modal Buka Sesi Presensi Baru */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-dialog">
-            <div className="modal-header">
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowModal(false);
+          }}
+        >
+          <div className="modal-dialog" style={{ maxWidth: 580, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-header" style={{ flexShrink: 0 }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Buka Sesi Presensi Baru</h3>
               <button
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
@@ -696,8 +701,8 @@ export default function AttendanceView() {
                 ×
               </button>
             </div>
-            <form onSubmit={handleCreateSession}>
-              <div className="modal-body">
+            <form onSubmit={handleCreateSession} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 <div className="form-group">
                   <label className="form-label">Mata Pelajaran & Kelas</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -821,7 +826,7 @@ export default function AttendanceView() {
                   );
                 })()}
               </div>
-              <div className="modal-footer">
+              <div className="modal-footer" style={{ flexShrink: 0 }}>
                 <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
                   Batal
                 </button>

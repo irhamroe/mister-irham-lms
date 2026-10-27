@@ -825,6 +825,7 @@ a {
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  overflow-y: auto;
 }
 
 .modal-dialog,
@@ -840,6 +841,17 @@ a {
   overflow: hidden;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   animation: modal-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  margin: auto;
+}
+
+/* Ensure forms inside modal dialog become full-height flex containers */
+.modal-dialog > form,
+.modal-container > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 @keyframes modal-pop {
@@ -854,13 +866,29 @@ a {
   align-items: center;
   justify-content: space-between;
   background: #FFFFFF !important;
+  flex-shrink: 0;
 }
 
 .modal-body {
   padding: 24px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
   background: #FFFFFF !important;
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-body::-webkit-scrollbar-track {
+  background: #F8FAFC;
+}
+.modal-body::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
 }
 
 .modal-footer {
@@ -870,6 +898,7 @@ a {
   justify-content: flex-end;
   gap: 12px;
   background: #F9FAFB !important;
+  flex-shrink: 0;
 }
 
 /* ===================================================================

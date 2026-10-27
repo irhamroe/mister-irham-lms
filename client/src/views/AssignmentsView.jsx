@@ -1052,9 +1052,14 @@ export default function AssignmentsView() {
 
       {/* Modal Buat Tugas Baru */}
       {showCreateModal && (
-        <div className="modal-overlay">
-          <div className="modal-dialog" style={{ maxWidth: 680 }}>
-            <div className="modal-header">
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCreateModal(false);
+          }}
+        >
+          <div className="modal-dialog" style={{ maxWidth: 680, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-header" style={{ flexShrink: 0 }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Publikasikan Tugas Baru</h3>
               <button
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
@@ -1063,8 +1068,8 @@ export default function AssignmentsView() {
                 ×
               </button>
             </div>
-            <form onSubmit={handleCreateAssignment}>
-              <div className="modal-body">
+            <form onSubmit={handleCreateAssignment} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 {/* Pilihan Kelas Sasaran (Bisa 1 atau banyak kelas) */}
                 <div className="form-group" style={{ marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -1249,7 +1254,7 @@ export default function AssignmentsView() {
                 </div>
               </div>
 
-              <div className="modal-footer">
+              <div className="modal-footer" style={{ flexShrink: 0 }}>
                 <button type="button" className="btn btn-outline" onClick={() => setShowCreateModal(false)}>
                   Batal
                 </button>

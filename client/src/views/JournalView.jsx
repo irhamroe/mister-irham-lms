@@ -257,9 +257,14 @@ export default function JournalView() {
 
       {/* Modal Catat / Edit Jurnal */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-dialog" style={{ maxWidth: 700 }}>
-            <div className="modal-header">
+        <div
+          className="modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowModal(false);
+          }}
+        >
+          <div className="modal-dialog" style={{ maxWidth: 700, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-header" style={{ flexShrink: 0 }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>
                 {editId ? 'Edit Catatan Jurnal Mengajar' : 'Catat Agenda Mengajar Harian'}
               </h3>
@@ -270,8 +275,8 @@ export default function JournalView() {
                 ×
               </button>
             </div>
-            <form onSubmit={handleSubmit}>
-              <div className="modal-body">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div className="modal-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <div className="form-group">
                     <label className="form-label">Kelas</label>
@@ -379,7 +384,7 @@ export default function JournalView() {
                   </div>
                 </div>
               </div>
-              <div className="modal-footer">
+              <div className="modal-footer" style={{ flexShrink: 0 }}>
                 <button type="button" className="btn btn-outline" onClick={() => setShowModal(false)}>
                   Batal
                 </button>
