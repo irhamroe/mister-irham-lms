@@ -3,6 +3,7 @@ import {
   School,
   Users,
   UserCog,
+  UserCheck,
   Plus,
   Search,
   Edit2,
@@ -48,7 +49,7 @@ function getPageNumbers(currentPage, totalPages) {
 
 export default function ManagementView({ initialTab = 'classes' }) {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState(initialTab); // 'classes' | 'subjects' | 'students' | 'users'
+  const [activeTab, setActiveTab] = useState(initialTab); // 'classes' | 'subjects' | 'teachers' | 'students' | 'users'
   const [stats, setStats] = useState(null);
 
   // Modern Toast & Confirm Dialog State
@@ -78,6 +79,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
   const [subjectsList, setSubjectsList] = useState([]);
   const [teachersList, setTeachersList] = useState([]);
   const [subjectSearch, setSubjectSearch] = useState('');
+  const [teacherSearch, setTeacherSearch] = useState('');
   const [showSubjectModal, setShowSubjectModal] = useState(false);
   const [editingSubject, setEditingSubject] = useState(null);
   const [subjectForm, setSubjectForm] = useState({ name: '', code: '', teacher_id: '' });
@@ -140,6 +142,10 @@ export default function ManagementView({ initialTab = 'classes' }) {
     if (activeTab === 'subjects') {
       loadSubjects();
       loadTeachers();
+    }
+    if (activeTab === 'teachers') {
+      loadTeachers();
+      loadSubjects();
     }
     if (activeTab === 'students') {
       loadClasses();
@@ -501,6 +507,21 @@ export default function ManagementView({ initialTab = 'classes' }) {
     setShowUserModal(true);
   }
 
+  function handleOpenCreateTeacher() {
+    setEditingUser(null);
+    setUserForm({
+      name: '',
+      username: '',
+      role: 'guru',
+      nis_nip: '',
+      kelas: '',
+      email: '',
+      phone: '',
+      password: ''
+    });
+    setShowUserModal(true);
+  }
+
   function handleOpenEditUser(u) {
     setEditingUser(u);
     setUserForm({
@@ -528,6 +549,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
       }
       setShowUserModal(false);
       loadUsers();
+      loadTeachers();
       loadStats();
     } catch (err) {
       showToast('error', err.message);
@@ -545,6 +567,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
           await api.deleteManagementUser(id);
           showToast('success', `Akun '${name}' berhasil dihapus`);
           loadUsers();
+          loadTeachers();
           loadStats();
         } catch (err) {
           showToast('error', err.message);
@@ -561,6 +584,20 @@ export default function ManagementView({ initialTab = 'classes' }) {
   const paginatedStudents = studentsList.slice(startStudentIdx, startStudentIdx + studentPageSize);
   const endStudentIdx = Math.min(startStudentIdx + studentPageSize, totalStudents);
 
+  // Teacher Filter
+  const filteredTeachers = teachersList.filter(t => {
+    if (!teacherSearch) return true;
+    const q = teacherSearch.toLowerCase();
+    return (
+      (t.name && t.name.toLowerCase().includes(q)) ||
+      (t.username && t.username.toLowerCase().includes(q)) ||
+      (t.nip && String(t.nip).toLowerCase().includes(q)) ||
+      (t.nis_nip && String(t.nis_nip).toLowerCase().includes(q)) ||
+      (t.email && t.email.toLowerCase().includes(q)) ||
+      (t.phone && t.phone.toLowerCase().includes(q))
+    );
+  });
+
   return (
     <div className="content-view">
       {/* Top Header & Actions */}
@@ -569,12 +606,14 @@ export default function ManagementView({ initialTab = 'classes' }) {
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 10 }}>
             {activeTab === 'classes' && <><School size={22} color="var(--primary)" /> Data Kelas</>}
             {activeTab === 'subjects' && <><BookOpen size={22} color="var(--primary)" /> Data Mapel</>}
+            {activeTab === 'teachers' && <><UserCheck size={22} color="var(--primary)" /> Data Guru</>}
             {activeTab === 'students' && <><Users size={22} color="var(--primary)" /> Data Siswa</>}
             {activeTab === 'users' && <><UserCog size={22} color="var(--primary)" /> Management User</>}
           </h2>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 2 }}>
             {activeTab === 'classes' && 'Pengelolaan daftar rombongan belajar, tingkat jenjang, dan data akademik'}
             {activeTab === 'subjects' && 'Pengelolaan mata pelajaran kurikulum, kode mapel, dan alokasi guru pengampu'}
+            {activeTab === 'teachers' && 'Pengelolaan data tenaga pendidik, NIP/NUPTK, kontak, dan penugasan mata pelajaran'}
             {activeTab === 'students' && 'Registrasi peserta didik, nomor induk siswa (NIS), dan alokasi kelas'}
             {activeTab === 'users' && 'Pengelolaan akun pengguna (Admin, Guru, Siswa), hak akses, dan kredensial'}
           </p>
@@ -590,6 +629,12 @@ export default function ManagementView({ initialTab = 'classes' }) {
           {activeTab === 'subjects' && (
             <button className="btn btn-primary" onClick={handleOpenCreateSubject}>
               <Plus size={16} /> Tambah Mapel Baru
+            </button>
+          )}
+
+          {activeTab === 'teachers' && user?.role === 'admin' && (
+            <button className="btn btn-primary" onClick={handleOpenCreateTeacher}>
+              <Plus size={16} /> Tambah Guru Baru
             </button>
           )}
 
@@ -619,7 +664,12 @@ export default function ManagementView({ initialTab = 'classes' }) {
       {/* KPI Stats Counters */}
       {stats && (
         <div className="stats-grid" style={{ marginBottom: 22 }}>
-          <div className="stat-card" style={{ padding: '14px 18px', borderLeft: '4px solid #6366f1' }}>
+          <div
+            className="stat-card"
+            style={{ padding: '14px 18px', borderLeft: '4px solid #6366f1', cursor: 'pointer' }}
+            onClick={() => setActiveTab('classes')}
+            title="Klik untuk membuka Data Kelas"
+          >
             <div className="stat-icon indigo" style={{ width: 40, height: 40 }}>
               <School size={20} />
             </div>
@@ -629,7 +679,12 @@ export default function ManagementView({ initialTab = 'classes' }) {
             </div>
           </div>
 
-          <div className="stat-card" style={{ padding: '14px 18px', borderLeft: '4px solid #3b82f6' }}>
+          <div
+            className="stat-card"
+            style={{ padding: '14px 18px', borderLeft: '4px solid #3b82f6', cursor: 'pointer' }}
+            onClick={() => setActiveTab('subjects')}
+            title="Klik untuk membuka Data Mapel"
+          >
             <div className="stat-icon cyan" style={{ width: 40, height: 40 }}>
               <BookOpen size={20} />
             </div>
@@ -639,7 +694,12 @@ export default function ManagementView({ initialTab = 'classes' }) {
             </div>
           </div>
 
-          <div className="stat-card" style={{ padding: '14px 18px', borderLeft: '4px solid #10b981' }}>
+          <div
+            className="stat-card"
+            style={{ padding: '14px 18px', borderLeft: '4px solid #10b981', cursor: 'pointer' }}
+            onClick={() => setActiveTab('students')}
+            title="Klik untuk membuka Data Siswa"
+          >
             <div className="stat-icon emerald" style={{ width: 40, height: 40 }}>
               <Users size={20} />
             </div>
@@ -649,9 +709,14 @@ export default function ManagementView({ initialTab = 'classes' }) {
             </div>
           </div>
 
-          <div className="stat-card" style={{ padding: '14px 18px', borderLeft: '4px solid #f59e0b' }}>
+          <div
+            className="stat-card"
+            style={{ padding: '14px 18px', borderLeft: '4px solid #f59e0b', cursor: 'pointer' }}
+            onClick={() => setActiveTab('teachers')}
+            title="Klik untuk membuka Data Guru"
+          >
             <div className="stat-icon amber" style={{ width: 40, height: 40 }}>
-              <Briefcase size={20} />
+              <UserCheck size={20} />
             </div>
             <div className="stat-details">
               <h4>Total Guru Pengajar</h4>
@@ -814,6 +879,149 @@ export default function ManagementView({ initialTab = 'classes' }) {
                       </td>
                     </tr>
                   ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          2B. TAB: MANAJEMEN GURU (DATA GURU)
+         ======================================================== */}
+      {activeTab === 'teachers' && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative' }}>
+                <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: 11 }} />
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Cari nama guru, NIP, email..."
+                  style={{ paddingLeft: 34, width: 280 }}
+                  value={teacherSearch}
+                  onChange={(e) => setTeacherSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <span className="badge badge-primary">{filteredTeachers.length} Guru Terdaftar</span>
+          </div>
+
+          <div className="table-container" style={{ border: 'none' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 50 }}>No</th>
+                  <th>Nama Tenaga Pendidik</th>
+                  <th>NIP / NUPTK</th>
+                  <th>Mata Pelajaran Diampu</th>
+                  <th>Username</th>
+                  <th>Kontak & Email</th>
+                  <th style={{ textAlign: 'right', paddingRight: 24 }}>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTeachers.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                        <UserCheck size={36} color="var(--text-subtle)" />
+                        <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Tidak ada data guru ditemukan</div>
+                        <span style={{ fontSize: '0.82rem' }}>Coba ubah kata kunci pencarian guru</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTeachers.map((t, idx) => {
+                    const taughtSubjects = subjectsList.filter(s => s.teacher_id === t.id);
+                    return (
+                      <tr key={t.id}>
+                        <td>{idx + 1}</td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <img
+                              src={t.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + t.username}
+                              alt={t.name}
+                              style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }}
+                            />
+                            <div>
+                              <strong style={{ fontSize: '0.92rem', display: 'block', color: 'var(--text-main)' }}>{t.name}</strong>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Tenaga Pendidik (Guru)</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <code style={{ fontSize: '0.82rem', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#1E40AF', background: '#EFF6FF', padding: '3px 8px', borderRadius: 4 }}>
+                            {t.nip || t.nis_nip || '-'}
+                          </code>
+                        </td>
+                        <td>
+                          {taughtSubjects.length > 0 ? (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              {taughtSubjects.map(sub => (
+                                <span
+                                  key={sub.id}
+                                  className="badge badge-primary"
+                                  style={{ fontSize: '0.74rem', padding: '2px 7px' }}
+                                  title={`${sub.code}: ${sub.name}`}
+                                >
+                                  {sub.code || sub.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                              Belum ditugaskan
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          <code style={{ fontSize: '0.8rem', background: 'var(--bg-subtle)', padding: '2px 6px', borderRadius: 4 }}>
+                            {t.username}
+                          </code>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '0.8rem' }}>
+                            <div>{t.email || '-'}</div>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{t.phone || '-'}</span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'right', paddingRight: 24 }}>
+                          {user?.role === 'admin' ? (
+                            <div style={{ display: 'inline-flex', gap: 6 }}>
+                              <button
+                                className="btn btn-outline btn-sm"
+                                onClick={() => handleOpenEditUser(t)}
+                                title="Edit Data Guru"
+                              >
+                                <Edit2 size={13} /> Edit
+                              </button>
+                              {t.id !== user.id && (
+                                <button
+                                  className="btn btn-outline btn-sm"
+                                  style={{ color: 'var(--danger)' }}
+                                  onClick={() => handleDeleteUser(t.id, t.name)}
+                                  title="Hapus Guru"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <button
+                              className="btn btn-outline btn-sm"
+                              onClick={() => handleOpenEditUser(t)}
+                              title="Lihat Detail Guru"
+                            >
+                              <Info size={13} /> Detail
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

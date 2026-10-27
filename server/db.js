@@ -303,6 +303,17 @@ function initDatabase() {
       });
       runAvatarUpdate(dicebearStudents);
     }
+
+    // Ensure teacher irham exists
+    const existingIrham = db.prepare("SELECT id FROM users WHERE username = 'irham'").get();
+    if (!existingIrham) {
+      const salt = bcrypt.genSaltSync(10);
+      const pass = bcrypt.hashSync('password123', salt);
+      db.prepare(`
+        INSERT INTO users (username, password_hash, name, role, nis_nip, kelas, gender, email, phone, avatar)
+        VALUES ('irham', ?, 'Moh. Irham Rozaqi, S.Kom. Gr.', 'guru', '199001012015011001', NULL, 'L', 'irham@sekolah.sch.id', '08123456789', 'https://api.dicebear.com/7.x/avataaars/svg?seed=irham')
+      `).run(pass);
+    }
   } catch (e) {}
 
   seedData();

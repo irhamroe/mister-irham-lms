@@ -108,6 +108,19 @@ const DEFAULT_USERS = [
     "created_at": "2026-10-01"
   },
   {
+    "id": 4,
+    "username": "irham",
+    "name": "Moh. Irham Rozaqi, S.Kom. Gr.",
+    "role": "guru",
+    "nis_nip": "199001012015011001",
+    "kelas": null,
+    "gender": "L",
+    "email": "irham@sekolah.sch.id",
+    "phone": "08123456789",
+    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=irham",
+    "created_at": "2026-10-01"
+  },
+  {
     "id": 12,
     "username": "0111956420",
     "name": "Achmad Zakky Fanani",
@@ -4498,6 +4511,13 @@ export async function handleMockRequest(endpoint, options = {}) {
   });
   if (hasAvatarMigrated) {
     setStored(STORAGE_KEYS.USERS, users);
+  }
+  if (!users.some(u => u.username === 'irham')) {
+    const irhamDefault = DEFAULT_USERS.find(u => u.username === 'irham');
+    if (irhamDefault) {
+      users.splice(1, 0, irhamDefault);
+      setStored(STORAGE_KEYS.USERS, users);
+    }
   }
   let currentUserId = Number(localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID) || 2);
   let currentUser = users.find(u => u.id === currentUserId) || users[1] || users[0];

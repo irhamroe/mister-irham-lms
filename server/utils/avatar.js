@@ -53,3 +53,4 @@ module.exports = {
   generateInitialsAvatarDataUrl,
   AVATAR_PALETTE
 };
+

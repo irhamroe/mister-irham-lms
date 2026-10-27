@@ -120,6 +120,10 @@ function MainApp() {
             <ManagementView initialTab="subjects" />
           )}
 
+          {activeTab === 'manage-teachers' && (
+            <ManagementView initialTab="teachers" />
+          )}
+
           {activeTab === 'manage-students' && (
             <ManagementView initialTab="students" />
           )}

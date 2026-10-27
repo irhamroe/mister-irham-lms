@@ -18,6 +18,7 @@ export default function Topbar({ activeTab }) {
     'cbt-monitor': { tag: 'Live Proctor', title: 'Live Monitor CBT', desc: 'Pemantauan real-time status pengerjaan siswa & kendali proctoring' },
     'manage-classes': { tag: 'Master Data', title: 'Data Kelas', desc: 'Pengelolaan daftar rombel belajar dan fase kurikulum' },
     'manage-subjects': { tag: 'Master Data', title: 'Data Mapel', desc: 'Pengelolaan mata pelajaran kurikulum dan guru pengampu' },
+    'manage-teachers': { tag: 'Master Data', title: 'Data Guru', desc: 'Direktori data tenaga pendidik, NIP/NUPTK, kontak, dan penugasan mapel' },
     'manage-students': { tag: 'Master Data', title: 'Data Siswa', desc: 'Registrasi peserta didik dan nomor induk siswa (NIS)' },
     'manage-users': { tag: 'Master Data', title: 'Management User', desc: 'Pengelolaan akun pengguna, hak akses, dan kredensial' }
   };

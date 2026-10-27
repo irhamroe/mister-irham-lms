@@ -111,6 +111,14 @@ export default function Sidebar({ activeTab, setActiveTab }) {
       bgColor: '#FFF7ED'
     },
     {
+      id: 'manage-teachers',
+      label: 'Data Guru',
+      icon: UserCheck,
+      roles: ['admin', 'guru'],
+      color: '#D97706',
+      bgColor: '#FEF3C7'
+    },
+    {
       id: 'manage-students',
       label: 'Data Siswa',
       icon: Users,
