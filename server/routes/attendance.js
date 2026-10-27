@@ -161,14 +161,14 @@ router.post('/sessions/:id/check-in', authenticateToken, (req, res) => {
   try {
     const { code } = req.body;
     const session = db.prepare('SELECT * FROM attendance_sessions WHERE id = ?').get(req.params.id);
-    if (!session) return res.status(404).json({ error: 'Sesi tidak ditemukan' });
+    if (!session) return res.status(404).json({ error: 'Sesi presensi tidak ditemukan' });
 
     if (!session.is_open) {
-      return res.status(400).json({ error: 'Sesi presensi ini telah ditutup oleh guru' });
+      return res.status(400).json({ error: 'Sesi presensi ini telah ditutup oleh guru pengampu' });
     }
 
-    if (session.session_code && session.session_code !== code) {
-      return res.status(400).json({ error: 'Kode presensi tidak sesuai' });
+    if (session.session_code && session.session_code.toUpperCase() !== (code || '').trim().toUpperCase()) {
+      return res.status(400).json({ error: 'Kode presensi tidak sesuai atau salah. Silakan periksa kembali kode dari guru di kelas.' });
     }
 
     const upsert = db.prepare(`

@@ -5637,10 +5637,10 @@ export async function handleMockRequest(endpoint, options = {}) {
     const id = Number(path.split('/')[3]);
     let sessions = getStored(STORAGE_KEYS.ATTENDANCE, DEFAULT_ATTENDANCE);
     const sess = sessions.find(s => s.id === id);
-    if (!sess) return { error: 'Sesi tidak ditemukan' };
-    if (!sess.is_open) return { error: 'Sesi presensi ini telah ditutup oleh guru' };
+    if (!sess) throw new Error('Sesi presensi tidak ditemukan');
+    if (!sess.is_open) throw new Error('Sesi presensi ini telah ditutup oleh guru pengampu');
     if (sess.session_code && sess.session_code.toUpperCase() !== (body.code || '').trim().toUpperCase()) {
-      return { error: 'Kode presensi tidak sesuai' };
+      throw new Error('Kode presensi tidak sesuai atau salah. Silakan periksa kembali kode dari guru di kelas.');
     }
     let records = getStored(STORAGE_KEYS.ATT_RECORDS, DEFAULT_ATT_RECORDS);
     const existingIdx = records.findIndex(r => r.session_id === id && r.student_id === currentUser.id);

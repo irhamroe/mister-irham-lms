@@ -99,6 +99,7 @@ export default function AttendanceView() {
   // Student check-in state
   const [checkInCode, setCheckInCode] = useState('');
   const [checkInSuccess, setCheckInSuccess] = useState('');
+  const [checkInError, setCheckInError] = useState('');
 
   // Modern Toast & Confirm Dialog State
   const [toast, setToast] = useState(null); // { type: 'success' | 'error' | 'warning', message }
@@ -259,6 +260,7 @@ export default function AttendanceView() {
 
   async function openSessionDetails(sessionId) {
     try {
+      setCheckInError('');
       const data = await api.getAttendanceSessionDetails(sessionId);
       if (!data) return;
       setActiveSession(sessionId);
@@ -345,13 +347,24 @@ export default function AttendanceView() {
   }
 
   async function handleStudentCheckIn(sessionId) {
+    if (!checkInCode.trim()) {
+      setCheckInError('Silakan masukkan kode presensi 6 digit.');
+      return;
+    }
+    setCheckInError('');
     try {
-      const res = await api.studentCheckIn(sessionId, checkInCode.toUpperCase());
-      setCheckInSuccess(res.message);
+      const res = await api.studentCheckIn(sessionId, checkInCode.toUpperCase().trim());
+      if (res && res.error) {
+        setCheckInError(res.error);
+        return;
+      }
+      setCheckInSuccess(res.message || 'Presensi berhasil dicatat! Status: Hadir');
+      setCheckInError('');
+      setCheckInCode('');
       openSessionDetails(sessionId);
       loadSessions();
     } catch (err) {
-      showToast('error', 'Presensi gagal: ' + err.message);
+      setCheckInError(err.message || 'Kode presensi tidak sesuai atau salah. Silakan periksa kembali kode dari guru.');
     }
   }
 
@@ -566,31 +579,57 @@ export default function AttendanceView() {
                     }
 
                     return (
-                      <div style={{ background: 'var(--primary-light)', padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, border: '1px solid #bfdbfe' }}>
-                        <div>
-                          <h5 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary)' }}>
-                            Presensi Mandiri Siswa
-                          </h5>
-                          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-                            Masukkan kode 6-digit yang diberikan oleh guru di kelas untuk mencatat kehadiran Anda.
-                          </p>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="KODE"
-                            maxLength={6}
-                            style={{ width: 120, textTransform: 'uppercase', fontWeight: 700, textAlign: 'center', letterSpacing: '2px', fontSize: '1rem' }}
-                            value={checkInCode}
-                            onChange={(e) => setCheckInCode(e.target.value)}
-                          />
-                          <button
-                            className="btn btn-primary"
-                            onClick={() => handleStudentCheckIn(sessionDetail.id)}
-                          >
-                            Hadir Sekarang
-                          </button>
+                      <div style={{ background: 'var(--primary-light)', padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 20, border: '1px solid #bfdbfe' }}>
+                        {checkInError && (
+                          <div className="login-error-banner" style={{ marginBottom: 14 }}>
+                            <AlertCircle size={17} className="flex-shrink-0" />
+                            <span>{checkInError}</span>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+                          <div>
+                            <h5 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--primary)' }}>
+                              Presensi Mandiri Siswa
+                            </h5>
+                            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                              Masukkan kode 6-digit yang diberikan oleh guru di kelas untuk mencatat kehadiran Anda.
+                            </p>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="KODE"
+                              maxLength={6}
+                              style={{
+                                width: 120,
+                                textTransform: 'uppercase',
+                                fontWeight: 700,
+                                textAlign: 'center',
+                                letterSpacing: '2px',
+                                fontSize: '1rem',
+                                borderColor: checkInError ? '#EF4444' : undefined,
+                                boxShadow: checkInError ? '0 0 0 3px rgba(239, 68, 68, 0.15)' : undefined
+                              }}
+                              value={checkInCode}
+                              onChange={(e) => {
+                                setCheckInCode(e.target.value);
+                                if (checkInError) setCheckInError('');
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleStudentCheckIn(sessionDetail.id);
+                                }
+                              }}
+                            />
+                            <button
+                              className="btn btn-primary"
+                              onClick={() => handleStudentCheckIn(sessionDetail.id)}
+                            >
+                              Hadir Sekarang
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
