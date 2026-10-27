@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { StudentAvatar } from '../components/StudentAvatar';
 
 const APPS_SCRIPT_CODE = `function doPost(e) {
   try {
@@ -913,7 +914,7 @@ export default function AssignmentsView() {
                                 }}>
                                   #{student.absen || '01'}
                                 </span>
-                                <img src={student.avatar} alt={student.name} style={{ width: 28, height: 28, borderRadius: '50%' }} />
+                                <StudentAvatar name={student.name} size={28} />
                                 <div>
                                   <strong style={{ fontSize: '0.88rem', display: 'block' }}>{student.name}</strong>
                                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{student.nis}</span>

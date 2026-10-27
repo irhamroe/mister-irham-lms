@@ -118,10 +118,10 @@ router.get('/sessions/:id', authenticateToken, (req, res) => {
 
     // Get all students in this class
     const students = db.prepare(`
-      SELECT id, name, nis_nip as nis, kelas, gender, avatar
+      SELECT id, name, nis_nip as nis, kelas, gender, no_absen, avatar
       FROM users
       WHERE role = 'siswa' AND kelas = ?
-      ORDER BY name ASC
+      ORDER BY CASE WHEN no_absen IS NOT NULL AND no_absen > 0 THEN CAST(no_absen AS INTEGER) ELSE 9999 END ASC, name ASC
     `).all(session.class_name);
 
     // Get attendance records
@@ -235,10 +235,10 @@ router.get('/summary', authenticateToken, (req, res) => {
     `).all(class_id, subject_id);
 
     const students = db.prepare(`
-      SELECT id, name, nis_nip as nis, kelas, gender 
+      SELECT id, name, nis_nip as nis, kelas, gender, no_absen 
       FROM users 
       WHERE role = 'siswa' AND kelas = ? 
-      ORDER BY name ASC
+      ORDER BY CASE WHEN no_absen IS NOT NULL AND no_absen > 0 THEN CAST(no_absen AS INTEGER) ELSE 9999 END ASC, name ASC
     `).all(targetClass.name);
 
     const sessionIds = sessions.map(s => s.id);

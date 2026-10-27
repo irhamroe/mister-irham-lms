@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { StudentAvatar } from '../components/StudentAvatar';
 
 export default function AttendanceView() {
   const { user, classes, subjects } = useAuth();
@@ -114,7 +115,8 @@ export default function AttendanceView() {
           student_id: s.student_id || s.id,
           name: s.student_name || s.name || '',
           nis: s.nis || s.nis_nip || '',
-          avatar: s.avatar || `https://api.dicebear.com/7.x/micah/svg?seed=${s.student_name || s.name || s.id}`,
+          no_absen: s.no_absen || null,
+          avatar: s.avatar,
           status,
           notes: rec.notes || s.notes || ''
         };
@@ -416,10 +418,10 @@ export default function AttendanceView() {
                     <tbody>
                       {studentRecords.map((st, idx) => (
                         <tr key={st.student_id}>
-                          <td>{idx + 1}</td>
+                          <td style={{ fontWeight: 700, textAlign: 'center' }}>{st.no_absen || (idx + 1)}</td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <img src={st.avatar} alt={st.name} style={{ width: 28, height: 28, borderRadius: '50%' }} />
+                              <StudentAvatar name={st.name} size={28} />
                               <strong style={{ fontSize: '0.88rem' }}>{st.name}</strong>
                             </div>
                           </td>

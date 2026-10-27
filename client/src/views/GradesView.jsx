@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { StudentAvatar } from '../components/StudentAvatar';
 
 export default function GradesView() {
   const { user, classes, subjects } = useAuth();
@@ -239,10 +240,10 @@ export default function GradesView() {
             <tbody>
               {ledgerData?.rows?.map((row, idx) => (
                 <tr key={row.student.id}>
-                  <td>{idx + 1}</td>
+                  <td style={{ fontWeight: 700, textAlign: 'center' }}>{row.student.no_absen || (idx + 1)}</td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <img src={row.student.avatar} alt={row.student.name} style={{ width: 26, height: 26, borderRadius: '50%' }} />
+                      <StudentAvatar name={row.student.name} size={26} />
                       <strong style={{ fontSize: '0.88rem' }}>{row.student.name}</strong>
                     </div>
                   </td>

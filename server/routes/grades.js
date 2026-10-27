@@ -111,7 +111,7 @@ router.get('/ledger', authenticateToken, (req, res) => {
 
     // Fetch students
     let studentQuery = `
-      SELECT id, name, nis_nip as nis, kelas, gender, avatar 
+      SELECT id, name, nis_nip as nis, kelas, gender, no_absen, avatar 
       FROM users 
       WHERE role = 'siswa' AND kelas = ?
     `;
@@ -122,7 +122,7 @@ router.get('/ledger', authenticateToken, (req, res) => {
       studentQuery += ' AND id = ?';
       params.push(req.user.id);
     } else {
-      studentQuery += ' ORDER BY name ASC';
+      studentQuery += ' ORDER BY CASE WHEN no_absen IS NOT NULL AND no_absen > 0 THEN CAST(no_absen AS INTEGER) ELSE 9999 END ASC, name ASC';
     }
 
     const students = db.prepare(studentQuery).all(...params);

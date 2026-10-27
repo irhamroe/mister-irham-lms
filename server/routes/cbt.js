@@ -449,10 +449,10 @@ router.get('/exams/:id/monitor', authenticateToken, requireRole(['admin', 'guru'
 
     // All students in target class
     const students = db.prepare(`
-      SELECT id, name, nis_nip as nis, kelas, avatar 
+      SELECT id, name, nis_nip as nis, kelas, no_absen, avatar 
       FROM users 
       WHERE role = 'siswa' AND kelas = ?
-      ORDER BY name ASC
+      ORDER BY CASE WHEN no_absen IS NOT NULL AND no_absen > 0 THEN CAST(no_absen AS INTEGER) ELSE 9999 END ASC, name ASC
     `).all(exam.class_name);
 
     // All sessions

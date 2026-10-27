@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
+const { generateInitialsAvatarDataUrl } = require('../utils/avatar');
 
 // Apply auth middleware: Admin and Guru have access, certain delete/admin functions for admin only
 router.use(authenticateToken);
@@ -174,7 +175,7 @@ router.get('/students', (req, res) => {
       params.push(`%${search.trim()}%`, `%${search.trim()}%`, `%${search.trim()}%`);
     }
 
-    query += ' ORDER BY kelas ASC, name ASC';
+    query += ' ORDER BY kelas ASC, CASE WHEN no_absen IS NOT NULL AND no_absen > 0 THEN CAST(no_absen AS INTEGER) ELSE 9999 END ASC, name ASC';
     const students = db.prepare(query).all(...params);
     res.json(students);
   } catch (err) {
@@ -198,7 +199,7 @@ router.post('/students', requireRole(['admin', 'guru']), (req, res) => {
 
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(password || 'password123', salt);
-    const avatar = `https://api.dicebear.com/7.x/micah/svg?seed=${username.trim()}`;
+    const avatar = generateInitialsAvatarDataUrl(name.trim());
     const normalizedGender = (gender === 'P' || gender === 'Perempuan' || gender === 'female') ? 'P' : 'L';
 
     const insert = db.prepare(`
@@ -269,7 +270,7 @@ router.post('/students/batch-import', requireRole(['admin', 'guru']), (req, res)
         const email = st.email ? st.email.trim() : `${username}@siswa.sekolah.sch.id`;
         const phone = st.phone ? st.phone.trim() : '';
         const passwordHash = st.password ? bcrypt.hashSync(st.password, salt) : defaultPasswordHash;
-        const avatar = `https://api.dicebear.com/7.x/micah/svg?seed=${username}`;
+        const avatar = generateInitialsAvatarDataUrl(st.name.trim());
 
         const rawGender = st.gender || st['Jenis Kelamin'] || st['Gender'] || st['L/P'] || '';
         const genderUpper = String(rawGender).trim().toUpperCase();

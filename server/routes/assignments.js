@@ -247,7 +247,7 @@ router.get('/:id', authenticateToken, (req, res) => {
       SELECT id, name, nis_nip as nis, kelas, no_absen, avatar 
       FROM users 
       WHERE role = 'siswa' AND kelas = ?
-      ORDER BY name ASC
+      ORDER BY CASE WHEN no_absen IS NOT NULL AND no_absen > 0 THEN CAST(no_absen AS INTEGER) ELSE 9999 END ASC, name ASC
     `).all(assignment.class_name);
 
     // Get all submissions for this assignment

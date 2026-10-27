@@ -1,5 +1,6 @@
 const db = require('../db');
 const bcrypt = require('bcryptjs');
+const { generateInitialsAvatarDataUrl } = require('../utils/avatar');
 
 const rawData = `
 Achmad Zakky Fanani;0111956420;X - 8;L;0111956420;0111956420;;
@@ -368,7 +369,7 @@ function parseAndSeed() {
           hashCache[st.password] = bcrypt.hashSync(st.password, 10);
         }
         const passwordHash = hashCache[st.password];
-        const avatar = `https://api.dicebear.com/7.x/micah/svg?seed=${st.username}`;
+        const avatar = generateInitialsAvatarDataUrl(st.name);
 
         insertUser.run(
           st.username,

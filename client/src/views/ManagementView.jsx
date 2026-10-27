@@ -31,6 +31,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { downloadStudentExcelTemplate, parseStudentExcel } from '../services/fileImportHelper';
+import { StudentAvatar } from '../components/StudentAvatar';
 
 function getPageNumbers(currentPage, totalPages) {
   if (totalPages <= 7) {
@@ -96,6 +97,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
     nis: '',
     kelas: '',
     gender: 'L',
+    no_absen: '',
     email: '',
     phone: '',
     password: ''
@@ -334,13 +336,14 @@ export default function ManagementView({ initialTab = 'classes' }) {
 
   function handleOpenCreateStudent() {
     setEditingStudent(null);
-    const defaultClass = classesList[0]?.name || 'X-IPA-1';
+    const defaultClass = classesList[0]?.name || 'X-8';
     setStudentForm({
       name: '',
       username: '',
       nis: '',
       kelas: defaultClass,
       gender: 'L',
+      no_absen: '',
       email: '',
       phone: '',
       password: ''
@@ -356,6 +359,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
       nis: st.nis || '',
       kelas: st.kelas || '',
       gender: (st.gender === 'P' || st.gender === 'Perempuan' || st.gender === 'female') ? 'P' : 'L',
+      no_absen: (st.no_absen !== undefined && st.no_absen !== null) ? st.no_absen : '',
       email: st.email || '',
       phone: st.phone || '',
       password: ''
@@ -885,7 +889,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th style={{ width: 60 }}>No</th>
+                  <th style={{ width: 85, textAlign: 'center' }}>No. Absen</th>
                   <th>Peserta Didik</th>
                   <th>NIS</th>
                   <th>Kelas</th>
@@ -909,17 +913,30 @@ export default function ManagementView({ initialTab = 'classes' }) {
                 ) : (
                   paginatedStudents.map((st, idx) => (
                     <tr key={st.id}>
-                      <td>
-                        <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{startStudentIdx + idx + 1}</div>
-                        {st.no_absen ? (
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }} title={`Nomor Absen Kelas: ${st.no_absen}`}>
-                            Absen #{st.no_absen}
-                          </div>
-                        ) : null}
+                      <td style={{ textAlign: 'center' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: '32px',
+                            height: '28px',
+                            padding: '0 6px',
+                            borderRadius: '6px',
+                            fontSize: '0.85rem',
+                            fontWeight: 800,
+                            background: 'var(--bg-subtle, #F1F5F9)',
+                            color: 'var(--text-main, #334155)',
+                            border: '1px solid var(--border-color, #CBD5E1)'
+                          }}
+                          title={`Nomor Absen: ${st.no_absen || (startStudentIdx + idx + 1)}`}
+                        >
+                          {st.no_absen || (startStudentIdx + idx + 1)}
+                        </span>
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <img src={st.avatar} alt={st.name} style={{ width: 32, height: 32, borderRadius: '50%' }} />
+                          <StudentAvatar name={st.name} size={32} />
                           <div>
                             <strong style={{ fontSize: '0.9rem', display: 'block' }}>{st.name}</strong>
                             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Role: Siswa</span>
@@ -1142,7 +1159,11 @@ export default function ManagementView({ initialTab = 'classes' }) {
                     <td>{idx + 1}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <img src={u.avatar} alt={u.name} style={{ width: 32, height: 32, borderRadius: '50%' }} />
+                        {u.role === 'siswa' ? (
+                          <StudentAvatar name={u.name} size={32} />
+                        ) : (
+                          <img src={u.avatar} alt={u.name} style={{ width: 32, height: 32, borderRadius: '50%' }} />
+                        )}
                         <div>
                           <strong style={{ fontSize: '0.9rem', display: 'block' }}>{u.name}</strong>
                           {u.role === 'siswa' && u.kelas && (
@@ -1299,7 +1320,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 0.8fr', gap: 14 }}>
                   <div className="form-group">
                     <label className="form-label">Nomor Induk Siswa (NIS)</label>
                     <input
@@ -1322,6 +1343,19 @@ export default function ManagementView({ initialTab = 'classes' }) {
                     >
                       {classesList.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                     </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">No. Absen</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      className="form-control"
+                      placeholder="1 - 36"
+                      value={studentForm.no_absen}
+                      onChange={(e) => setStudentForm({ ...studentForm, no_absen: e.target.value })}
+                    />
                   </div>
                 </div>
 

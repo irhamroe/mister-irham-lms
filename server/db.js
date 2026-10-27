@@ -2,6 +2,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
+const { generateInitialsAvatarDataUrl } = require('./utils/avatar');
 
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) {
@@ -290,6 +291,18 @@ function initDatabase() {
   try {
     db.exec("UPDATE users SET kelas = NULL WHERE role != 'siswa'");
     db.exec("DELETE FROM classes WHERE name LIKE '%IPA%'");
+    
+    // Migrate student avatars to 2-letter initials
+    const dicebearStudents = db.prepare("SELECT id, name FROM users WHERE role = 'siswa' AND (avatar LIKE '%dicebear%' OR avatar IS NULL)").all();
+    if (dicebearStudents.length > 0) {
+      const updateAvatar = db.prepare("UPDATE users SET avatar = ? WHERE id = ?");
+      const runAvatarUpdate = db.transaction((list) => {
+        for (const st of list) {
+          updateAvatar.run(generateInitialsAvatarDataUrl(st.name), st.id);
+        }
+      });
+      runAvatarUpdate(dicebearStudents);
+    }
   } catch (e) {}
 
   seedData();

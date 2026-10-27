@@ -22,6 +22,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { getSocket } from '../services/socket';
 import { FlatBadge, FlatStatusDot } from '../components/common/FlatComponents';
+import { StudentAvatar } from '../components/StudentAvatar';
 
 export default function CbtMonitorView({ examId: propExamId }) {
   const { user } = useAuth();
@@ -428,7 +429,7 @@ export default function CbtMonitorView({ examId: propExamId }) {
                   {/* Card Header */}
                   <div className="monitor-header">
                     <div className="student-meta">
-                      <img src={student.avatar} alt={student.name} className="student-avatar" />
+                      <StudentAvatar name={student.name} size={36} className="student-avatar" />
                       <div className="student-name-box">
                         <h5>{student.name}</h5>
                         <span>NIS: {student.nis}</span>

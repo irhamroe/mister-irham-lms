@@ -34,6 +34,39 @@ if (typeof localStorage !== 'undefined') {
   });
 }
 
+function getStudentInitials(name) {
+  if (!name || typeof name !== 'string') return 'SW';
+  const clean = name.replace(/[^a-zA-Z\s]/g, ' ').trim();
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return 'SW';
+  if (words.length === 1) {
+    const w = words[0];
+    return (w.length >= 2 ? w.slice(0, 2) : w + w).toUpperCase();
+  }
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+function generateInitialsAvatarDataUrl(name, size = 64) {
+  const initials = getStudentInitials(name);
+  const palette = [
+    { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE' },
+    { bg: '#F0FDF4', text: '#15803D', border: '#BBF7D0' },
+    { bg: '#FAF5FF', text: '#7E22CE', border: '#E9D5FF' },
+    { bg: '#FFF1F2', text: '#BE123C', border: '#FECDD3' },
+    { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A' },
+    { bg: '#ECFEFF', text: '#0E7490', border: '#A5F3FC' },
+    { bg: '#FDF4FF', text: '#A21CAF', border: '#F5D0FE' },
+    { bg: '#F0FDFA', text: '#0F766E', border: '#99F6E4' },
+    { bg: '#EEF2FF', text: '#4338CA', border: '#C7D2FE' }
+  ];
+  let hash = 0;
+  for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const color = palette[Math.abs(hash) % palette.length];
+  const fontSize = Math.round(size * 0.42);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" rx="${size / 2}" fill="${color.bg}" stroke="${color.border}" stroke-width="2"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="${color.text}" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="${fontSize}" font-weight="700">${initials}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 const DEFAULT_USERS = [
   {
     "id": 1,
@@ -4454,7 +4487,18 @@ export async function handleMockRequest(endpoint, options = {}) {
   }
 
   // Current user helper
-  const users = getStored(STORAGE_KEYS.USERS, DEFAULT_USERS);
+  let rawUsers = getStored(STORAGE_KEYS.USERS, DEFAULT_USERS);
+  let hasAvatarMigrated = false;
+  const users = rawUsers.map(u => {
+    if (u.role === 'siswa' && (!u.avatar || u.avatar.includes('dicebear'))) {
+      hasAvatarMigrated = true;
+      return { ...u, avatar: generateInitialsAvatarDataUrl(u.name) };
+    }
+    return u;
+  });
+  if (hasAvatarMigrated) {
+    setStored(STORAGE_KEYS.USERS, users);
+  }
   let currentUserId = Number(localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID) || 2);
   let currentUser = users.find(u => u.id === currentUserId) || users[1] || users[0];
 
@@ -4619,6 +4663,14 @@ export async function handleMockRequest(endpoint, options = {}) {
         const q = search.toLowerCase();
         students = students.filter(s => s.name.toLowerCase().includes(q) || s.nis?.includes(q) || s.username?.toLowerCase().includes(q));
       }
+      students.sort((a, b) => {
+        const classComp = (a.kelas || '').localeCompare(b.kelas || '');
+        if (classComp !== 0 && !kelas) return classComp;
+        const absA = (a.no_absen && a.no_absen > 0) ? a.no_absen : 9999;
+        const absB = (b.no_absen && b.no_absen > 0) ? b.no_absen : 9999;
+        if (absA !== absB) return absA - absB;
+        return (a.name || '').localeCompare(b.name || '');
+      });
       return students;
     }
     if (method === 'POST') {
@@ -4631,9 +4683,10 @@ export async function handleMockRequest(endpoint, options = {}) {
         nis_nip: body.nis.trim(),
         kelas: body.kelas.trim(),
         gender: body.gender || 'L',
+        no_absen: body.no_absen ? parseInt(body.no_absen, 10) : (users.filter(u => u.role === 'siswa' && u.kelas === body.kelas).length + 1),
         email: body.email ? body.email.trim() : `${body.username}@siswa.sekolah.sch.id`,
         phone: body.phone ? body.phone.trim() : '',
-        avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${body.username.trim()}`,
+        avatar: generateInitialsAvatarDataUrl(body.name.trim()),
         created_at: new Date().toISOString().split('T')[0]
       };
       users.push(newStudent);
@@ -4665,9 +4718,10 @@ export async function handleMockRequest(endpoint, options = {}) {
           nis_nip: String(st.nis).trim(),
           kelas: String(st.kelas).trim(),
           gender: st.gender || 'L',
+          no_absen: st.no_absen ? parseInt(st.no_absen, 10) : (users.filter(u => u.role === 'siswa' && u.kelas === st.kelas).length + 1),
           email: st.email ? st.email.trim() : `${username}@siswa.sekolah.sch.id`,
           phone: st.phone ? st.phone.trim() : '',
-          avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${username}`,
+          avatar: generateInitialsAvatarDataUrl(st.name.trim()),
           created_at: new Date().toISOString().split('T')[0]
         };
         users.push(newStudent);
