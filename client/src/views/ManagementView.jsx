@@ -139,7 +139,10 @@ export default function ManagementView({ initialTab = 'classes' }) {
       loadSubjects();
       loadTeachers();
     }
-    if (activeTab === 'students') loadStudents();
+    if (activeTab === 'students') {
+      loadClasses();
+      loadStudents();
+    }
     if (activeTab === 'users') loadUsers();
   }, [activeTab]);
 
@@ -840,7 +843,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
                 onChange={(e) => setStudentClassFilter(e.target.value)}
               >
                 <option value="">Semua Kelas</option>
-                {classesList.map(c => <option key={c.id} value={c.name}>Kelas {c.name}</option>)}
+                {classesList.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
 
               <select
@@ -849,9 +852,9 @@ export default function ManagementView({ initialTab = 'classes' }) {
                 value={studentGenderFilter}
                 onChange={(e) => setStudentGenderFilter(e.target.value)}
               >
-                <option value="">Semua Jenis Kelamin</option>
-                <option value="L">L (Laki-laki)</option>
-                <option value="P">P (Perempuan)</option>
+                <option value="">Semua JK</option>
+                <option value="L">L</option>
+                <option value="P">P</option>
               </select>
             </div>
 
@@ -927,7 +930,17 @@ export default function ManagementView({ initialTab = 'classes' }) {
                         <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{st.nis}</span>
                       </td>
                       <td>
-                        <span className="badge badge-neutral">Kelas {st.kelas}</span>
+                        <span
+                          className="badge badge-neutral"
+                          style={{
+                            whiteSpace: 'nowrap',
+                            display: 'inline-block',
+                            letterSpacing: '0.02em',
+                            fontWeight: 700
+                          }}
+                        >
+                          {st.kelas ? String(st.kelas).replace(/^Kelas\s+/i, '').replace(/\s*-\s*/g, '-').trim() : '-'}
+                        </span>
                       </td>
                       <td>
                         {st.gender === 'P' || st.gender === 'Perempuan' || st.gender === 'female' ? (
@@ -935,36 +948,38 @@ export default function ManagementView({ initialTab = 'classes' }) {
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px',
-                              padding: '3px 8px',
+                              justifyContent: 'center',
+                              width: '28px',
+                              height: '24px',
                               borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              fontWeight: 800,
                               background: '#FDF2F8',
                               color: '#DB2777',
                               border: '1px solid #FBCFE8'
                             }}
+                            title="Perempuan (P)"
                           >
-                            <span>♀</span>
-                            <span>Perempuan (P)</span>
+                            P
                           </span>
                         ) : (
                           <span
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px',
-                              padding: '3px 8px',
+                              justifyContent: 'center',
+                              width: '28px',
+                              height: '24px',
                               borderRadius: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              fontWeight: 800,
                               background: '#EFF6FF',
                               color: '#2563EB',
                               border: '1px solid #BFDBFE'
                             }}
+                            title="Laki-laki (L)"
                           >
-                            <span>♂</span>
-                            <span>Laki-laki (L)</span>
+                            L
                           </span>
                         )}
                       </td>
@@ -1303,7 +1318,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
                       onChange={(e) => setStudentForm({ ...studentForm, kelas: e.target.value })}
                       required
                     >
-                      {classesList.map(c => <option key={c.id} value={c.name}>Kelas {c.name}</option>)}
+                      {classesList.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                     </select>
                   </div>
                 </div>
@@ -1790,12 +1805,12 @@ export default function ManagementView({ initialTab = 'classes' }) {
                               <td><span className="badge badge-neutral">{st.kelas || '-'}</span></td>
                               <td>
                                 {st.gender === 'P' ? (
-                                  <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#FDF2F8', color: '#DB2777', padding: '2px 6px', borderRadius: 4, border: '1px solid #FBCFE8' }}>
-                                    ♀ P
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 800, background: '#FDF2F8', color: '#DB2777', padding: '2px 8px', borderRadius: 4, border: '1px solid #FBCFE8' }}>
+                                    P
                                   </span>
                                 ) : (
-                                  <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#EFF6FF', color: '#2563EB', padding: '2px 6px', borderRadius: 4, border: '1px solid #BFDBFE' }}>
-                                    ♂ L
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 800, background: '#EFF6FF', color: '#2563EB', padding: '2px 8px', borderRadius: 4, border: '1px solid #BFDBFE' }}>
+                                    L
                                   </span>
                                 )}
                               </td>

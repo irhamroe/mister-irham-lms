@@ -5,16 +5,23 @@ const STORAGE_KEYS = {
   USERS: 'lms_mock_users',
   CLASSES: 'lms_mock_classes',
   SUBJECTS: 'lms_mock_subjects',
-  JOURNALS: 'lms_mock_journals',
-  ATTENDANCE: 'lms_mock_attendance_sessions',
-  ATT_RECORDS: 'lms_mock_attendance_records',
-  ASSIGNMENTS: 'lms_mock_assignments',
-  ASSIGNMENT_SUBMISSIONS: 'lms_mock_assignment_submissions',
-  EXAMS: 'lms_mock_cbt_exams',
-  QUESTIONS: 'lms_mock_cbt_questions',
+  JOURNALS: 'lms_mock_journals_v2',
+  ATTENDANCE: 'lms_mock_attendance_sessions_v2',
+  ATT_RECORDS: 'lms_mock_attendance_records_v2',
+  ASSIGNMENTS: 'lms_mock_assignments_v2',
+  ASSIGNMENT_SUBMISSIONS: 'lms_mock_assignment_submissions_v2',
+  EXAMS: 'lms_mock_cbt_exams_v2',
+  QUESTIONS: 'lms_mock_cbt_questions_v2',
   QUESTION_BANK: 'lms_mock_question_bank',
   CURRENT_USER_ID: 'lms_mock_current_user_id'
 };
+
+// Clean up any stale legacy demo caches
+if (typeof localStorage !== 'undefined') {
+  ['lms_mock_journals', 'lms_mock_attendance_sessions', 'lms_mock_attendance_records', 'lms_mock_assignments', 'lms_mock_assignment_submissions', 'lms_mock_cbt_exams', 'lms_mock_cbt_questions'].forEach(k => {
+    try { localStorage.removeItem(k); } catch (e) {}
+  });
+}
 
 const DEFAULT_USERS = [
   {
@@ -4391,297 +4398,13 @@ const DEFAULT_SUBJECTS = [
   { id: 3, name: 'Bahasa Indonesia', code: 'BIN-10', teacher_id: 3, teacher_name: 'Siti Rahmawati, M.Pd.' }
 ];
 
-const DEFAULT_JOURNALS = [
-  {
-    id: 1,
-    teacher_id: 2,
-    teacher_name: 'Budi Santoso, S.Pd.',
-    class_id: 1,
-    class_name: 'X-IPA-1',
-    subject_id: 1,
-    subject_name: 'Matematika Wajib',
-    date: '2026-10-20',
-    time_slot: 'Jam ke 1-2 (07.30 - 09.00)',
-    topic: 'Sistem Persamaan Linear Tiga Variabel (SPLTV)',
-    learning_outcomes: 'Peserta didik mampu memodelkan masalah kontekstual ke dalam SPLTV.',
-    activities: '1. Apersepsi konsep SPLDV. 2. Diskusi kelompok studi kasus harga barang. 3. Presentasi perwakilan siswa.',
-    student_notes: 'Rendy dan Reza masih sedikit bingung pada metode substitusi.',
-    follow_up: 'Memberikan lembar kerja pengayaan mandiri dan tutor sebaya.'
-  },
-  {
-    id: 2,
-    teacher_id: 2,
-    teacher_name: 'Budi Santoso, S.Pd.',
-    class_id: 1,
-    class_name: 'X-IPA-1',
-    subject_id: 1,
-    subject_name: 'Matematika Wajib',
-    date: '2026-10-22',
-    time_slot: 'Jam ke 3-4 (09.15 - 10.45)',
-    topic: 'Metode Eliminasi & Substitusi Gabungan SPLTV',
-    learning_outcomes: 'Peserta didik terampil menyelesaikan himpunan penyelesaian SPLTV.',
-    activities: 'Latihan soal bergradasi dan kuis interaktif formatif.',
-    student_notes: 'Semua siswa hadir dan antusias mencoba kuis cepat di papan tulis.',
-    follow_up: 'Persiapan kuis CBT akhir pekan.'
-  }
-];
-
-const DEFAULT_EXAMS = [
-  {
-    id: 1,
-    title: 'Penilaian Sumatif Tengah Semester: Matematika Wajib',
-    description: 'Materi SPLTV dan Fungsi Kuadrat. Dilarang membuka tab lain selama ujian.',
-    class_id: 1,
-    class_name: 'X-IPA-1',
-    subject_id: 1,
-    subject_name: 'Matematika Wajib',
-    teacher_id: 2,
-    token: 'MAT789',
-    duration_minutes: 60,
-    start_time: '2026-10-20 07:30',
-    end_time: '2026-10-31 16:00',
-    status: 'ACTIVE',
-    question_count: 3,
-    total_points: 30
-  }
-];
-
-const DEFAULT_QUESTIONS = [
-  {
-    id: 1,
-    exam_id: 1,
-    question_number: 1,
-    question_text: 'Himpunan penyelesaian dari sistem persamaan x + y + z = 6, 2x - y + z = 3, dan x + 2y - z = 2 adalah...',
-    question_type: 'MULTIPLE_CHOICE',
-    options_json: JSON.stringify([
-      { id: 'A', text: '{ (1, 2, 3) }' },
-      { id: 'B', text: '{ (2, 1, 3) }' },
-      { id: 'C', text: '{ (1, 3, 2) }' },
-      { id: 'D', text: '{ (3, 2, 1) }' },
-      { id: 'E', text: '{ (2, 3, 1) }' }
-    ]),
-    correct_answer: 'A',
-    points: 10,
-    explanation: 'Dengan menjumlahkan persamaan 1 dan 3, lalu substitusi nilai ke persamaan 2.'
-  },
-  {
-    id: 2,
-    exam_id: 1,
-    question_number: 2,
-    question_text: 'Jika titik puncak suatu grafik fungsi kuadrat f(x) = ax² + bx + c berada pada koordinat (2, -1) dan melalui (0, 3), maka nilai a adalah...',
-    question_type: 'MULTIPLE_CHOICE',
-    options_json: JSON.stringify([
-      { id: 'A', text: '1' },
-      { id: 'B', text: '2' },
-      { id: 'C', text: '-1' },
-      { id: 'D', text: '0.5' },
-      { id: 'E', text: '-2' }
-    ]),
-    correct_answer: 'A',
-    points: 10,
-    explanation: 'f(x) = a(x - xp)² + yp => 3 = a(0 - 2)² - 1 => 4 = 4a => a = 1.'
-  },
-  {
-    id: 3,
-    exam_id: 1,
-    question_number: 3,
-    question_text: 'Sebuah toko buku menjual 2 buku tulis dan 1 pensil seharga Rp 10.000, serta 3 buku tulis dan 2 pensil seharga Rp 17.000. Berapakah harga 1 buku tulis?',
-    question_type: 'MULTIPLE_CHOICE',
-    options_json: JSON.stringify([
-      { id: 'A', text: 'Rp 2.000' },
-      { id: 'B', text: 'Rp 3.000' },
-      { id: 'C', text: 'Rp 3.500' },
-      { id: 'D', text: 'Rp 4.000' },
-      { id: 'E', text: 'Rp 4.500' }
-    ]),
-    correct_answer: 'B',
-    points: 10,
-    explanation: '2b + p = 10.000 (x2) => 4b + 2p = 20.000. Dikurangi 3b + 2p = 17.000 menghasilkan b = 3.000.'
-  }
-];
-
-const DEFAULT_QUESTION_BANK = [
-  {
-    id: 1,
-    teacher_id: 2,
-    teacher_name: 'Budi Santoso, S.Pd.',
-    subject_id: 1,
-    subject_name: 'Matematika Wajib',
-    grade_level: 'Kelas X',
-    topic: 'Sistem Persamaan Linear Tiga Variabel',
-    question_text: 'Diberikan sistem persamaan x + y + z = 9, 2x - y + 2z = 8, dan -x + 3y - z = 4. Nilai dari x + y adalah...',
-    question_type: 'MULTIPLE_CHOICE',
-    options_json: JSON.stringify([
-      { id: 'A', text: '5' },
-      { id: 'B', text: '6' },
-      { id: 'C', text: '7' },
-      { id: 'D', text: '8' },
-      { id: 'E', text: '9' }
-    ]),
-    correct_answer: 'A',
-    points: 10,
-    explanation: 'Eliminasi z dari persamaan 1 dan 3 menghasilkan 4y = 13... temukan solusinya.',
-    difficulty: 'SEDANG',
-    source_exam_title: 'Koleksi Soal HOTS Semester 1',
-    created_at: '2026-10-15'
-  },
-  {
-    id: 2,
-    teacher_id: 2,
-    teacher_name: 'Budi Santoso, S.Pd.',
-    subject_id: 2,
-    subject_name: 'Fisika Peminatan',
-    grade_level: 'Kelas X',
-    topic: 'Kinematika Gerak Lurus',
-    question_text: 'Sebuah benda bergerak lurus dengan percepatan konstan 2 m/s². Jika kecepatan awalnya 4 m/s, berapa jarak yang ditempuh setelah 5 detik?',
-    question_type: 'MULTIPLE_CHOICE',
-    options_json: JSON.stringify([
-      { id: 'A', text: '35 m' },
-      { id: 'B', text: '45 m' },
-      { id: 'C', text: '50 m' },
-      { id: 'D', text: '60 m' },
-      { id: 'E', text: '75 m' }
-    ]),
-    correct_answer: 'B',
-    points: 10,
-    explanation: 's = v0 * t + 0.5 * a * t² = 4*5 + 0.5*2*25 = 20 + 25 = 45 meter.',
-    difficulty: 'SEDANG',
-    source_exam_title: 'Bank Soal Fisika Dasar',
-    created_at: '2026-10-16'
-  }
-];
-
-const DEFAULT_ASSIGNMENTS = [
-  {
-    id: 1,
-    class_id: 1,
-    class_name: 'X-IPA-1',
-    subject_id: 1,
-    subject_name: 'Matematika Wajib',
-    teacher_id: 2,
-    teacher_name: 'Budi Santoso, S.Pd.',
-    title: 'Tugas Terstruktur 1: Pemodelan SPLTV Kasus Kontekstual',
-    instructions: 'Selesaikan 3 soal aplikasi SPLTV pada buku paket halaman 45 dalam bentuk dokumen PDF. Cantumkan langkah eliminasi dan substitusi secara terperinci.',
-    due_date: '2026-10-30 23:59',
-    max_points: 100,
-    attachments: [
-      { name: 'Lembar_Kerja_SPLTV.pdf', url: '#', size: '1.2 MB' }
-    ],
-    status: 'ACTIVE'
-  },
-  {
-    id: 2,
-    class_id: 1,
-    class_name: 'X-IPA-1',
-    subject_id: 1,
-    subject_name: 'Matematika Wajib',
-    teacher_id: 2,
-    teacher_name: 'Budi Santoso, S.Pd.',
-    title: 'Tugas Mandiri 2: Grafik Penyelesaian SPLTV',
-    instructions: 'Gambarkan representasi visual bidang 3 dimensi perpotongan himpunan penyelesaian tiga persamaan linear.',
-    due_date: '2026-11-05 23:59',
-    max_points: 100,
-    attachments: [],
-    status: 'ACTIVE'
-  }
-];
-
-const DEFAULT_ASSIGNMENT_SUBMISSIONS = [
-  {
-    id: 1,
-    assignment_id: 1,
-    student_id: 4,
-    content: 'Tugas SPLTV nomor 1-3 sudah selesai dikerjakan sesuai rumus eliminasi Gauss-Jordan sederhana.',
-    attachments: [
-      { name: 'Jawaban_Ahmad_SPLTV.pdf', url: '#', size: '1.4 MB' }
-    ],
-    submitted_at: '2026-10-24 14:20:00',
-    status: 'GRADED',
-    score: 95,
-    teacher_feedback: 'Langkah pengerjaan sangat rapi dan jawaban akhir tepat!',
-    graded_at: '2026-10-25 09:10:00'
-  },
-  {
-    id: 2,
-    assignment_id: 1,
-    student_id: 5,
-    content: 'Berikut lampiran pengerjaan tugas kontekstual harga belanjaan buah.',
-    attachments: [
-      { name: 'Dewi_Anjani_Tugas1.pdf', url: '#', size: '980 KB' }
-    ],
-    submitted_at: '2026-10-24 16:45:00',
-    status: 'GRADED',
-    score: 88,
-    teacher_feedback: 'Perhatikan tanda minus saat substitusi variabel z.',
-    graded_at: '2026-10-25 09:15:00'
-  },
-  {
-    id: 3,
-    assignment_id: 1,
-    student_id: 6,
-    content: 'Tugas sudah selesai pak, mohon koreksinya.',
-    attachments: [
-      { name: 'Tugas_Rendy_Mat.pdf', url: '#', size: '1.1 MB' }
-    ],
-    submitted_at: '2026-10-25 11:30:00',
-    status: 'SUBMITTED',
-    score: null,
-    teacher_feedback: null,
-    graded_at: null
-  }
-];
-
-const DEFAULT_ATTENDANCE = [
-  {
-    id: 1,
-    class_id: 1,
-    class_name: 'X-IPA-1',
-    subject_id: 1,
-    subject_name: 'Matematika Wajib',
-    teacher_id: 2,
-    teacher_name: 'Budi Santoso, S.Pd.',
-    date: '2026-10-22',
-    time_start: '07:30',
-    time_end: '09:00',
-    session_title: 'Pertemuan 2: Metode Eliminasi dan Substitusi SPLTV',
-    session_code: 'MAT912',
-    is_open: 1
-  },
-  {
-    id: 2,
-    class_id: 1,
-    class_name: 'X-IPA-1',
-    subject_id: 1,
-    subject_name: 'Matematika Wajib',
-    teacher_id: 2,
-    teacher_name: 'Budi Santoso, S.Pd.',
-    date: '2026-10-15',
-    time_start: '07:30',
-    time_end: '09:00',
-    session_title: 'Pertemuan 1: Konsep Dasar dan Notasi SPLTV',
-    session_code: 'MAT101',
-    is_open: 0
-  }
-];
-
-const DEFAULT_ATT_RECORDS = [
-  { session_id: 1, student_id: 4, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:35:00' },
-  { session_id: 1, student_id: 5, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:36:00' },
-  { session_id: 1, student_id: 6, status: 'Sakit', notes: 'Surat dokter', recorded_at: '2026-10-22 07:40:00' },
-  { session_id: 1, student_id: 7, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:35:00' },
-  { session_id: 1, student_id: 8, status: 'Izin', notes: 'Lomba OSN', recorded_at: '2026-10-22 07:30:00' },
-  { session_id: 1, student_id: 9, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:42:00' },
-  { session_id: 1, student_id: 10, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:38:00' },
-  { session_id: 1, student_id: 11, status: 'Hadir', notes: 'Tepat waktu', recorded_at: '2026-10-22 07:35:00' },
-  { session_id: 2, student_id: 4, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
-  { session_id: 2, student_id: 5, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:36:00' },
-  { session_id: 2, student_id: 6, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
-  { session_id: 2, student_id: 7, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
-  { session_id: 2, student_id: 8, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
-  { session_id: 2, student_id: 9, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
-  { session_id: 2, student_id: 10, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' },
-  { session_id: 2, student_id: 11, status: 'Hadir', notes: '', recorded_at: '2026-10-15 07:35:00' }
-];
+const DEFAULT_JOURNALS = [];
+const DEFAULT_EXAMS = [];
+const DEFAULT_QUESTIONS = [];
+const DEFAULT_ASSIGNMENTS = [];
+const DEFAULT_ASSIGNMENT_SUBMISSIONS = [];
+const DEFAULT_ATTENDANCE = [];
+const DEFAULT_ATT_RECORDS = [];
 
 function getStored(key, fallback) {
   try {
