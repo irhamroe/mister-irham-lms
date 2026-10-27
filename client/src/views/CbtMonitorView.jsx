@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/AlertContext';
 import { api } from '../services/api';
 import { getSocket } from '../services/socket';
 import { FlatBadge, FlatStatusDot } from '../components/common/FlatComponents';
@@ -26,6 +27,7 @@ import { StudentAvatar } from '../components/StudentAvatar';
 
 export default function CbtMonitorView({ examId: propExamId }) {
   const { user } = useAuth();
+  const { showToast, showConfirm } = useDialog();
   const [exams, setExams] = useState([]);
   const [activeExamId, setActiveExamId] = useState(propExamId || null);
   const [monitorData, setMonitorData] = useState(null);
@@ -276,14 +278,20 @@ export default function CbtMonitorView({ examId: propExamId }) {
             <button
               className="btn btn-danger"
               onClick={async () => {
-                if (window.confirm('HENTIKAN UJIAN INI SEKARANG? Siswa tidak akan dapat melanjutkan pengerjaan.')) {
-                  try {
-                    await api.updateCbtExamStatus(activeExamId, 'FINISHED');
-                    alert('Ujian telah resmi dihentikan!');
-                    loadMonitorState(activeExamId);
-                  } catch (err) {
-                    alert('Gagal menghentikan ujian: ' + err.message);
-                  }
+                const confirmed = await showConfirm({
+                  title: 'Hentikan Ujian CBT',
+                  message: 'HENTIKAN UJIAN INI SEKARANG? Siswa tidak akan dapat melanjutkan pengerjaan.',
+                  confirmText: 'Ya, Hentikan Ujian',
+                  type: 'danger'
+                });
+                if (!confirmed) return;
+
+                try {
+                  await api.updateCbtExamStatus(activeExamId, 'FINISHED');
+                  showToast('success', 'Ujian telah resmi dihentikan!');
+                  loadMonitorState(activeExamId);
+                } catch (err) {
+                  showToast('error', 'Gagal menghentikan ujian: ' + err.message);
                 }
               }}
               title="Hentikan pengerjaan ujian sekarang"
@@ -294,14 +302,20 @@ export default function CbtMonitorView({ examId: propExamId }) {
             <button
               className="btn btn-success"
               onClick={async () => {
-                if (window.confirm('Aktifkan kembali ujian ini?')) {
-                  try {
-                    await api.updateCbtExamStatus(activeExamId, 'ACTIVE');
-                    alert('Ujian telah diaktifkan kembali!');
-                    loadMonitorState(activeExamId);
-                  } catch (err) {
-                    alert('Gagal mengaktifkan ujian: ' + err.message);
-                  }
+                const confirmed = await showConfirm({
+                  title: 'Aktifkan Kembali Ujian',
+                  message: 'Aktifkan kembali ujian ini agar siswa dapat mengerjakan?',
+                  confirmText: 'Ya, Aktifkan',
+                  type: 'success'
+                });
+                if (!confirmed) return;
+
+                try {
+                  await api.updateCbtExamStatus(activeExamId, 'ACTIVE');
+                  showToast('success', 'Ujian telah diaktifkan kembali!');
+                  loadMonitorState(activeExamId);
+                } catch (err) {
+                  showToast('error', 'Gagal mengaktifkan ujian: ' + err.message);
                 }
               }}
             >
@@ -522,8 +536,14 @@ export default function CbtMonitorView({ examId: propExamId }) {
                         <button
                           className="btn btn-secondary btn-sm"
                           style={{ color: '#EF4444' }}
-                          onClick={() => {
-                            if (window.confirm(`Yakin paksa kumpulkan ujian untuk ${student.name}?`)) {
+                          onClick={async () => {
+                            const confirmed = await showConfirm({
+                              title: 'Paksa Kumpulkan Ujian',
+                              message: `Apakah Anda yakin ingin memaksa kumpulkan lembar ujian untuk siswa "${student.name}"?`,
+                              confirmText: 'Ya, Paksa Kumpul',
+                              type: 'danger'
+                            });
+                            if (confirmed) {
                               handleProctorAction('FORCE_SUBMIT', student.id);
                             }
                           }}

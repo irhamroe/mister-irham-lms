@@ -21,10 +21,12 @@ import {
   Check
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/AlertContext';
 import { api } from '../services/api';
 
 export default function CbtView({ onStartExam, onOpenMonitor }) {
   const { user, classes, subjects } = useAuth();
+  const { showToast, showConfirm } = useDialog();
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -118,18 +120,23 @@ export default function CbtView({ onStartExam, onOpenMonitor }) {
 
   async function handleToggleExamStatus(examId, nextStatus) {
     const isStopping = nextStatus === 'FINISHED';
-    const confirmMsg = isStopping
-      ? 'Hentikan / Tutup ujian ini sekarang? Siswa tidak akan dapat masuk atau mengerjakan ujian lagi.'
-      : 'Aktifkan ujian ini sekarang? Siswa di kelas terkait akan dapat mulai mengerjakan.';
+    const confirmed = await showConfirm({
+      title: isStopping ? 'Hentikan Ujian CBT' : 'Aktifkan Ujian CBT',
+      message: isStopping
+        ? 'Hentikan / Tutup ujian ini sekarang? Siswa tidak akan dapat masuk atau mengerjakan ujian lagi.'
+        : 'Aktifkan ujian ini sekarang? Siswa di kelas terkait akan dapat mulai mengerjakan.',
+      confirmText: isStopping ? 'Ya, Hentikan Ujian' : 'Ya, Aktifkan',
+      type: isStopping ? 'danger' : 'success'
+    });
     
-    if (!window.confirm(confirmMsg)) return;
+    if (!confirmed) return;
 
     try {
       await api.updateCbtExamStatus(examId, nextStatus);
-      alert(isStopping ? 'Ujian berhasil dihentikan!' : 'Ujian berhasil diaktifkan!');
+      showToast('success', isStopping ? 'Ujian berhasil dihentikan!' : 'Ujian berhasil diaktifkan!');
       loadExams();
     } catch (err) {
-      alert('Gagal mengubah status ujian: ' + err.message);
+      showToast('error', 'Gagal mengubah status ujian: ' + err.message);
     }
   }
 
@@ -186,15 +193,21 @@ export default function CbtView({ onStartExam, onOpenMonitor }) {
   }
 
   async function handleDeleteQuestion(questionId) {
-    if (!window.confirm('Hapus butir soal ini dari ujian?')) return;
+    const confirmed = await showConfirm({
+      title: 'Hapus Butir Soal',
+      message: 'Apakah Anda yakin ingin menghapus butir soal ini dari lembar ujian?',
+      confirmText: 'Ya, Hapus',
+      type: 'danger'
+    });
+    if (!confirmed) return;
     try {
       await api.deleteCbtQuestion(questionId);
       const refreshed = await api.getCbtExamDetails(activeExamQuestions.exam.id);
       setActiveExamQuestions(refreshed);
       loadExams();
-      alert('Butir soal berhasil dihapus');
+      showToast('success', 'Butir soal berhasil dihapus');
     } catch (err) {
-      alert('Gagal menghapus soal: ' + err.message);
+      showToast('error', 'Gagal menghapus soal: ' + err.message);
     }
   }
 

@@ -17,11 +17,13 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/AlertContext';
 import { api } from '../services/api';
 import { getSocket } from '../services/socket';
 
 export default function CbtExamView({ exam, token, onFinish }) {
   const { user } = useAuth();
+  const { showToast, showConfirm } = useDialog();
   const [examData, setExamData] = useState(exam);
   const [session, setSession] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -343,8 +345,15 @@ export default function CbtExamView({ exam, token, onFinish }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <button
             className="btn btn-outline btn-sm"
-            onClick={() => {
-              if (window.confirm('Tinggalkan ruang ujian? Pengerjaan Anda akan tetap tersimpan.')) {
+            onClick={async () => {
+              const confirmed = await showConfirm({
+                title: 'Tinggalkan Ruang Ujian',
+                message: 'Apakah Anda yakin ingin meninggalkan ruang ujian? Seluruh progres jawaban yang telah Anda isi akan tetap tersimpan.',
+                confirmText: 'Ya, Keluar',
+                cancelText: 'Lanjut Mengerjakan',
+                type: 'warning'
+              });
+              if (confirmed) {
                 onFinish();
               }
             }}

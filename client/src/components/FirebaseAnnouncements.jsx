@@ -20,11 +20,13 @@ import {
 import { ref, onValue, push, remove } from 'firebase/database';
 import { database } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/AlertContext';
 import { FlatBadge } from './common/FlatComponents';
 import { sortClassesNatural } from '../utils/sortHelper';
 
 export default function FirebaseAnnouncements() {
   const { user, classes = [] } = useAuth();
+  const { showToast, showConfirm } = useDialog();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -132,8 +134,9 @@ export default function FirebaseAnnouncements() {
 
       await push(announcementsRef, sample1);
       await push(announcementsRef, sample2);
+      showToast('success', 'Contoh pengumuman berhasil dimuat!');
     } catch (err) {
-      alert('Gagal memuat contoh: ' + err.message);
+      showToast('error', 'Gagal memuat contoh: ' + err.message);
     }
   };
 
@@ -142,7 +145,7 @@ export default function FirebaseAnnouncements() {
     if (!title.trim() || !message.trim()) return;
 
     if (targetType === 'SPECIFIC' && selectedClasses.length === 0) {
-      alert('Silakan pilih minimal 1 kelas target tujuan siaran.');
+      showToast('warning', 'Silakan pilih minimal 1 kelas target tujuan siaran.');
       return;
     }
 
@@ -161,20 +164,29 @@ export default function FirebaseAnnouncements() {
       });
 
       handleCloseModal();
+      showToast('success', 'Pengumuman sekolah berhasil disiarkan!');
     } catch (err) {
-      alert('Gagal mempublikasikan pengumuman: ' + err.message);
+      showToast('error', 'Gagal mempublikasikan pengumuman: ' + err.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteAnnouncement = async (id) => {
-    if (!window.confirm('Hapus pengumuman ini dari Firebase Realtime Database?')) return;
+    const confirmed = await showConfirm({
+      title: 'Hapus Pengumuman',
+      message: 'Apakah Anda yakin ingin menghapus pengumuman ini dari Firebase Realtime Database?',
+      confirmText: 'Ya, Hapus',
+      type: 'danger'
+    });
+    if (!confirmed) return;
+
     try {
       const itemRef = ref(database, `announcements/${id}`);
       await remove(itemRef);
+      showToast('success', 'Pengumuman berhasil dihapus');
     } catch (err) {
-      alert('Gagal menghapus pengumuman: ' + err.message);
+      showToast('error', 'Gagal menghapus pengumuman: ' + err.message);
     }
   };
 

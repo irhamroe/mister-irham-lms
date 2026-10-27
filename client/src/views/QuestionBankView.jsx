@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/AlertContext';
 import {
   downloadQuestionExcelTemplate,
   parseQuestionExcel,
@@ -41,6 +42,7 @@ import {
 
 export default function QuestionBankView({ onNavigateToCbt }) {
   const { user } = useAuth();
+  const { showToast, showConfirm } = useDialog();
   const isTeacher = user && (user.role === 'guru' || user.role === 'admin');
 
   const [questions, setQuestions] = useState([]);
@@ -504,32 +506,43 @@ export default function QuestionBankView({ onNavigateToCbt }) {
   }
 
   async function handleDeleteQuestion(id) {
-    if (!window.confirm('Yakin ingin menghapus butir soal ini dari Bank Soal?')) return;
+    const confirmed = await showConfirm({
+      title: 'Hapus Butir Soal',
+      message: 'Apakah Anda yakin ingin menghapus butir soal ini dari Bank Soal?',
+      confirmText: 'Ya, Hapus',
+      type: 'danger'
+    });
+    if (!confirmed) return;
     try {
       await api.deleteQuestionBankItem(id);
       setSelectedQuestionIds(prev => prev.filter(x => x !== id));
       loadQuestions();
-      alert('Soal berhasil dihapus');
+      showToast('success', 'Soal berhasil dihapus dari Bank Soal');
     } catch (err) {
-      alert('Gagal menghapus soal: ' + err.message);
+      showToast('error', 'Gagal menghapus soal: ' + err.message);
     }
   }
 
   // Delete all questions in an entire package title
   async function handleDeleteEntirePackage(pkgTitle) {
-    if (!window.confirm(`HAPUS SELURUH JUDUL SOAL "${pkgTitle}"?\nSemua butir soal di dalam judul ini akan dihapus dari Bank Soal.`)) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Hapus Seluruh Judul Soal',
+      message: `Hapus seluruh judul soal "${pkgTitle}"?\nSemua butir soal di dalam judul ini akan dihapus dari Bank Soal. Tindakan ini tidak dapat dibatalkan.`,
+      confirmText: 'Ya, Hapus Semua',
+      type: 'danger'
+    });
+    if (!confirmed) return;
+
     const qIds = packagesMap[pkgTitle]?.questions.map(q => q.id) || [];
     try {
       for (const id of qIds) {
         await api.deleteQuestionBankItem(id);
       }
       setSelectedQuestionIds(prev => prev.filter(x => !qIds.includes(x)));
-      alert(`Judul soal "${pkgTitle}" berhasil dihapus.`);
+      showToast('success', `Judul soal "${pkgTitle}" berhasil dihapus.`);
       loadQuestions();
     } catch (err) {
-      alert('Gagal menghapus paket judul: ' + err.message);
+      showToast('error', 'Gagal menghapus paket judul: ' + err.message);
     }
   }
 

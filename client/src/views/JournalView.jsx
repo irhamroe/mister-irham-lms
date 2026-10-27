@@ -13,10 +13,12 @@ import {
   Printer
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/AlertContext';
 import { api } from '../services/api';
 
 export default function JournalView() {
   const { user, classes, subjects } = useAuth();
+  const { showToast, showConfirm } = useDialog();
   const [journals, setJournals] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -99,25 +101,32 @@ export default function JournalView() {
     try {
       if (editId) {
         await api.updateJournal(editId, form);
-        alert('Jurnal berhasil diperbarui!');
+        showToast('success', 'Jurnal berhasil diperbarui!');
       } else {
         await api.createJournal(form);
-        alert('Jurnal mengajar baru berhasil disimpan!');
+        showToast('success', 'Jurnal mengajar baru berhasil disimpan!');
       }
       setShowModal(false);
       loadJournals();
     } catch (err) {
-      alert('Gagal menyimpan jurnal: ' + err.message);
+      showToast('error', 'Gagal menyimpan jurnal: ' + err.message);
     }
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus catatan jurnal ini?')) return;
+    const confirmed = await showConfirm({
+      title: 'Hapus Jurnal Mengajar',
+      message: 'Apakah Anda yakin ingin menghapus catatan agenda mengajar ini?',
+      confirmText: 'Ya, Hapus',
+      type: 'danger'
+    });
+    if (!confirmed) return;
     try {
       await api.deleteJournal(id);
       loadJournals();
+      showToast('success', 'Catatan jurnal berhasil dihapus');
     } catch (err) {
-      alert('Gagal menghapus: ' + err.message);
+      showToast('error', 'Gagal menghapus: ' + err.message);
     }
   }
 

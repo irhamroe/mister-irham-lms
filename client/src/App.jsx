@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AlertProvider } from './context/AlertContext';
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
 import DashboardView from './views/DashboardView';
@@ -140,7 +141,9 @@ function MainApp() {
 export default function App() {
   return (
     <AuthProvider>
-      <MainApp />
+      <AlertProvider>
+        <MainApp />
+      </AlertProvider>
     </AuthProvider>
   );
 }
