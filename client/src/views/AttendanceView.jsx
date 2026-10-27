@@ -17,9 +17,11 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { StudentAvatar } from '../components/StudentAvatar';
+import { sortClassesNatural } from '../utils/sortHelper';
 
 export default function AttendanceView() {
   const { user, classes, subjects } = useAuth();
+  const sortedClasses = React.useMemo(() => sortClassesNatural(classes), [classes]);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('sessions'); // 'sessions' | 'recap'
@@ -55,13 +57,13 @@ export default function AttendanceView() {
   const isTeacher = user?.role === 'guru' || user?.role === 'admin';
 
   useEffect(() => {
-    if (classes.length > 0 && !selectedClass) {
-      setSelectedClass(classes[0].id.toString());
+    if (sortedClasses.length > 0 && !selectedClass) {
+      setSelectedClass(sortedClasses[0].id.toString());
     }
     if (subjects.length > 0 && !selectedSubject) {
       setSelectedSubject(subjects[0].id.toString());
     }
-  }, [classes, subjects]);
+  }, [sortedClasses, subjects]);
 
   useEffect(() => {
     loadSessions();
@@ -224,7 +226,7 @@ export default function AttendanceView() {
             value={selectedClass}
             onChange={(e) => setSelectedClass(e.target.value)}
           >
-            {classes.map(c => (
+            {sortedClasses.map(c => (
               <option key={c.id} value={c.id}>Kelas {c.name}</option>
             ))}
           </select>
@@ -585,7 +587,7 @@ export default function AttendanceView() {
                       onChange={(e) => setNewSessionForm({ ...newSessionForm, class_id: e.target.value })}
                       required
                     >
-                      {classes.map(c => <option key={c.id} value={c.id}>Kelas {c.name}</option>)}
+                      {sortedClasses.map(c => <option key={c.id} value={c.id}>Kelas {c.name}</option>)}
                     </select>
 
                     <select

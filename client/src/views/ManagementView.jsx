@@ -33,6 +33,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { downloadStudentExcelTemplate, parseStudentExcel } from '../services/fileImportHelper';
 import { StudentAvatar } from '../components/StudentAvatar';
+import { sortClassesNatural } from '../utils/sortHelper';
 
 function getPageNumbers(currentPage, totalPages) {
   if (totalPages <= 7) {
@@ -168,9 +169,10 @@ export default function ManagementView({ initialTab = 'classes' }) {
     try {
       setLoading(true);
       const data = await api.getManagementClasses();
-      setClassesList(Array.isArray(data) ? data : []);
-      if (Array.isArray(data) && data.length > 0 && !studentForm.kelas) {
-        setStudentForm(prev => ({ ...prev, kelas: data[0].name }));
+      const sorted = sortClassesNatural(Array.isArray(data) ? data : []);
+      setClassesList(sorted);
+      if (sorted.length > 0 && !studentForm.kelas) {
+        setStudentForm(prev => ({ ...prev, kelas: sorted[0].name }));
       }
     } catch (err) {
       showToast('error', 'Gagal memuat kelas: ' + err.message);

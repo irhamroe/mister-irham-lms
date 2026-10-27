@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { generateInitialsAvatarDataUrl } = require('../utils/avatar');
+const { sortClassesNatural } = require('../utils/sortHelper');
 
 // Apply auth middleware: Admin and Guru have access, certain delete/admin functions for admin only
 router.use(authenticateToken);
@@ -37,15 +38,15 @@ router.get('/stats', (req, res) => {
 // GET /api/management/classes
 router.get('/classes', (req, res) => {
   try {
-    const classes = db.prepare(`
+    const rawClasses = db.prepare(`
       SELECT 
         c.*,
         (SELECT COUNT(*) FROM users WHERE role = 'siswa' AND kelas = c.name) as student_count,
         (SELECT COUNT(*) FROM subjects WHERE id IN (SELECT subject_id FROM attendance_sessions WHERE class_id = c.id)) as subject_count
       FROM classes c
-      ORDER BY c.name ASC
     `).all();
 
+    const classes = sortClassesNatural(rawClasses);
     res.json(classes);
   } catch (err) {
     res.status(500).json({ error: err.message });

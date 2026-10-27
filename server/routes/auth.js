@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 const { JWT_SECRET, authenticateToken } = require('../middleware/auth');
+const { sortClassesNatural } = require('../utils/sortHelper');
 
 // POST /api/auth/login
 router.post('/login', (req, res) => {
@@ -53,7 +54,8 @@ router.get('/me', authenticateToken, (req, res) => {
 // GET /api/auth/meta
 router.get('/meta', authenticateToken, (req, res) => {
   try {
-    const classes = db.prepare('SELECT * FROM classes ORDER BY name ASC').all();
+    const rawClasses = db.prepare('SELECT * FROM classes').all();
+    const classes = sortClassesNatural(rawClasses);
     const subjects = db.prepare(`
       SELECT s.*, u.name as teacher_name 
       FROM subjects s 

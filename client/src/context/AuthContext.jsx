@@ -1,13 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api, setToken, getToken } from '../services/api';
+import { sortClassesNatural } from '../utils/sortHelper';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [classes, setClasses] = useState([]);
+  const [classes, setClassesState] = useState([]);
   const [subjects, setSubjects] = useState([]);
+
+  const setClasses = (rawList) => {
+    setClassesState(sortClassesNatural(rawList || []));
+  };
 
   useEffect(() => {
     initAuth();

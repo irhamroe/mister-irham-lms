@@ -1,5 +1,6 @@
 // Fallback mock API for standalone / offline / static deployment (e.g. Vercel)
 // All changes are persisted to localStorage so that user interactions work seamlessly!
+import { sortClassesNatural } from '../utils/sortHelper';
 
 const STORAGE_KEYS = {
   USERS: 'lms_mock_users_v3',
@@ -32,6 +33,17 @@ if (typeof localStorage !== 'undefined') {
   ].forEach(k => {
     try { localStorage.removeItem(k); } catch (e) {}
   });
+
+  // Ensure any cached classes are sorted naturally
+  try {
+    const cachedClasses = localStorage.getItem(STORAGE_KEYS.CLASSES);
+    if (cachedClasses) {
+      const parsed = JSON.parse(cachedClasses);
+      if (Array.isArray(parsed)) {
+        localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(sortClassesNatural(parsed)));
+      }
+    }
+  } catch (e) {}
 }
 
 function getStudentInitials(name) {
@@ -4384,6 +4396,22 @@ const DEFAULT_USERS = [
 
 const DEFAULT_CLASSES = [
   {
+    "id": 1,
+    "name": "X-8",
+    "level": "Kelas 10",
+    "academic_year": "2026/2027",
+    "student_count": 35,
+    "subject_count": 2
+  },
+  {
+    "id": 2,
+    "name": "X-9",
+    "level": "Kelas 10",
+    "academic_year": "2026/2027",
+    "student_count": 35,
+    "subject_count": 2
+  },
+  {
     "id": 3,
     "name": "X-10",
     "level": "Kelas 10",
@@ -4402,22 +4430,6 @@ const DEFAULT_CLASSES = [
   {
     "id": 5,
     "name": "X-12",
-    "level": "Kelas 10",
-    "academic_year": "2026/2027",
-    "student_count": 35,
-    "subject_count": 2
-  },
-  {
-    "id": 1,
-    "name": "X-8",
-    "level": "Kelas 10",
-    "academic_year": "2026/2027",
-    "student_count": 35,
-    "subject_count": 2
-  },
-  {
-    "id": 2,
-    "name": "X-9",
     "level": "Kelas 10",
     "academic_year": "2026/2027",
     "student_count": 35,
@@ -4574,7 +4586,7 @@ export async function handleMockRequest(endpoint, options = {}) {
   }
 
   if (path === '/auth/meta') {
-    const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
+    const classes = sortClassesNatural(getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES));
     const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);
     return { classes, subjects };
   }
@@ -4583,7 +4595,7 @@ export async function handleMockRequest(endpoint, options = {}) {
   // MANAGEMENT ENDPOINTS
   // ==========================================
   if (path === '/management/stats') {
-    const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
+    const classes = sortClassesNatural(getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES));
     const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);
     return {
       totalClasses: classes.length,
@@ -4596,7 +4608,7 @@ export async function handleMockRequest(endpoint, options = {}) {
 
   // CLASSES
   if (path === '/management/classes') {
-    const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
+    const classes = sortClassesNatural(getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES));
     if (method === 'GET') {
       return classes.map(c => ({
         ...c,
@@ -4613,21 +4625,21 @@ export async function handleMockRequest(endpoint, options = {}) {
         subject_count: 0
       };
       classes.push(newClass);
-      setStored(STORAGE_KEYS.CLASSES, classes);
+      setStored(STORAGE_KEYS.CLASSES, sortClassesNatural(classes));
       return newClass;
     }
   }
 
   if (path.startsWith('/management/classes/')) {
     const id = Number(path.split('/')[3]);
-    let classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
+    let classes = sortClassesNatural(getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES));
     if (method === 'PUT') {
-      classes = classes.map(c => c.id === id ? { ...c, ...body } : c);
+      classes = sortClassesNatural(classes.map(c => c.id === id ? { ...c, ...body } : c));
       setStored(STORAGE_KEYS.CLASSES, classes);
       return classes.find(c => c.id === id);
     }
     if (method === 'DELETE') {
-      classes = classes.filter(c => c.id !== id);
+      classes = sortClassesNatural(classes.filter(c => c.id !== id));
       setStored(STORAGE_KEYS.CLASSES, classes);
       return { success: true };
     }
