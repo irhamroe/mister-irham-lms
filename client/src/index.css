@@ -1398,15 +1398,15 @@ a {
 }
 
 .school-logo-card {
-  width: 96px;
-  height: 96px;
+  width: 124px;
+  height: 124px;
   background: #FFFFFF;
-  border-radius: 26px;
-  padding: 12px;
+  border-radius: 28px;
+  padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 16px 40px -6px rgba(0, 0, 0, 0.30), 0 0 0 2px rgba(255, 255, 255, 0.9);
+  box-shadow: 0 20px 48px -6px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(255, 255, 255, 0.95);
   margin-bottom: 16px;
   transition: transform 0.3s ease;
 }

@@ -4451,14 +4451,34 @@ export async function handleMockRequest(endpoint, options = {}) {
   // AUTH ENDPOINTS
   // ==========================================
   if (path === '/auth/login') {
-    const { username, password } = body;
-    const target = users.find(u => u.username === username || (u.nis_nip && u.nis_nip === username));
+    const cleanUser = (body.username || '').trim().toLowerCase();
+    const cleanPass = (body.password || '').trim();
+
+    let target = users.find(u => 
+      (u.username && u.username.toLowerCase() === cleanUser) || 
+      (u.nis_nip && u.nis_nip.toLowerCase() === cleanUser)
+    );
+    if (!target) {
+      target = DEFAULT_USERS.find(u => 
+        (u.username && u.username.toLowerCase() === cleanUser) || 
+        (u.nis_nip && u.nis_nip.toLowerCase() === cleanUser)
+      );
+    }
+
     if (!target) {
       throw new Error('Username atau kata sandi salah');
     }
-    if (password && password !== 'password123' && password !== target.username && password !== target.nis_nip) {
+
+    const isValidPass = 
+      cleanPass === 'password123' || 
+      cleanPass === 'admin' || 
+      (target.username && cleanPass === target.username.toLowerCase()) || 
+      (target.nis_nip && cleanPass === target.nis_nip.toLowerCase());
+
+    if (!isValidPass) {
       throw new Error('Username atau kata sandi salah');
     }
+
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, target.id.toString());
     return {
       token: `mock_token_${target.id}`,

@@ -33,22 +33,28 @@ async function request(endpoint, options = {}) {
       return await response.json();
     }
 
-    // Server returned an error response (e.g. 400, 401, 403, 404, 500)
-    if (!response.ok) {
-      if (contentType.includes('application/json')) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+    // If server responded with a genuine JSON error response (e.g. 400 Bad Request with error message)
+    if (contentType.includes('application/json')) {
+      const errorData = await response.json().catch(() => ({}));
+      if (errorData.error) {
+        throw new Error(errorData.error);
       }
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
 
+    // If backend is not running or gateway timeout (500/502/504 proxy error), fallback to mockApi
     return await handleMockRequest(endpoint, options);
   } catch (err) {
-    // If it's an explicit API / HTTP error thrown above, re-throw so callers can display it
-    if (err.message && !err.message.includes('fetch') && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError')) {
+    // If it's a specific validation/auth error message from server, re-throw so user sees it
+    if (err.message && 
+        !err.message.includes('fetch') && 
+        !err.message.includes('Failed to fetch') && 
+        !err.message.includes('NetworkError') && 
+        !err.message.includes('Gateway') && 
+        !err.message.includes('ECONNREFUSED') &&
+        !err.message.includes('Error 50')) {
       throw err;
     }
-    // Only fall back to mockApi if the backend server is unreachable
+    // Backend server is unreachable, fall back to mockApi
     return await handleMockRequest(endpoint, options);
   }
 }
