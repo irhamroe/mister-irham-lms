@@ -14,11 +14,13 @@ import CbtMonitorView from './views/CbtMonitorView';
 import CbtExamView from './views/CbtExamView';
 import ManagementView from './views/ManagementView';
 import LoginView from './views/LoginView';
+import MobileBottomNav from './components/MobileBottomNav';
 
 function MainApp() {
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setTheme] = useState('light');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // CBT Exam mode states (Distraction-free)
   const [activeExam, setActiveExam] = useState(null);
@@ -74,11 +76,22 @@ function MainApp() {
   return (
     <div className="app-container">
       {/* Sidebar Navigation */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
+      />
 
       {/* Main Content Area */}
       <div className="main-wrapper">
-        <Topbar activeTab={activeTab} theme={theme} setTheme={setTheme} />
+        <Topbar
+          activeTab={activeTab}
+          theme={theme}
+          setTheme={setTheme}
+          onToggleMobileMenu={() => setMobileMenuOpen(prev => !prev)}
+          isMobileMenuOpen={mobileMenuOpen}
+        />
 
         <main style={{ flex: 1 }}>
           {activeTab === 'dashboard' && (
@@ -133,6 +146,13 @@ function MainApp() {
             <ManagementView initialTab="users" />
           )}
         </main>
+
+        {/* Modern Mobile Bottom Navigation Bar */}
+        <MobileBottomNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onOpenMenu={() => setMobileMenuOpen(true)}
+        />
       </div>
     </div>
   );

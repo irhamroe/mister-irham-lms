@@ -421,7 +421,7 @@ export default function CbtMonitorView({ examId: propExamId }) {
       )}
 
       {/* Main Split: Student Cards Grid (Left) + Audit Logs Sidebar (Right) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '28px' }}>
+      <div className="cbt-monitor-split-layout">
         {/* Student Cards Grid */}
         <div>
           <h3 style={{ fontSize: '1.05rem', fontWeight: 800, marginBottom: '16px', color: 'var(--text-main)' }}>

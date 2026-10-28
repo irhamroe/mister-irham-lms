@@ -464,7 +464,7 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
       {/* ===================================================================
           Two Column Layout: Modules & Recent Assignments
           =================================================================== */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '28px' }}>
+      <div className="dashboard-two-col-grid">
         {/* Module Navigators */}
         <div className="card">
           <div className="card-header">

@@ -13,13 +13,15 @@ import {
   Users,
   UserCog,
   Layers,
-  BookOpen
+  BookOpen,
+  X,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { FlatStatusDot, FlatBadge } from './common/FlatComponents';
+import { StudentAvatar } from './StudentAvatar';
 
-export default function Sidebar({ activeTab, setActiveTab }) {
-  const { user } = useAuth();
+export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobileOpen }) {
+  const { user, logout } = useAuth();
 
   const isTeacherOrAdmin = user && (user.role === 'guru' || user.role === 'admin');
 
@@ -137,81 +139,134 @@ export default function Sidebar({ activeTab, setActiveTab }) {
   const filteredNav = navItems.filter(item => !user || item.roles.includes(user.role));
   const filteredManagement = managementNavItems.filter(item => !user || item.roles.includes(user.role));
 
+  const handleItemClick = (id) => {
+    setActiveTab(id);
+    if (setMobileOpen) {
+      setMobileOpen(false);
+    }
+  };
+
   return (
-    <aside className="sidebar">
-      {/* Brand Header */}
-      <div className="sidebar-header">
-        <div className="logo-badge">
-          <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-        </div>
-        <div className="logo-text">
-          <h1>Mister Irham</h1>
-          <p>Learning Management System</p>
-        </div>
-      </div>
-
-      {/* Navigation List */}
-      <nav className="sidebar-nav">
-        <span className="nav-label">Menu Utama</span>
-        {filteredNav.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <div
-              key={item.id}
-              className={`nav-item ${isActive ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.id)}
+    <>
+      {mobileOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setMobileOpen && setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside className={`sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
+        {/* Brand Header */}
+        <div className="sidebar-header">
+          <div className="logo-badge">
+            <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
+          <div className="logo-text">
+            <h1>Mister Irham</h1>
+            <p>Learning Management System</p>
+          </div>
+          {setMobileOpen && (
+            <button
+              type="button"
+              className="sidebar-mobile-close-btn"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Tutup menu"
             >
-              <div
-                className="nav-icon-badge"
-                style={{
-                  background: isActive ? item.color : item.bgColor,
-                  color: isActive ? '#FFFFFF' : item.color,
-                  boxShadow: isActive ? `0 4px 10px ${item.color}55` : 'none'
-                }}
-              >
-                <Icon size={18} strokeWidth={isActive ? 2.5 : 2.1} />
-              </div>
-              <span>{item.label}</span>
-              {item.isLive && (
-                <span className="nav-badge live">
-                  LIVE
-                </span>
-              )}
-            </div>
-          );
-        })}
+              <X size={18} />
+            </button>
+          )}
+        </div>
 
-        {/* Kategori Menu Manajemen Data */}
-        {isTeacherOrAdmin && (
-          <>
-            <span className="nav-label" style={{ marginTop: 14 }}>Manajemen Data</span>
-            {filteredManagement.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
+        {/* Navigation List */}
+        <nav className="sidebar-nav">
+          <span className="nav-label">Menu Utama</span>
+          {filteredNav.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <div
+                key={item.id}
+                className={`nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => handleItemClick(item.id)}
+              >
                 <div
-                  key={item.id}
-                  className={`nav-item ${isActive ? 'active' : ''}`}
-                  onClick={() => setActiveTab(item.id)}
+                  className="nav-icon-badge"
+                  style={{
+                    background: isActive ? item.color : item.bgColor,
+                    color: isActive ? '#FFFFFF' : item.color,
+                    boxShadow: isActive ? `0 4px 10px ${item.color}55` : 'none'
+                  }}
                 >
-                  <div
-                    className="nav-icon-badge"
-                    style={{
-                      background: isActive ? item.color : item.bgColor,
-                      color: isActive ? '#FFFFFF' : item.color,
-                      boxShadow: isActive ? `0 4px 10px ${item.color}55` : 'none'
-                    }}
-                  >
-                    <Icon size={18} strokeWidth={isActive ? 2.5 : 2.1} />
-                  </div>
-                  <span>{item.label}</span>
+                  <Icon size={18} strokeWidth={isActive ? 2.5 : 2.1} />
                 </div>
-              );
-            })}
-          </>
+                <span>{item.label}</span>
+                {item.isLive && (
+                  <span className="nav-badge live">
+                    LIVE
+                  </span>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Kategori Menu Manajemen Data */}
+          {isTeacherOrAdmin && (
+            <>
+              <span className="nav-label" style={{ marginTop: 14 }}>Manajemen Data</span>
+              {filteredManagement.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className={`nav-item ${isActive ? 'active' : ''}`}
+                    onClick={() => handleItemClick(item.id)}
+                  >
+                    <div
+                      className="nav-icon-badge"
+                      style={{
+                        background: isActive ? item.color : item.bgColor,
+                        color: isActive ? '#FFFFFF' : item.color,
+                        boxShadow: isActive ? `0 4px 10px ${item.color}55` : 'none'
+                      }}
+                    >
+                      <Icon size={18} strokeWidth={isActive ? 2.5 : 2.1} />
+                    </div>
+                    <span>{item.label}</span>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </nav>
+
+        {/* User Card on Mobile Drawer */}
+        {user && (
+          <div className="sidebar-footer">
+            <div className="user-profile-card">
+              <div className="user-profile-info">
+                <StudentAvatar name={user.name} size={36} className="user-profile-avatar" />
+                <div className="user-profile-details">
+                  <div className="user-profile-name">{user.name}</div>
+                  <div className="user-profile-role">
+                    {user.role === 'guru' && 'Guru Mapel'}
+                    {user.role === 'admin' && 'Administrator'}
+                    {user.role === 'siswa' && `Siswa (${user.kelas || 'X-8'})`}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-logout"
+                onClick={logout}
+                title="Keluar dari akun"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          </div>
         )}
-      </nav>
-    </aside>
+      </aside>
+    </>
   );
 }

@@ -1,10 +1,10 @@
 import React from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { StudentAvatar } from './StudentAvatar';
 import { FlatBadge } from './common/FlatComponents';
 
-export default function Topbar({ activeTab }) {
+export default function Topbar({ activeTab, onToggleMobileMenu, isMobileMenuOpen }) {
   const { user, logout } = useAuth();
 
   const titles = {
@@ -27,19 +27,31 @@ export default function Topbar({ activeTab }) {
 
   return (
     <header className="topbar">
-      <div className="topbar-title" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <FlatBadge variant="blueLight" size="sm">{current.tag}</FlatBadge>
-        <div>
-          <h2>{current.title}</h2>
-          <p>{current.desc}</p>
+      <div className="topbar-title-wrap">
+        <button
+          type="button"
+          className="mobile-menu-toggle-btn"
+          onClick={onToggleMobileMenu}
+          aria-label="Menu navigasi"
+          title="Buka Menu"
+        >
+          <Menu size={20} />
+        </button>
+
+        <div className="topbar-title">
+          <FlatBadge variant="blueLight" size="sm" className="topbar-tag">{current.tag}</FlatBadge>
+          <div>
+            <h2>{current.title}</h2>
+            <p className="topbar-desc">{current.desc}</p>
+          </div>
         </div>
       </div>
 
-      <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="topbar-actions">
         {user && (
           <>
             <div className="user-pill">
-              <StudentAvatar name={user.name} size={32} className="user-avatar" />
+              <StudentAvatar name={user.name} size={30} className="user-avatar" />
               <div className="user-info">
                 <div className="user-name">{user.name}</div>
                 <div className="user-role-badge">

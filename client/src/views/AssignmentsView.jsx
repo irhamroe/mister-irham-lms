@@ -587,7 +587,7 @@ export default function AssignmentsView() {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 24 }}>
+      <div className="assignments-split-layout">
         {/* Left Column: Assignment Feed */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {assignments.map(a => {

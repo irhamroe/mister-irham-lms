@@ -679,6 +679,52 @@ export default function ManagementView({ initialTab = 'classes' }) {
         </div>
       </div>
 
+      {/* Mobile-Friendly Management Category Tab Bar */}
+      <div className="tabs-nav management-tab-bar" style={{ marginBottom: 18 }}>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'classes' ? 'active' : ''}`}
+          onClick={() => setActiveTab('classes')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <School size={15} /> Data Kelas
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'subjects' ? 'active' : ''}`}
+          onClick={() => setActiveTab('subjects')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <BookOpen size={15} /> Data Mapel
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'students' ? 'active' : ''}`}
+          onClick={() => setActiveTab('students')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <Users size={15} /> Data Siswa
+        </button>
+        <button
+          type="button"
+          className={`tab-btn ${activeTab === 'teachers' ? 'active' : ''}`}
+          onClick={() => setActiveTab('teachers')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <UserCheck size={15} /> Data Guru
+        </button>
+        {user?.role === 'admin' && (
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => setActiveTab('users')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <UserCog size={15} /> Management User
+          </button>
+        )}
+      </div>
+
       {/* KPI Stats Counters */}
       {stats && (
         <div className="stats-grid" style={{ marginBottom: 22 }}>

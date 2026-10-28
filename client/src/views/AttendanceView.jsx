@@ -518,7 +518,7 @@ export default function AttendanceView() {
       </div>
 
       {activeTab === 'sessions' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 24 }}>
+        <div className="attendance-split-layout">
           {/* Left: Sessions List */}
           <div className="card" style={{ padding: 16 }}>
             <h4 style={{ fontSize: '0.92rem', fontWeight: 700, marginBottom: 14, color: 'var(--text-main)' }}>
