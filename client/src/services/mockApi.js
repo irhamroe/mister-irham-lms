@@ -2,6 +2,9 @@
 // All changes are persisted to localStorage so that user interactions work seamlessly!
 import { sortClassesNatural } from '../utils/sortHelper';
 import { syncToFirebase, initFirebaseSync } from './firebaseSyncService';
+import bcrypt from 'bcryptjs';
+import { ref, get } from 'firebase/database';
+import { database } from './firebase';
 
 const STORAGE_KEYS = {
   USERS: 'lms_mock_users_v3',
@@ -4586,7 +4589,27 @@ export async function handleMockRequest(endpoint, options = {}) {
     const cleanUser = (body.username || '').trim().toLowerCase();
     const cleanPass = (body.password || '').trim();
 
-    let target = users.find(u => 
+    // Query live Firebase RTDB so all devices (laptops, phones, tablets) immediately use the latest passwords
+    let activeUsers = users;
+    if (database) {
+      try {
+        const snap = await get(ref(database, 'lms_v3/users'));
+        if (snap.exists()) {
+          const val = snap.val();
+          const cloudList = Array.isArray(val) ? val : Object.values(val);
+          if (cloudList && cloudList.length > 0) {
+            activeUsers = cloudList;
+            try {
+              localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(cloudList));
+            } catch (e) {}
+          }
+        }
+      } catch (e) {
+        console.warn('Firebase RTDB login lookup skipped:', e);
+      }
+    }
+
+    let target = activeUsers.find(u => 
       (u.username && u.username.toLowerCase() === cleanUser) || 
       (u.nis_nip && u.nis_nip.toLowerCase() === cleanUser)
     );
@@ -4602,12 +4625,20 @@ export async function handleMockRequest(endpoint, options = {}) {
     }
 
     const customPass = (target.password && target.password.trim()) ? target.password.trim() : null;
+    const customHash = target.password_hash || (customPass && customPass.startsWith('$2') ? customPass : null);
     let isValidPass = false;
 
-    if (customPass) {
-      // User has explicitly set a custom password via Management User / Settings
+    if (customHash) {
+      try {
+        isValidPass = bcrypt.compareSync(cleanPass, customHash);
+      } catch (e) {
+        isValidPass = false;
+      }
+    }
+    if (!isValidPass && customPass && !customPass.startsWith('$2')) {
       isValidPass = (cleanPass === customPass);
-    } else {
+    }
+    if (!isValidPass && !customPass && !customHash) {
       // Default initial passwords before custom password is set
       isValidPass = 
         cleanPass === 'password123' || 
@@ -4782,6 +4813,11 @@ export async function handleMockRequest(endpoint, options = {}) {
         email: body.email ? body.email.trim() : `${body.username}@siswa.sekolah.sch.id`,
         phone: body.phone ? body.phone.trim() : '',
         password: (body.password && body.password.trim()) ? body.password.trim() : 'password123',
+        password_hash: (() => {
+          try {
+            return bcrypt.hashSync((body.password && body.password.trim()) ? body.password.trim() : 'password123', 10);
+          } catch (e) { return null; }
+        })(),
         avatar: generateInitialsAvatarDataUrl(body.name.trim()),
         created_at: new Date().toISOString().split('T')[0]
       };
@@ -4818,6 +4854,11 @@ export async function handleMockRequest(endpoint, options = {}) {
           email: st.email ? st.email.trim() : `${username}@siswa.sekolah.sch.id`,
           phone: st.phone ? st.phone.trim() : '',
           password: (st.password && String(st.password).trim()) ? String(st.password).trim() : 'password123',
+          password_hash: (() => {
+            try {
+              return bcrypt.hashSync((st.password && String(st.password).trim()) ? String(st.password).trim() : 'password123', 10);
+            } catch (e) { return null; }
+          })(),
           avatar: generateInitialsAvatarDataUrl(st.name.trim()),
           created_at: new Date().toISOString().split('T')[0]
         };
@@ -4840,7 +4881,14 @@ export async function handleMockRequest(endpoint, options = {}) {
         if (u.id === id) {
           const updated = { ...u, ...body, nis_nip: body.nis || u.nis };
           if (body.password && body.password.trim()) {
-            updated.password = body.password.trim();
+            const cleanP = body.password.trim();
+            updated.password = cleanP;
+            try {
+              updated.password_hash = bcrypt.hashSync(cleanP, 10);
+            } catch (e) {}
+          } else if (u.password_hash) {
+            updated.password_hash = u.password_hash;
+            if (u.password) updated.password = u.password;
           } else if (u.password) {
             updated.password = u.password;
           } else {
@@ -4884,6 +4932,11 @@ export async function handleMockRequest(endpoint, options = {}) {
         email: body.email ? body.email.trim() : `${body.username}@sekolah.sch.id`,
         phone: body.phone ? body.phone.trim() : '',
         password: (body.password && body.password.trim()) ? body.password.trim() : 'password123',
+        password_hash: (() => {
+          try {
+            return bcrypt.hashSync((body.password && body.password.trim()) ? body.password.trim() : 'password123', 10);
+          } catch (e) { return null; }
+        })(),
         avatar: generateInitialsAvatarDataUrl(body.name.trim()),
         created_at: new Date().toISOString().split('T')[0]
       };
@@ -4904,7 +4957,14 @@ export async function handleMockRequest(endpoint, options = {}) {
             updatedUser.avatar = generateInitialsAvatarDataUrl(updatedUser.name);
           }
           if (body.password && body.password.trim()) {
-            updatedUser.password = body.password.trim();
+            const cleanP = body.password.trim();
+            updatedUser.password = cleanP;
+            try {
+              updatedUser.password_hash = bcrypt.hashSync(cleanP, 10);
+            } catch (e) {}
+          } else if (u.password_hash) {
+            updatedUser.password_hash = u.password_hash;
+            if (u.password) updatedUser.password = u.password;
           } else if (u.password) {
             updatedUser.password = u.password;
           } else {

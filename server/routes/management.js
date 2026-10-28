@@ -222,7 +222,7 @@ router.post('/students', requireRole(['admin', 'guru']), (req, res) => {
     );
 
     const newStudent = db.prepare(`
-      SELECT id, username, name, role, nis_nip as nis, kelas, gender, no_absen, email, phone, avatar, created_at
+      SELECT id, username, password_hash, name, role, nis_nip as nis, kelas, gender, no_absen, email, phone, avatar, created_at
       FROM users WHERE id = ?
     `).get(result.lastInsertRowid);
 
@@ -356,7 +356,7 @@ router.put('/students/:id', requireRole(['admin', 'guru']), (req, res) => {
     );
 
     const updated = db.prepare(`
-      SELECT id, username, name, role, nis_nip as nis, kelas, gender, no_absen, email, phone, avatar, created_at
+      SELECT id, username, password_hash, name, role, nis_nip as nis, kelas, gender, no_absen, email, phone, avatar, created_at
       FROM users WHERE id = ?
     `).get(req.params.id);
 
@@ -454,7 +454,7 @@ router.post('/users', requireRole(['admin']), (req, res) => {
     );
 
     const newUser = db.prepare(`
-      SELECT id, username, name, role, nis_nip as nip, kelas, email, phone, avatar, created_at
+      SELECT id, username, password_hash, name, role, nis_nip as nip, kelas, email, phone, avatar, created_at
       FROM users WHERE id = ?
     `).get(result.lastInsertRowid);
 
@@ -511,7 +511,7 @@ router.put('/users/:id', requireRole(['admin']), (req, res) => {
     );
 
     const updated = db.prepare(`
-      SELECT id, username, name, role, nis_nip as nip, kelas, email, phone, avatar, created_at
+      SELECT id, username, password_hash, name, role, nis_nip as nip, kelas, email, phone, avatar, created_at
       FROM users WHERE id = ?
     `).get(req.params.id);
 

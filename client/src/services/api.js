@@ -1,4 +1,56 @@
 import { handleMockRequest } from './mockApi';
+import { syncToFirebase } from './firebaseSyncService';
+
+function syncUserChangesToCloud(updater) {
+  try {
+    const USERS_KEY = 'lms_mock_users_v3';
+    const stored = localStorage.getItem(USERS_KEY);
+    let users = stored ? JSON.parse(stored) : [];
+    if (Array.isArray(users)) {
+      const nextUsers = updater(users);
+      if (Array.isArray(nextUsers)) {
+        localStorage.setItem(USERS_KEY, JSON.stringify(nextUsers));
+        syncToFirebase(USERS_KEY, nextUsers);
+      }
+    }
+  } catch (e) {
+    console.warn('Sync user changes to Firebase failed:', e);
+  }
+}
+
+function syncSubjectChangesToCloud(updater) {
+  try {
+    const KEY = 'lms_mock_subjects_v3';
+    const stored = localStorage.getItem(KEY);
+    let items = stored ? JSON.parse(stored) : [];
+    if (Array.isArray(items)) {
+      const nextItems = updater(items);
+      if (Array.isArray(nextItems)) {
+        localStorage.setItem(KEY, JSON.stringify(nextItems));
+        syncToFirebase(KEY, nextItems);
+      }
+    }
+  } catch (e) {
+    console.warn('Sync subject changes to Firebase failed:', e);
+  }
+}
+
+function syncClassChangesToCloud(updater) {
+  try {
+    const KEY = 'lms_mock_classes_v3';
+    const stored = localStorage.getItem(KEY);
+    let items = stored ? JSON.parse(stored) : [];
+    if (Array.isArray(items)) {
+      const nextItems = updater(items);
+      if (Array.isArray(nextItems)) {
+        localStorage.setItem(KEY, JSON.stringify(nextItems));
+        syncToFirebase(KEY, nextItems);
+      }
+    }
+  } catch (e) {
+    console.warn('Sync class changes to Firebase failed:', e);
+  }
+}
 
 const API_BASE = '/api';
 
@@ -139,25 +191,113 @@ export const api = {
   // Management
   getManagementStats: () => request('/management/stats'),
   getManagementClasses: () => request('/management/classes'),
-  createManagementClass: (payload) => request('/management/classes', { method: 'POST', body: JSON.stringify(payload) }),
-  updateManagementClass: (id, payload) => request(`/management/classes/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
-  deleteManagementClass: (id) => request(`/management/classes/${id}`, { method: 'DELETE' }),
+  createManagementClass: async (payload) => {
+    const res = await request('/management/classes', { method: 'POST', body: JSON.stringify(payload) });
+    syncClassChangesToCloud((classes) => [...classes, res]);
+    return res;
+  },
+  updateManagementClass: async (id, payload) => {
+    const res = await request(`/management/classes/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    syncClassChangesToCloud((classes) => classes.map(c => Number(c.id) === Number(id) ? { ...c, ...res } : c));
+    return res;
+  },
+  deleteManagementClass: async (id) => {
+    const res = await request(`/management/classes/${id}`, { method: 'DELETE' });
+    syncClassChangesToCloud((classes) => classes.filter(c => Number(c.id) !== Number(id)));
+    return res;
+  },
 
   getManagementStudents: (params = {}) => request(`/management/students${toQueryString(params)}`),
-  createManagementStudent: (payload) => request('/management/students', { method: 'POST', body: JSON.stringify(payload) }),
-  updateManagementStudent: (id, payload) => request(`/management/students/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
-  deleteManagementStudent: (id) => request(`/management/students/${id}`, { method: 'DELETE' }),
+  createManagementStudent: async (payload) => {
+    const res = await request('/management/students', { method: 'POST', body: JSON.stringify(payload) });
+    syncUserChangesToCloud((users) => {
+      const item = { ...res };
+      if (payload.password && payload.password.trim()) {
+        item.password = payload.password.trim();
+      }
+      return [...users, item];
+    });
+    return res;
+  },
+  updateManagementStudent: async (id, payload) => {
+    const res = await request(`/management/students/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    syncUserChangesToCloud((users) => {
+      return users.map(u => {
+        if (Number(u.id) === Number(id)) {
+          const updated = { ...u, ...res };
+          if (payload.password && payload.password.trim()) {
+            updated.password = payload.password.trim();
+          }
+          if (res && res.password_hash) {
+            updated.password_hash = res.password_hash;
+          }
+          return updated;
+        }
+        return u;
+      });
+    });
+    return res;
+  },
+  deleteManagementStudent: async (id) => {
+    const res = await request(`/management/students/${id}`, { method: 'DELETE' });
+    syncUserChangesToCloud((users) => users.filter(u => Number(u.id) !== Number(id)));
+    return res;
+  },
   importManagementStudentsBatch: (students) => request('/management/students/batch-import', { method: 'POST', body: JSON.stringify({ students }) }),
 
   getManagementUsers: (params = {}) => request(`/management/users${toQueryString(params)}`),
-  createManagementUser: (payload) => request('/management/users', { method: 'POST', body: JSON.stringify(payload) }),
-  updateManagementUser: (id, payload) => request(`/management/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
-  deleteManagementUser: (id) => request(`/management/users/${id}`, { method: 'DELETE' }),
+  createManagementUser: async (payload) => {
+    const res = await request('/management/users', { method: 'POST', body: JSON.stringify(payload) });
+    syncUserChangesToCloud((users) => {
+      const item = { ...res };
+      if (payload.password && payload.password.trim()) {
+        item.password = payload.password.trim();
+      }
+      return [...users, item];
+    });
+    return res;
+  },
+  updateManagementUser: async (id, payload) => {
+    const res = await request(`/management/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    syncUserChangesToCloud((users) => {
+      return users.map(u => {
+        if (Number(u.id) === Number(id)) {
+          const updated = { ...u, ...res };
+          if (payload.password && payload.password.trim()) {
+            updated.password = payload.password.trim();
+          }
+          if (res && res.password_hash) {
+            updated.password_hash = res.password_hash;
+          }
+          return updated;
+        }
+        return u;
+      });
+    });
+    return res;
+  },
+  deleteManagementUser: async (id) => {
+    const res = await request(`/management/users/${id}`, { method: 'DELETE' });
+    syncUserChangesToCloud((users) => users.filter(u => Number(u.id) !== Number(id)));
+    return res;
+  },
 
   getManagementSubjects: (params = {}) => request(`/management/subjects${toQueryString(params)}`),
-  createManagementSubject: (payload) => request('/management/subjects', { method: 'POST', body: JSON.stringify(payload) }),
-  updateManagementSubject: (id, payload) => request(`/management/subjects/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
-  deleteManagementSubject: (id) => request(`/management/subjects/${id}`, { method: 'DELETE' })
+  createManagementSubject: async (payload) => {
+    const res = await request('/management/subjects', { method: 'POST', body: JSON.stringify(payload) });
+    syncSubjectChangesToCloud((subjects) => [...subjects, res]);
+    return res;
+  },
+  updateManagementSubject: async (id, payload) => {
+    const res = await request(`/management/subjects/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+    syncSubjectChangesToCloud((subjects) => subjects.map(s => Number(s.id) === Number(id) ? { ...s, ...res } : s));
+    return res;
+  },
+  deleteManagementSubject: async (id) => {
+    const res = await request(`/management/subjects/${id}`, { method: 'DELETE' });
+    syncSubjectChangesToCloud((subjects) => subjects.filter(s => Number(s.id) !== Number(id)));
+    return res;
+  }
 };
 
 export default api;
