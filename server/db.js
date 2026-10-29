@@ -96,6 +96,9 @@ function initDatabase() {
       activities TEXT NOT NULL,
       student_notes TEXT,
       follow_up TEXT,
+      count_present INTEGER DEFAULT 0,
+      count_absent INTEGER DEFAULT 0,
+      absent_students TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
@@ -290,6 +293,12 @@ function initDatabase() {
   } catch (e) {}
   try {
     db.exec('ALTER TABLE teaching_journals ADD COLUMN absent_students TEXT');
+  } catch (e) {}
+  try {
+    db.exec('ALTER TABLE teaching_journals ADD COLUMN count_present INTEGER DEFAULT 0');
+  } catch (e) {}
+  try {
+    db.exec('ALTER TABLE teaching_journals ADD COLUMN count_absent INTEGER DEFAULT 0');
   } catch (e) {}
   try {
     db.exec("UPDATE users SET kelas = NULL WHERE role != 'siswa'");

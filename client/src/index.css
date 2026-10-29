@@ -2202,3 +2202,98 @@ a {
     padding: 32px 14px;
   }
 }
+
+/* ========================================================
+   TEACHING JOURNAL OFFICIAL PRINT STYLES
+   ======================================================== */
+.journal-print-document {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm 15mm;
+  }
+
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-family: 'Times New Roman', Times, serif, Arial, sans-serif !important;
+    font-size: 10.5pt !important;
+  }
+
+  #root, .app-layout, .main-content, .content-view {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  aside,
+  nav,
+  header,
+  .sidebar,
+  .app-header,
+  .navbar,
+  .top-bar,
+  .sidebar-footer,
+  .btn,
+  .form-control,
+  .badge,
+  .modal-overlay,
+  .modal-dialog,
+  .no-print,
+  .content-view > div:not(.journal-print-document) {
+    display: none !important;
+  }
+
+  .journal-print-document {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-sizing: border-box !important;
+  }
+
+  .print-journal-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 14px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .print-journal-table th,
+  .print-journal-table td {
+    border: 1px solid #000000 !important;
+    padding: 6px 8px !important;
+    font-size: 9pt !important;
+    color: #000000 !important;
+    line-height: 1.35 !important;
+    vertical-align: top !important;
+  }
+
+  .print-journal-table th {
+    background-color: #f0f0f0 !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-journal-table tr {
+    page-break-inside: avoid !important;
+  }
+
+  .print-signatures {
+    page-break-inside: avoid !important;
+    margin-top: 25px !important;
+  }
+}

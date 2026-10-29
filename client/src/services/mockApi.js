@@ -4989,7 +4989,60 @@ export async function handleMockRequest(endpoint, options = {}) {
   // ==========================================
   if (path === '/journals') {
     let journals = getStored(STORAGE_KEYS.JOURNALS, DEFAULT_JOURNALS);
-    if (method === 'GET') return journals;
+    if (method === 'GET') {
+      const sessions = getStored(STORAGE_KEYS.ATTENDANCE, DEFAULT_ATTENDANCE);
+      const records = getStored(STORAGE_KEYS.ATT_RECORDS, DEFAULT_ATT_RECORDS);
+      const users = getStored(STORAGE_KEYS.USERS, DEFAULT_USERS);
+
+      let changed = false;
+      journals = journals.map(j => {
+        const sess = sessions.find(s => s.class_id === Number(j.class_id) && s.date === j.date && (Number(s.subject_id) === Number(j.subject_id) || true));
+        if (sess) {
+          const sessRecords = records.filter(r => r.session_id === sess.id);
+          if (sessRecords.length > 0) {
+            const classStudents = users.filter(u => u.role === 'siswa' && u.kelas === j.class_name);
+            const recMap = {};
+            sessRecords.forEach(r => { recMap[r.student_id] = r; });
+
+            let presentCount = 0;
+            const absentList = [];
+
+            classStudents.forEach(st => {
+              const r = recMap[st.id];
+              const status = r ? r.status : 'Belum Presensi';
+              const notes = (r?.notes || '').trim();
+
+              if (status === 'Hadir' || status === 'Terlambat') {
+                presentCount++;
+              } else if (['Sakit', 'Izin', 'Alpa', 'Tidak Hadir'].includes(status)) {
+                absentList.push(`${st.name} (${status}${notes ? `: ${notes}` : ''})`);
+              } else if (status === 'Belum Presensi') {
+                absentList.push(`${st.name} (Belum Presensi / Alpa)`);
+              }
+            });
+
+            const absentCount = absentList.length;
+            const absentText = absentList.length > 0 ? absentList.join(', ') : 'Nihil (Semua siswa hadir)';
+
+            if (j.count_present !== presentCount || j.count_absent !== absentCount || j.absent_students !== absentText) {
+              changed = true;
+              return {
+                ...j,
+                count_present: presentCount,
+                count_absent: absentCount,
+                absent_students: absentText
+              };
+            }
+          }
+        }
+        return j;
+      });
+
+      if (changed) {
+        setStored(STORAGE_KEYS.JOURNALS, journals);
+      }
+      return journals;
+    }
     if (method === 'POST') {
       const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
       const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);

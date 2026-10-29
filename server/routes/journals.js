@@ -51,6 +51,77 @@ router.get('/', authenticateToken, (req, res) => {
 
     query += ' ORDER BY j.date DESC, j.id DESC';
     const journals = db.prepare(query).all(...params);
+
+    // Live sync attendance condition for each journal (e.g., if students checked in late)
+    const findSessionStmt = db.prepare(`
+      SELECT s.id, s.session_title, s.time_start, s.time_end
+      FROM attendance_sessions s
+      WHERE s.class_id = ? AND s.date = ?
+      ORDER BY (s.subject_id = ?) DESC, s.id DESC
+      LIMIT 1
+    `);
+
+    const classStudentsStmt = db.prepare(`
+      SELECT id, name, no_absen
+      FROM users
+      WHERE role = 'siswa' AND kelas = ?
+      ORDER BY CASE WHEN no_absen IS NOT NULL AND no_absen > 0 THEN CAST(no_absen AS INTEGER) ELSE 9999 END ASC, name ASC
+    `);
+
+    const recordsStmt = db.prepare(`
+      SELECT student_id, status, notes
+      FROM attendance_records
+      WHERE session_id = ?
+    `);
+
+    const updateJournalStatsStmt = db.prepare(`
+      UPDATE teaching_journals
+      SET count_present = ?, count_absent = ?, absent_students = ?
+      WHERE id = ?
+    `);
+
+    for (const j of journals) {
+      const sess = findSessionStmt.get(j.class_id, j.date, j.subject_id);
+      if (sess) {
+        const records = recordsStmt.all(sess.id);
+        if (records.length > 0) {
+          const students = classStudentsStmt.all(j.class_name);
+          const recMap = {};
+          records.forEach(r => { recMap[r.student_id] = r; });
+
+          let presentCount = 0;
+          const absentList = [];
+
+          students.forEach(st => {
+            const r = recMap[st.id];
+            const status = r ? r.status : 'Belum Presensi';
+            const notes = (r?.notes || '').trim();
+
+            if (status === 'Hadir' || status === 'Terlambat') {
+              presentCount++;
+            } else if (['Sakit', 'Izin', 'Alpa', 'Tidak Hadir'].includes(status)) {
+              absentList.push(`${st.name} (${status}${notes ? `: ${notes}` : ''})`);
+            } else if (status === 'Belum Presensi') {
+              absentList.push(`${st.name} (Belum Presensi / Alpa)`);
+            }
+          });
+
+          const absentCount = absentList.length;
+          const absentText = absentList.length > 0 ? absentList.join(', ') : 'Nihil (Semua siswa hadir)';
+
+          if (j.count_present !== presentCount || j.count_absent !== absentCount || j.absent_students !== absentText) {
+            try {
+              updateJournalStatsStmt.run(presentCount, absentCount, absentText, j.id);
+            } catch (e) {}
+          }
+
+          j.count_present = presentCount;
+          j.count_absent = absentCount;
+          j.absent_students = absentText;
+        }
+      }
+    }
+
     res.json(journals);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -70,6 +141,8 @@ router.post('/', authenticateToken, requireRole(['admin', 'guru']), (req, res) =
       activities,
       student_notes,
       follow_up,
+      count_present,
+      count_absent,
       absent_students
     } = req.body;
 
@@ -80,8 +153,9 @@ router.post('/', authenticateToken, requireRole(['admin', 'guru']), (req, res) =
     const insert = db.prepare(`
       INSERT INTO teaching_journals (
         teacher_id, class_id, subject_id, date, time_slot, topic,
-        learning_outcomes, activities, student_notes, follow_up, absent_students
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        learning_outcomes, activities, student_notes, follow_up,
+        count_present, count_absent, absent_students
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = insert.run(
@@ -95,6 +169,8 @@ router.post('/', authenticateToken, requireRole(['admin', 'guru']), (req, res) =
       activities,
       student_notes || '',
       follow_up || '',
+      count_present !== undefined ? Number(count_present) : 0,
+      count_absent !== undefined ? Number(count_absent) : 0,
       absent_students || ''
     );
 
@@ -133,13 +209,16 @@ router.put('/:id', authenticateToken, requireRole(['admin', 'guru']), (req, res)
       activities,
       student_notes,
       follow_up,
+      count_present,
+      count_absent,
       absent_students
     } = req.body;
 
     db.prepare(`
       UPDATE teaching_journals SET
         class_id = ?, subject_id = ?, date = ?, time_slot = ?, topic = ?,
-        learning_outcomes = ?, activities = ?, student_notes = ?, follow_up = ?, absent_students = ?
+        learning_outcomes = ?, activities = ?, student_notes = ?, follow_up = ?,
+        count_present = ?, count_absent = ?, absent_students = ?
       WHERE id = ?
     `).run(
       class_id || journal.class_id,
@@ -151,6 +230,8 @@ router.put('/:id', authenticateToken, requireRole(['admin', 'guru']), (req, res)
       activities || journal.activities,
       student_notes !== undefined ? student_notes : journal.student_notes,
       follow_up !== undefined ? follow_up : journal.follow_up,
+      count_present !== undefined ? Number(count_present) : journal.count_present,
+      count_absent !== undefined ? Number(count_absent) : journal.count_absent,
       absent_students !== undefined ? absent_students : journal.absent_students,
       req.params.id
     );

@@ -14,7 +14,9 @@ import {
   Users,
   RotateCw,
   CheckCircle2,
-  Info
+  Info,
+  UserCheck,
+  UserX
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/AlertContext';
@@ -47,6 +49,8 @@ export default function JournalView() {
     activities: '',
     student_notes: '',
     follow_up: '',
+    count_present: 0,
+    count_absent: 0,
     absent_students: ''
   });
 
@@ -144,38 +148,42 @@ export default function JournalView() {
       const studentList = details?.students || [];
       const stats = details?.stats || {};
 
+      let presentCount = 0;
       const absentList = [];
       studentList.forEach(st => {
         const rec = st.record || {};
         const status = rec.status || st.status || 'Belum Presensi';
         const notes = (rec.notes || st.notes || '').trim();
 
-        if (['Sakit', 'Izin', 'Alpa', 'Tidak Hadir'].includes(status)) {
+        if (status === 'Hadir' || status === 'Terlambat') {
+          presentCount++;
+        } else if (['Sakit', 'Izin', 'Alpa', 'Tidak Hadir'].includes(status)) {
           absentList.push(`${st.name} (${status}${notes ? `: ${notes}` : ''})`);
         } else if (status === 'Belum Presensi' && ((stats.hadir || 0) > 0 || (stats.sakit || 0) > 0 || (stats.izin || 0) > 0 || (stats.alpa || 0) > 0)) {
           absentList.push(`${st.name} (Belum Presensi / Alpa)`);
         }
       });
 
+      const absentCount = absentList.length;
       let absentResult = '';
       if (absentList.length > 0) {
         absentResult = absentList.join(', ');
         setAttendanceSyncStatus({
           type: 'success',
-          message: `Tersinkron dari presensi (${targetSession.session_title || 'Sesi Presensi'} ${targetSession.time_start || ''}-${targetSession.time_end || ''}): ${absentList.length} siswa tidak masuk.`
+          message: `Tersinkron dari presensi (${targetSession.session_title || 'Sesi Presensi'} ${targetSession.time_start || ''}-${targetSession.time_end || ''}): ${presentCount} Siswa Hadir, ${absentCount} Siswa Tidak Masuk.`
         });
         if (force) {
-          showToast('success', `${absentList.length} siswa tidak masuk berhasil disinkronkan dari presensi.`);
+          showToast('success', `Presensi tersinkron: ${presentCount} Hadir, ${absentCount} Tidak Masuk.`);
         }
       } else {
         if ((stats.hadir || 0) > 0 || studentList.length > 0) {
           absentResult = 'Nihil (Semua siswa hadir)';
           setAttendanceSyncStatus({
             type: 'success',
-            message: `Tersinkron dari presensi (${targetSession.session_title || 'Sesi Presensi'} ${targetSession.time_start || ''}-${targetSession.time_end || ''}): Semua siswa hadir (Nihil).`
+            message: `Tersinkron dari presensi (${targetSession.session_title || 'Sesi Presensi'} ${targetSession.time_start || ''}-${targetSession.time_end || ''}): Semua ${presentCount} siswa hadir (Nihil).`
           });
           if (force) {
-            showToast('success', 'Semua siswa tercatat hadir (Nihil).');
+            showToast('success', `Semua siswa hadir (${presentCount} siswa).`);
           }
         } else {
           setAttendanceSyncStatus({
@@ -187,6 +195,8 @@ export default function JournalView() {
 
       setForm(prev => ({
         ...prev,
+        count_present: presentCount,
+        count_absent: absentCount,
         absent_students: absentResult
       }));
     } catch (err) {
@@ -218,6 +228,8 @@ export default function JournalView() {
       activities: '',
       student_notes: '',
       follow_up: '',
+      count_present: 0,
+      count_absent: 0,
       absent_students: ''
     });
     setAttendanceSyncStatus(null);
@@ -242,6 +254,8 @@ export default function JournalView() {
       activities: j.activities,
       student_notes: j.student_notes || '',
       follow_up: j.follow_up || '',
+      count_present: j.count_present ?? 0,
+      count_absent: j.count_absent ?? 0,
       absent_students: j.absent_students || ''
     });
     setAttendanceSyncStatus(
@@ -398,33 +412,66 @@ export default function JournalView() {
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.6 }}>{j.activities}</p>
               </div>
 
-              {j.absent_students && (
+              {(j.count_present !== undefined || j.count_absent !== undefined || j.absent_students) && (
                 <div style={{
                   marginBottom: 14,
-                  padding: '10px 14px',
+                  padding: '12px 16px',
                   borderRadius: 'var(--radius-sm)',
-                  background: j.absent_students.toLowerCase().includes('nihil') ? '#ecfdf5' : '#fff1f2',
-                  border: `1px solid ${j.absent_students.toLowerCase().includes('nihil') ? '#a7f3d0' : '#fecdd3'}`
+                  background: ((j.count_absent === 0 || !j.count_absent) && (j.absent_students && j.absent_students.toLowerCase().includes('nihil'))) ? '#ecfdf5' : '#fff1f2',
+                  border: `1px solid ${((j.count_absent === 0 || !j.count_absent) && (j.absent_students && j.absent_students.toLowerCase().includes('nihil'))) ? '#a7f3d0' : '#fecdd3'}`
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <Users size={14} color={j.absent_students.toLowerCase().includes('nihil') ? '#059669' : '#e11d48'} />
-                    <strong style={{
-                      fontSize: '0.75rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      color: j.absent_students.toLowerCase().includes('nihil') ? '#047857' : '#be123c'
-                    }}>
-                      Siswa Tidak Masuk:
-                    </strong>
+                  {/* Kehadiran Siswa Stats */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8, paddingBottom: 8, borderBottom: '1px dashed rgba(0,0,0,0.08)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Users size={15} color={((j.count_absent === 0 || !j.count_absent) && (j.absent_students && j.absent_students.toLowerCase().includes('nihil'))) ? '#059669' : '#e11d48'} />
+                      <strong style={{
+                        fontSize: '0.78rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        color: ((j.count_absent === 0 || !j.count_absent) && (j.absent_students && j.absent_students.toLowerCase().includes('nihil'))) ? '#047857' : '#be123c'
+                      }}>
+                        Kehadiran Siswa:
+                      </strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', fontWeight: 700 }}>
+                      <span style={{ background: '#dcfce7', color: '#15803d', padding: '3px 9px', borderRadius: 5, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <UserCheck size={13} /> Masuk: {j.count_present ?? '-'} Siswa
+                      </span>
+                      <span style={{
+                        background: (j.count_absent > 0) ? '#ffe4e6' : '#f1f5f9',
+                        color: (j.count_absent > 0) ? '#be123c' : '#475569',
+                        padding: '3px 9px',
+                        borderRadius: 5,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}>
+                        <UserX size={13} /> Tidak Masuk: {j.count_absent ?? 0} Siswa
+                      </span>
+                    </div>
                   </div>
-                  <p style={{
-                    fontSize: '0.86rem',
-                    color: j.absent_students.toLowerCase().includes('nihil') ? '#065f46' : '#9f1239',
-                    margin: 0,
-                    fontWeight: 600
-                  }}>
-                    {j.absent_students}
-                  </p>
+
+                  {/* Daftar Siswa Tidak Masuk */}
+                  <div>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      textTransform: 'uppercase',
+                      color: ((j.count_absent === 0 || !j.count_absent) && (j.absent_students && j.absent_students.toLowerCase().includes('nihil'))) ? '#047857' : '#be123c',
+                      fontWeight: 700,
+                      display: 'block',
+                      marginBottom: 2
+                    }}>
+                      Daftar Siswa Tidak Masuk:
+                    </span>
+                    <p style={{
+                      fontSize: '0.86rem',
+                      color: ((j.count_absent === 0 || !j.count_absent) && (j.absent_students && j.absent_students.toLowerCase().includes('nihil'))) ? '#065f46' : '#9f1239',
+                      margin: 0,
+                      fontWeight: 600
+                    }}>
+                      {j.absent_students || 'Nihil (Semua siswa hadir)'}
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -602,6 +649,39 @@ export default function JournalView() {
                   />
                 </div>
 
+                {/* Kolom Jumlah Siswa Masuk & Tidak Masuk (Sebelum Daftar Nama) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <UserCheck size={16} color="var(--success)" /> Jumlah Siswa Masuk (Hadir)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="form-control"
+                      value={form.count_present}
+                      onChange={(e) => setForm({ ...form, count_present: parseInt(e.target.value, 10) || 0 })}
+                      placeholder="0"
+                    />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Otomatis terisi dari presensi kelas</span>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <UserX size={16} color="var(--danger)" /> Jumlah Siswa Tidak Masuk
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="form-control"
+                      value={form.count_absent}
+                      onChange={(e) => setForm({ ...form, count_absent: parseInt(e.target.value, 10) || 0 })}
+                      placeholder="0"
+                    />
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Otomatis terisi dari presensi kelas</span>
+                  </div>
+                </div>
+
                 <div className="form-group">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
                     <label className="form-label" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -665,6 +745,96 @@ export default function JournalView() {
           </div>
         </div>
       )}
+
+      {/* ========================================================
+          DOKUMEN RESMI HASIL CETAK JURNAL MENGAJAR (PRINT ONLY)
+          ======================================================== */}
+      <div className="journal-print-document">
+        <div style={{ textAlign: 'center', borderBottom: '2.5px solid #000', paddingBottom: 10, marginBottom: 16 }}>
+          <h2 style={{ fontSize: '14pt', fontWeight: 800, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            JURNAL AGENDA PEMBELAJARAN GURU
+          </h2>
+          <h3 style={{ fontSize: '11.5pt', fontWeight: 700, margin: '0 0 3px' }}>
+            MISTER IRHAM LMS • TAHUN AJARAN 2026/2027
+          </h3>
+          <p style={{ fontSize: '9pt', margin: 0, color: '#333' }}>
+            Rekapitulasi Catatan Pembelajaran, Aktivitas Mengajar, dan Kehadiran Siswa
+          </p>
+        </div>
+
+        <table style={{ width: '100%', marginBottom: 14, fontSize: '9.5pt', border: 'none', borderCollapse: 'collapse' }}>
+          <tbody>
+            <tr>
+              <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: '2px 0' }}>
+                <div><strong>Guru Pengampu:</strong> {user?.name || '-'}</div>
+                <div><strong>NIP / Identitas:</strong> {user?.nis_nip || '-'}</div>
+              </td>
+              <td style={{ width: '50%', verticalAlign: 'top', textAlign: 'right', border: 'none', padding: '2px 0' }}>
+                <div><strong>Kelas:</strong> {selectedClass ? (classes.find(c => String(c.id) === String(selectedClass))?.name || `Kelas ${selectedClass}`) : 'Semua Kelas Terdaftar'}</div>
+                <div><strong>Mata Pelajaran:</strong> {selectedSubject ? (subjects.find(s => String(s.id) === String(selectedSubject))?.name || selectedSubject) : 'Semua Mata Pelajaran'}</div>
+                <div><strong>Total Pertemuan:</strong> {journals.length} Pertemuan</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table className="print-journal-table">
+          <thead>
+            <tr>
+              <th style={{ width: 28 }}>No</th>
+              <th style={{ width: 80 }}>Tanggal</th>
+              <th style={{ width: 75 }}>Jam Ke</th>
+              <th style={{ width: 65 }}>Kelas</th>
+              <th style={{ width: 95 }}>Mata Pelajaran</th>
+              <th style={{ width: 135 }}>Materi / Topik Pembelajaran</th>
+              <th>Ringkasan Kegiatan & Aktivitas Belajar</th>
+              <th style={{ width: 50 }}>Jml Masuk</th>
+              <th style={{ width: 55 }}>Jml Tdk Masuk</th>
+              <th style={{ width: 140 }}>Siswa Tidak Masuk</th>
+            </tr>
+          </thead>
+          <tbody>
+            {journals.length === 0 ? (
+              <tr>
+                <td colSpan={10} style={{ textAlign: 'center', padding: '20px 10px', fontStyle: 'italic' }}>
+                  Tidak ada data agenda jurnal mengajar untuk filter yang dipilih.
+                </td>
+              </tr>
+            ) : (
+              journals.map((j, idx) => (
+                <tr key={j.id}>
+                  <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                  <td>{j.date}</td>
+                  <td style={{ textAlign: 'center' }}>{j.time_slot}</td>
+                  <td style={{ textAlign: 'center' }}>{j.class_name}</td>
+                  <td>{j.subject_name}</td>
+                  <td><strong>{j.topic}</strong></td>
+                  <td style={{ whiteSpace: 'pre-wrap' }}>{j.activities}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 700 }}>{j.count_present ?? '-'}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 700 }}>{j.count_absent ?? 0}</td>
+                  <td>{j.absent_students || 'Nihil'}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+
+        {/* Tanda Tangan Pengesahan Dokumen */}
+        <div className="print-signatures" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 35, fontSize: '10pt' }}>
+          <div style={{ textAlign: 'center', width: 220 }}>
+            <div>Mengetahui,</div>
+            <div style={{ marginBottom: 55 }}>Kepala Sekolah</div>
+            <div style={{ fontWeight: 'bold', textDecoration: 'underline' }}>___________________________</div>
+            <div>NIP. ........................................</div>
+          </div>
+          <div style={{ textAlign: 'center', width: 220 }}>
+            <div>{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            <div style={{ marginBottom: 55 }}>Guru Mata Pelajaran</div>
+            <div style={{ fontWeight: 'bold', textDecoration: 'underline' }}>{user?.name || '___________________________'}</div>
+            <div>NIP. {user?.nis_nip || '........................................'}</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

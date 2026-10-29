@@ -179,11 +179,82 @@ router.post('/sessions/:id/check-in', authenticateToken, (req, res) => {
     `);
 
     upsert.run(session.id, req.user.id);
+
+    // Auto sync teaching journals on student check-in (including late check-in)
+    syncTeachingJournalsFromSession(session.id);
+
     res.json({ success: true, message: 'Presensi berhasil dicatat! Status: Hadir' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Helper to automatically sync teaching journals when attendance records change (e.g. late check-in)
+function syncTeachingJournalsFromSession(sessionId) {
+  try {
+    const session = db.prepare('SELECT * FROM attendance_sessions WHERE id = ?').get(sessionId);
+    if (!session) return;
+
+    const journals = db.prepare(`
+      SELECT j.*, c.name as class_name
+      FROM teaching_journals j
+      JOIN classes c ON j.class_id = c.id
+      WHERE j.class_id = ? AND j.date = ?
+    `).all(session.class_id, session.date);
+
+    if (journals.length === 0) return;
+
+    const students = db.prepare(`
+      SELECT id, name, no_absen
+      FROM users
+      WHERE role = 'siswa' AND kelas = ?
+      ORDER BY CASE WHEN no_absen IS NOT NULL AND no_absen > 0 THEN CAST(no_absen AS INTEGER) ELSE 9999 END ASC, name ASC
+    `).all(journals[0].class_name);
+
+    const records = db.prepare(`
+      SELECT student_id, status, notes
+      FROM attendance_records
+      WHERE session_id = ?
+    `).all(sessionId);
+
+    const recMap = {};
+    records.forEach(r => { recMap[r.student_id] = r; });
+
+    let presentCount = 0;
+    const absentList = [];
+
+    students.forEach(st => {
+      const r = recMap[st.id];
+      const status = r ? r.status : 'Belum Presensi';
+      const notes = (r?.notes || '').trim();
+
+      if (status === 'Hadir' || status === 'Terlambat') {
+        presentCount++;
+      } else if (['Sakit', 'Izin', 'Alpa', 'Tidak Hadir'].includes(status)) {
+        absentList.push(`${st.name} (${status}${notes ? `: ${notes}` : ''})`);
+      } else if (status === 'Belum Presensi' && records.length > 0) {
+        absentList.push(`${st.name} (Belum Presensi / Alpa)`);
+      }
+    });
+
+    const absentCount = absentList.length;
+    const absentText = absentList.length > 0 ? absentList.join(', ') : 'Nihil (Semua siswa hadir)';
+
+    const updateStmt = db.prepare(`
+      UPDATE teaching_journals
+      SET count_present = ?, count_absent = ?, absent_students = ?
+      WHERE id = ?
+    `);
+
+    journals.forEach(j => {
+      if (!j.subject_id || Number(j.subject_id) === Number(session.subject_id)) {
+        updateStmt.run(presentCount, absentCount, absentText, j.id);
+      }
+    });
+  } catch (err) {
+    console.error('Error syncing journals from session:', err);
+  }
+}
 
 // PUT /api/attendance/sessions/:id/records - Teacher batch/single record update
 router.put('/sessions/:id/records', authenticateToken, requireRole(['admin', 'guru']), (req, res) => {
@@ -209,6 +280,10 @@ router.put('/sessions/:id/records', authenticateToken, requireRole(['admin', 'gu
     });
 
     updateMany(records);
+
+    // Auto sync teaching journals on teacher records update
+    syncTeachingJournalsFromSession(req.params.id);
+
     res.json({ success: true, message: 'Data presensi berhasil diperbarui' });
   } catch (err) {
     res.status(500).json({ error: err.message });
