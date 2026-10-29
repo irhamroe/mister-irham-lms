@@ -1,11 +1,15 @@
-import { handleMockRequest } from './mockApi';
+import { handleMockRequest, DEFAULT_USERS } from './mockApi';
 import { syncToFirebase } from './firebaseSyncService';
+import bcrypt from 'bcryptjs';
 
 function syncUserChangesToCloud(updater) {
   try {
     const USERS_KEY = 'lms_mock_users_v3';
     const stored = localStorage.getItem(USERS_KEY);
     let users = stored ? JSON.parse(stored) : [];
+    if (!Array.isArray(users) || users.length === 0) {
+      users = typeof DEFAULT_USERS !== 'undefined' ? [...DEFAULT_USERS] : [];
+    }
     if (Array.isArray(users)) {
       const nextUsers = updater(users);
       if (Array.isArray(nextUsers)) {
@@ -223,12 +227,18 @@ export const api = {
     const res = await request(`/management/students/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
     syncUserChangesToCloud((users) => {
       return users.map(u => {
-        if (Number(u.id) === Number(id)) {
+        const isMatch = Number(u.id) === Number(id) || 
+          (u.username && payload?.nis && u.username.toLowerCase() === String(payload.nis).trim().toLowerCase()) ||
+          (u.username && res?.username && u.username.toLowerCase() === res.username.toLowerCase());
+        if (isMatch) {
           const updated = { ...u, ...res };
           if (payload.password && payload.password.trim()) {
-            updated.password = payload.password.trim();
-          }
-          if (res && res.password_hash) {
+            const cleanP = payload.password.trim();
+            updated.password = cleanP;
+            try {
+              updated.password_hash = bcrypt.hashSync(cleanP, 10);
+            } catch (e) {}
+          } else if (res && res.password_hash) {
             updated.password_hash = res.password_hash;
           }
           return updated;
@@ -261,12 +271,18 @@ export const api = {
     const res = await request(`/management/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
     syncUserChangesToCloud((users) => {
       return users.map(u => {
-        if (Number(u.id) === Number(id)) {
+        const isMatch = Number(u.id) === Number(id) || 
+          (u.username && payload?.username && u.username.toLowerCase() === payload.username.trim().toLowerCase()) ||
+          (u.username && res?.username && u.username.toLowerCase() === res.username.toLowerCase());
+        if (isMatch) {
           const updated = { ...u, ...res };
           if (payload.password && payload.password.trim()) {
-            updated.password = payload.password.trim();
-          }
-          if (res && res.password_hash) {
+            const cleanP = payload.password.trim();
+            updated.password = cleanP;
+            try {
+              updated.password_hash = bcrypt.hashSync(cleanP, 10);
+            } catch (e) {}
+          } else if (res && res.password_hash) {
             updated.password_hash = res.password_hash;
           }
           return updated;

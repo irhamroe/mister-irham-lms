@@ -107,7 +107,7 @@ function generateInitialsAvatarDataUrl(name, size = 64) {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-const DEFAULT_USERS = [
+export const DEFAULT_USERS = [
   {
     "id": 1,
     "username": "admin",
@@ -4598,9 +4598,17 @@ export async function handleMockRequest(endpoint, options = {}) {
           const val = snap.val();
           const cloudList = Array.isArray(val) ? val : Object.values(val);
           if (cloudList && cloudList.length > 0) {
-            activeUsers = cloudList;
+            // Merge with local users to preserve custom passwords/hashes across syncs
+            activeUsers = cloudList.map(cloudU => {
+              const localU = users.find(lu => lu.id === cloudU.id || (lu.username && cloudU.username && lu.username.toLowerCase() === cloudU.username.toLowerCase()));
+              return {
+                ...cloudU,
+                password: cloudU.password || localU?.password || undefined,
+                password_hash: cloudU.password_hash || localU?.password_hash || undefined
+              };
+            });
             try {
-              localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(cloudList));
+              localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(activeUsers));
             } catch (e) {}
           }
         }
@@ -4891,8 +4899,9 @@ export async function handleMockRequest(endpoint, options = {}) {
             if (u.password) updated.password = u.password;
           } else if (u.password) {
             updated.password = u.password;
-          } else {
-            delete updated.password;
+            try {
+              updated.password_hash = bcrypt.hashSync(u.password, 10);
+            } catch (e) {}
           }
           return updated;
         }
@@ -4967,8 +4976,9 @@ export async function handleMockRequest(endpoint, options = {}) {
             if (u.password) updatedUser.password = u.password;
           } else if (u.password) {
             updatedUser.password = u.password;
-          } else {
-            delete updatedUser.password;
+            try {
+              updatedUser.password_hash = bcrypt.hashSync(u.password, 10);
+            } catch (e) {}
           }
           return updatedUser;
         }
