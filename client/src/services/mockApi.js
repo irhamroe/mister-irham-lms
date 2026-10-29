@@ -5349,26 +5349,30 @@ export async function handleMockRequest(endpoint, options = {}) {
   if (path === '/assignments/drive-settings') {
     if (method === 'GET') {
       const settings = JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}');
+      const webhookUrl = (settings.webhookUrl || '').trim();
       return {
-        webhookUrl: settings.webhookUrl || '',
+        webhookUrl: webhookUrl,
         parentFolderId: settings.parentFolderId || '',
-        isConfigured: !!settings.webhookUrl,
+        isConfigured: Boolean(webhookUrl),
         lastTested: settings.lastTested || null
       };
     }
     if (method === 'POST') {
+      const webhookUrl = (body.webhookUrl || '').trim();
       const updated = {
-        webhookUrl: (body.webhookUrl || '').trim(),
+        webhookUrl: webhookUrl,
         parentFolderId: (body.parentFolderId || '').trim(),
-        lastTested: body.lastTested || null
+        isConfigured: Boolean(webhookUrl),
+        lastTested: body.lastTested || (webhookUrl ? new Date().toISOString() : null)
       };
       localStorage.setItem('lms_google_drive_settings', JSON.stringify(updated));
+      syncToFirebase('lms_google_drive_settings', updated);
       return { success: true, message: 'Pengaturan Google Drive berhasil disimpan!', settings: updated };
     }
   }
 
   if (path === '/assignments/drive-settings/test') {
-    const url = body.webhookUrl || JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}').webhookUrl;
+    const url = (body.webhookUrl || JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}').webhookUrl || '').trim();
     if (!url) {
       return { error: 'URL Google Apps Script belum diisi' };
     }
@@ -5379,6 +5383,17 @@ export async function handleMockRequest(endpoint, options = {}) {
         body: JSON.stringify({ action: 'test', timestamp: new Date().toISOString() })
       });
       const data = await res.json();
+
+      const current = JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}');
+      const updated = {
+        ...current,
+        webhookUrl: url,
+        isConfigured: true,
+        lastTested: new Date().toISOString()
+      };
+      localStorage.setItem('lms_google_drive_settings', JSON.stringify(updated));
+      syncToFirebase('lms_google_drive_settings', updated);
+
       return { success: true, message: 'Koneksi ke Google Drive Apps Script berhasil!' };
     } catch (err) {
       return { error: 'Gagal menghubungi Google Apps Script: ' + err.message };

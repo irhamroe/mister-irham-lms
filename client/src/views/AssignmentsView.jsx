@@ -170,6 +170,7 @@ export default function AssignmentsView() {
     isConfigured: false,
     lastTested: null
   });
+  const isDriveConfigured = Boolean(driveSettings?.isConfigured || driveSettings?.webhookUrl?.trim());
   const [testResult, setTestResult] = useState(null);
   const [isTestingDrive, setIsTestingDrive] = useState(false);
   const [isSavingDrive, setIsSavingDrive] = useState(false);
@@ -258,10 +259,29 @@ export default function AssignmentsView() {
     }
   }, [isTeacher]);
 
+  useEffect(() => {
+    const handleSync = (e) => {
+      if (e?.detail?.storageKey === 'lms_google_drive_settings' && e.detail.data) {
+        const val = e.detail.data;
+        setDriveSettings({
+          ...val,
+          isConfigured: Boolean(val.isConfigured || val.webhookUrl?.trim())
+        });
+      }
+    };
+    window.addEventListener('lms-sync-update', handleSync);
+    return () => window.removeEventListener('lms-sync-update', handleSync);
+  }, []);
+
   async function loadDriveSettings() {
     try {
       const res = await api.getDriveSettings();
-      if (res) setDriveSettings(res);
+      if (res) {
+        setDriveSettings({
+          ...res,
+          isConfigured: Boolean(res.isConfigured || res.webhookUrl?.trim())
+        });
+      }
     } catch (e) {
       console.warn('Error loading drive settings:', e);
     }
@@ -271,9 +291,21 @@ export default function AssignmentsView() {
     e.preventDefault();
     setIsSavingDrive(true);
     try {
-      const res = await api.saveDriveSettings(driveSettings);
-      alert(res.message || 'Pengaturan Google Drive berhasil disimpan!');
-      if (res.settings) setDriveSettings(res.settings);
+      const cleanUrl = (driveSettings.webhookUrl || '').trim();
+      const payload = {
+        ...driveSettings,
+        webhookUrl: cleanUrl,
+        parentFolderId: (driveSettings.parentFolderId || '').trim(),
+        isConfigured: Boolean(cleanUrl),
+        lastTested: driveSettings.lastTested || (cleanUrl ? new Date().toISOString() : null)
+      };
+      const res = await api.saveDriveSettings(payload);
+      alert(res?.message || 'Pengaturan Google Drive berhasil disimpan!');
+      const newSettings = res?.settings ? {
+        ...res.settings,
+        isConfigured: Boolean(res.settings.isConfigured || res.settings.webhookUrl?.trim())
+      } : payload;
+      setDriveSettings(newSettings);
       setShowDriveModal(false);
     } catch (err) {
       alert('Gagal menyimpan pengaturan: ' + err.message);
@@ -283,17 +315,24 @@ export default function AssignmentsView() {
   }
 
   async function handleTestDriveConnection() {
-    if (!driveSettings.webhookUrl) {
+    const cleanUrl = (driveSettings.webhookUrl || '').trim();
+    if (!cleanUrl) {
       alert('Masukkan URL Google Apps Script Web App terlebih dahulu!');
       return;
     }
     setIsTestingDrive(true);
     setTestResult(null);
     try {
-      const res = await api.testDriveConnection({ webhookUrl: driveSettings.webhookUrl });
+      const res = await api.testDriveConnection({ webhookUrl: cleanUrl });
       if (res.success) {
+        const testTimestamp = new Date().toISOString();
         setTestResult({ success: true, message: res.message || 'Koneksi ke Google Drive sukses!' });
-        setDriveSettings(prev => ({ ...prev, isConfigured: true, lastTested: new Date().toISOString() }));
+        setDriveSettings(prev => ({
+          ...prev,
+          webhookUrl: cleanUrl,
+          isConfigured: true,
+          lastTested: testTimestamp
+        }));
       } else {
         setTestResult({ success: false, message: res.error || 'Respon tidak valid.' });
       }
@@ -570,13 +609,17 @@ export default function AssignmentsView() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button
               className="btn btn-outline"
-              onClick={() => setShowDriveModal(true)}
+              onClick={() => {
+                loadDriveSettings();
+                setTestResult(null);
+                setShowDriveModal(true);
+              }}
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
               title="Atur integrasi penyimpanan otomatis tugas ke Google Drive"
             >
-              <Cloud size={16} color={driveSettings?.isConfigured ? '#10b981' : 'var(--text-muted)'} />
+              <Cloud size={16} color={isDriveConfigured ? '#10b981' : 'var(--text-muted)'} />
               Integrasi Google Drive
-              {driveSettings?.isConfigured && (
+              {isDriveConfigured && (
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
               )}
             </button>
@@ -714,7 +757,7 @@ export default function AssignmentsView() {
                       <div style={{ fontWeight: 800, color: '#1e40af', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span>Folder Otomatis Terhubung</span>
                         <span className="badge badge-success" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
-                          {driveSettings?.isConfigured ? 'Google Drive' : 'Penyimpanan Server'}
+                          {isDriveConfigured ? 'Google Drive' : 'Penyimpanan Server'}
                         </span>
                       </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 3 }}>
@@ -1463,8 +1506,8 @@ export default function AssignmentsView() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '10px 14px',
-                background: driveSettings.isConfigured ? '#ecfdf5' : '#fef2f2',
-                border: driveSettings.isConfigured ? '1px solid #10b981' : '1px solid #f87171',
+                background: isDriveConfigured ? '#ecfdf5' : '#fef2f2',
+                border: isDriveConfigured ? '1px solid #10b981' : '1px solid #f87171',
                 borderRadius: 'var(--radius-sm)',
                 marginBottom: 16
               }}>
@@ -1473,10 +1516,10 @@ export default function AssignmentsView() {
                     width: 10,
                     height: 10,
                     borderRadius: '50%',
-                    background: driveSettings.isConfigured ? '#10b981' : '#ef4444'
+                    background: isDriveConfigured ? '#10b981' : '#ef4444'
                   }} />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: driveSettings.isConfigured ? '#065f46' : '#991b1b' }}>
-                    Status: {driveSettings.isConfigured ? 'Tersambung ke Google Drive' : 'Belum Dikonfigurasi (Tersimpan Lokal)'}
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: isDriveConfigured ? '#065f46' : '#991b1b' }}>
+                    Status: {isDriveConfigured ? 'Tersambung ke Google Drive' : 'Belum Dikonfigurasi (Tersimpan Lokal)'}
                   </span>
                 </div>
                 {driveSettings.lastTested && (

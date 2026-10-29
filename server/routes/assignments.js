@@ -23,8 +23,8 @@ router.get('/drive-settings', authenticateToken, requireRole(['admin', 'guru']),
 // POST /api/assignments/drive-settings
 router.post('/drive-settings', authenticateToken, requireRole(['admin', 'guru']), (req, res) => {
   try {
-    const { webhookUrl, parentFolderId } = req.body;
-    const updated = googleDriveService.saveDriveSettings({ webhookUrl, parentFolderId });
+    const { webhookUrl, parentFolderId, lastTested } = req.body;
+    const updated = googleDriveService.saveDriveSettings({ webhookUrl, parentFolderId, lastTested });
     res.json({ success: true, message: 'Pengaturan Google Drive berhasil disimpan!', settings: updated });
   } catch (err) {
     res.status(500).json({ error: err.message });

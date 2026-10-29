@@ -12,10 +12,11 @@ function getDriveSettings() {
     const row = db.prepare('SELECT value FROM system_settings WHERE key = ?').get(SETTINGS_KEY);
     if (row && row.value) {
       const parsed = JSON.parse(row.value);
+      const url = (parsed.webhookUrl || process.env.GOOGLE_DRIVE_WEBHOOK_URL || '').trim();
       return {
-        webhookUrl: parsed.webhookUrl || process.env.GOOGLE_DRIVE_WEBHOOK_URL || '',
-        parentFolderId: parsed.parentFolderId || process.env.GOOGLE_DRIVE_FOLDER_ID || '',
-        isConfigured: !!(parsed.webhookUrl || process.env.GOOGLE_DRIVE_WEBHOOK_URL),
+        webhookUrl: url,
+        parentFolderId: (parsed.parentFolderId || process.env.GOOGLE_DRIVE_FOLDER_ID || '').trim(),
+        isConfigured: Boolean(url),
         lastTested: parsed.lastTested || null
       };
     }
@@ -23,10 +24,11 @@ function getDriveSettings() {
     console.error('Error fetching drive settings:', err);
   }
 
+  const envUrl = (process.env.GOOGLE_DRIVE_WEBHOOK_URL || '').trim();
   return {
-    webhookUrl: process.env.GOOGLE_DRIVE_WEBHOOK_URL || '',
-    parentFolderId: process.env.GOOGLE_DRIVE_FOLDER_ID || '',
-    isConfigured: !!process.env.GOOGLE_DRIVE_WEBHOOK_URL,
+    webhookUrl: envUrl,
+    parentFolderId: (process.env.GOOGLE_DRIVE_FOLDER_ID || '').trim(),
+    isConfigured: Boolean(envUrl),
     lastTested: null
   };
 }
@@ -34,12 +36,13 @@ function getDriveSettings() {
 /**
  * Save Google Drive configuration into DB
  */
-function saveDriveSettings({ webhookUrl, parentFolderId }) {
+function saveDriveSettings({ webhookUrl, parentFolderId, lastTested }) {
   const current = getDriveSettings();
+  const cleanUrl = (webhookUrl || '').trim();
   const updated = {
-    webhookUrl: (webhookUrl || '').trim(),
+    webhookUrl: cleanUrl,
     parentFolderId: (parentFolderId || '').trim(),
-    lastTested: current.lastTested
+    lastTested: lastTested || current.lastTested || (cleanUrl ? new Date().toISOString() : null)
   };
 
   db.prepare(`
