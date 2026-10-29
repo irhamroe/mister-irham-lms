@@ -437,49 +437,15 @@ export default function JournalView() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Tujuan / Capaian Pembelajaran</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Contoh: Peserta didik terampil menentukan himpunan penyelesaian dengan cepat"
-                    value={form.learning_outcomes}
-                    onChange={(e) => setForm({ ...form, learning_outcomes: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
                   <label className="form-label">Ringkasan Kegiatan & Aktivitas Belajar</label>
                   <textarea
                     className="form-control"
-                    rows={3}
+                    rows={4}
                     placeholder="Tuliskan aktivitas pembuka, inti, dan penutup pembelajaran..."
                     value={form.activities}
                     onChange={(e) => setForm({ ...form, activities: e.target.value })}
                     required
                   />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <div className="form-group">
-                    <label className="form-label">Catatan Kasus / Kendala Siswa</label>
-                    <textarea
-                      className="form-control"
-                      rows={2}
-                      placeholder="Siswa yang perlu perhatian, kendala kelas..."
-                      value={form.student_notes}
-                      onChange={(e) => setForm({ ...form, student_notes: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Tindak Lanjut / Solusi</label>
-                    <textarea
-                      className="form-control"
-                      rows={2}
-                      placeholder="Langkah tindak lanjut guru..."
-                      value={form.follow_up}
-                      onChange={(e) => setForm({ ...form, follow_up: e.target.value })}
-                    />
-                  </div>
                 </div>
               </div>
               <div className="modal-footer" style={{ flexShrink: 0 }}>
