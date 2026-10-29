@@ -5440,7 +5440,11 @@ export async function handleMockRequest(endpoint, options = {}) {
       const classNames = targetClasses.length > 0 ? targetClasses.map(c => c.name) : ['X-IPA-1'];
 
       const driveSettings = JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}');
-      let taskFolderUrl = `https://drive.google.com/drive/folders/task_${Date.now()}?usp=sharing`;
+      
+      // Check if an existing assignment with identical title already exists
+      const existingTask = assignments.find(a => a.title && a.title.trim().toLowerCase() === taskTitle.trim().toLowerCase() && a.task_folder_url);
+      let taskFolderUrl = existingTask ? existingTask.task_folder_url : `https://drive.google.com/drive/folders/task_${encodeURIComponent(taskTitle.trim().replace(/\s+/g, '_'))}_shared?usp=sharing`;
+      
       const classFoldersMap = {};
       classNames.forEach((cName, idx) => {
         classFoldersMap[cName] = `https://drive.google.com/drive/folders/class_${cName}_${Date.now() + idx}?usp=sharing`;

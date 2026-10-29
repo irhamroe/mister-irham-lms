@@ -156,12 +156,24 @@ router.post('/', authenticateToken, requireRole(['admin', 'guru']), async (req, 
 
     const classNames = targetClasses.map(c => c.name);
 
+    // Check if an assignment with the same title already exists to reuse its shared task parent folder
+    const existingAssignment = db.prepare(`
+      SELECT task_folder_url FROM assignments 
+      WHERE LOWER(TRIM(title)) = LOWER(TRIM(?)) AND task_folder_url IS NOT NULL AND task_folder_url != ''
+      ORDER BY id ASC LIMIT 1
+    `).get(title);
+
+    const existingTaskFolderUrl = existingAssignment?.task_folder_url || null;
+
     // 1. Automatically create folder structure: Folder Tugas -> Subfolder for each selected class
     const driveFolderResult = await googleDriveService.createTaskAndClassFolders({
       folderTask: title,
       folderClasses: classNames,
-      folderClass: classNames[0]
+      folderClass: classNames[0],
+      existingTaskFolderUrl
     });
+
+    const finalTaskFolderUrl = existingTaskFolderUrl || driveFolderResult.taskFolderUrl;
 
     const insert = db.prepare(`
       INSERT INTO assignments (teacher_id, class_id, subject_id, title, instructions, due_date, max_points, attachments_json, drive_folder_url, task_folder_url)
@@ -175,7 +187,7 @@ router.post('/', authenticateToken, requireRole(['admin', 'guru']), async (req, 
       for (const cls of targetClasses) {
         const clsFolderUrl = classFoldersMap[cls.name]?.url 
           || (classNames.length === 1 ? driveFolderResult.classFolderUrl : null)
-          || driveFolderResult.taskFolderUrl;
+          || finalTaskFolderUrl;
 
         const result = insert.run(
           req.user.id,
@@ -187,7 +199,7 @@ router.post('/', authenticateToken, requireRole(['admin', 'guru']), async (req, 
           Number(max_points) || 100,
           JSON.stringify(attachments || []),
           clsFolderUrl,
-          driveFolderResult.taskFolderUrl
+          finalTaskFolderUrl
         );
 
         const newAssignment = db.prepare(`
@@ -203,9 +215,20 @@ router.post('/', authenticateToken, requireRole(['admin', 'guru']), async (req, 
           ...newAssignment,
           attachments: JSON.parse(newAssignment.attachments_json || '[]'),
           drive_folder_url: clsFolderUrl,
-          task_folder_url: driveFolderResult.taskFolderUrl,
+          task_folder_url: finalTaskFolderUrl,
           class_folder_url: clsFolderUrl
         });
+      }
+
+      // Synchronize all previous assignments with identical title so they all reference the same shared task_folder_url
+      if (finalTaskFolderUrl) {
+        try {
+          db.prepare(`
+            UPDATE assignments 
+            SET task_folder_url = ? 
+            WHERE LOWER(TRIM(title)) = LOWER(TRIM(?))
+          `).run(finalTaskFolderUrl, title);
+        } catch (eSync) {}
       }
     });
 
@@ -449,17 +472,38 @@ router.post('/:id/create-folders', authenticateToken, requireRole(['admin', 'gur
 
     if (!assignment) return res.status(404).json({ error: 'Tugas tidak ditemukan' });
 
+    // Check if another assignment with the same title already has a task_folder_url
+    const existingSameTitle = db.prepare(`
+      SELECT task_folder_url FROM assignments 
+      WHERE LOWER(TRIM(title)) = LOWER(TRIM(?)) AND task_folder_url IS NOT NULL AND task_folder_url != '' AND id != ?
+      ORDER BY id ASC LIMIT 1
+    `).get(assignment.title, assignment.id);
+
+    const existingTaskFolderUrl = assignment.task_folder_url || existingSameTitle?.task_folder_url || null;
+
     const driveFolderResult = await googleDriveService.createTaskAndClassFolders({
       folderTask: assignment.title,
       folderClass: assignment.class_name,
-      folderClasses: [assignment.class_name]
+      folderClasses: [assignment.class_name],
+      existingTaskFolderUrl
     });
 
     const classFolderUrl = driveFolderResult.classFolders?.[assignment.class_name]?.url || driveFolderResult.classFolderUrl;
-    const taskFolderUrl = driveFolderResult.taskFolderUrl;
+    const taskFolderUrl = existingTaskFolderUrl || driveFolderResult.taskFolderUrl;
 
     db.prepare('UPDATE assignments SET drive_folder_url = ?, task_folder_url = ? WHERE id = ?')
       .run(classFolderUrl, taskFolderUrl, assignment.id);
+
+    // Sync all tasks with identical title to share this exact task_folder_url
+    if (taskFolderUrl) {
+      try {
+        db.prepare(`
+          UPDATE assignments 
+          SET task_folder_url = ? 
+          WHERE LOWER(TRIM(title)) = LOWER(TRIM(?))
+        `).run(taskFolderUrl, assignment.title);
+      } catch (eSync) {}
+    }
 
     res.json({
       success: true,

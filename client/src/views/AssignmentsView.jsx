@@ -1234,61 +1234,134 @@ export default function AssignmentsView() {
                   <label className="form-label">Judul Tugas</label>
                   <input
                     type="text"
+                    list="existing-task-titles"
                     className="form-control"
-                    placeholder="Contoh: Tugas 3: Analisis Grafik Fungsi Kuadrat"
+                    placeholder="Contoh: Logika Urutan"
                     value={createForm.title}
                     onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
                     required
                   />
+                  <datalist id="existing-task-titles">
+                    {[...new Set(assignments.map(a => a.title).filter(Boolean))].map((t) => (
+                      <option key={t} value={t} />
+                    ))}
+                  </datalist>
                 </div>
 
                 {/* Live Real-time Auto Folder Creation Preview */}
-                <div style={{
-                  background: 'rgba(37, 99, 235, 0.05)',
-                  border: '1.5px solid #93c5fd',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '12px 16px',
-                  marginBottom: 16
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: '#1e40af', fontSize: '0.84rem' }}>
-                      <FolderOpen size={18} color="#2563eb" />
-                      <span>Otomatisasi Struktur Folder Google Drive & Server:</span>
-                    </div>
-                    <span className="badge badge-primary" style={{ fontSize: '0.7rem' }}>
-                      {classes.filter(c => createForm.class_ids.includes(c.id)).length} Kelas Dipilih
-                    </span>
-                  </div>
+                {(() => {
+                  const currentTitleTrimmed = createForm.title ? createForm.title.trim() : '';
+                  const currentSelectedClasses = classes.filter(c => createForm.class_ids.includes(c.id));
+                  const newClassNames = currentSelectedClasses.map(c => c.name);
 
-                  <div style={{
-                    background: '#ffffff',
-                    borderRadius: 6,
-                    padding: '10px 14px',
-                    border: '1px solid #bfdbfe',
-                    fontFamily: 'monospace',
-                    fontSize: '0.82rem'
-                  }}>
-                    <div style={{ fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      📁 {createForm.title ? createForm.title.trim() : '[Nama / Judul Tugas]'}
-                      <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 400 }}>(Folder Induk Tugas Otomatis)</span>
-                    </div>
+                  // Find existing assignments with identical title (case-insensitive)
+                  const existingMatches = currentTitleTrimmed
+                    ? assignments.filter(a => a.title && a.title.trim().toLowerCase() === currentTitleTrimmed.toLowerCase())
+                    : [];
 
-                    {classes.filter(c => createForm.class_ids.includes(c.id)).map((cls, idx, arr) => (
-                      <div key={cls.id} style={{ paddingLeft: 22, marginTop: 4, color: '#047857', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span>{idx === arr.length - 1 ? '└──' : '├──'}</span>
-                        <span>📂 Kelas {cls.name}</span>
-                        <span style={{ fontSize: '0.68rem', color: '#15803d', background: '#dcfce7', padding: '1px 6px', borderRadius: 4 }}>
-                          ✓ Folder kelas otomatis dibuat
+                  const existingClassNames = [...new Set(existingMatches.map(a => a.class_name).filter(Boolean))];
+                  const priorClassNames = existingClassNames.filter(name => !newClassNames.includes(name));
+                  const isSharedParentFolder = priorClassNames.length > 0;
+
+                  return (
+                    <div style={{
+                      background: isSharedParentFolder ? 'rgba(16, 185, 129, 0.05)' : 'rgba(37, 99, 235, 0.05)',
+                      border: `1.5px solid ${isSharedParentFolder ? '#6ee7b7' : '#93c5fd'}`,
+                      borderRadius: 'var(--radius-md)',
+                      padding: '12px 16px',
+                      marginBottom: 16
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: isSharedParentFolder ? '#065f46' : '#1e40af', fontSize: '0.84rem' }}>
+                          <FolderOpen size={18} color={isSharedParentFolder ? '#059669' : '#2563eb'} />
+                          <span>Otomatisasi Struktur Folder Google Drive & Server:</span>
+                        </div>
+                        <span className={`badge ${isSharedParentFolder ? 'badge-success' : 'badge-primary'}`} style={{ fontSize: '0.7rem' }}>
+                          {currentSelectedClasses.length} Kelas Dipilih {isSharedParentFolder ? `(+${priorClassNames.length} kelas di folder sama)` : ''}
                         </span>
                       </div>
-                    ))}
-                  </div>
 
-                  <div style={{ marginTop: 8, fontSize: '0.74rem', color: '#1e40af', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <CheckCircle2 size={13} color="#2563eb" />
-                    <span>Saat tugas diterbitkan, sistem otomatis membuat folder tugas dan subfolder untuk setiap kelas yang dipilih di atas.</span>
-                  </div>
-                </div>
+                      {isSharedParentFolder && (
+                        <div style={{
+                          background: '#ecfdf5',
+                          border: '1px solid #a7f3d0',
+                          borderRadius: 6,
+                          padding: '8px 12px',
+                          marginBottom: 10,
+                          fontSize: '0.76rem',
+                          color: '#065f46',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 8,
+                          lineHeight: 1.45
+                        }}>
+                          <CheckCircle2 size={15} color="#059669" style={{ flexShrink: 0, marginTop: 1 }} />
+                          <div>
+                            <strong>Folder Induk Bersama Otomatis:</strong> Tugas dengan nama <em>"{currentTitleTrimmed}"</em> sudah dibuat untuk <strong>{priorClassNames.map(c => `Kelas ${c}`).join(', ')}</strong>.
+                            Kelas <strong>{newClassNames.map(c => `Kelas ${c}`).join(', ')}</strong> akan <strong>otomatis masuk ke dalam folder induk yang sama ({currentTitleTrimmed})</strong> di Google Drive dan server lokal.
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{
+                        background: '#ffffff',
+                        borderRadius: 6,
+                        padding: '10px 14px',
+                        border: `1px solid ${isSharedParentFolder ? '#a7f3d0' : '#bfdbfe'}`,
+                        fontFamily: 'monospace',
+                        fontSize: '0.82rem'
+                      }}>
+                        <div style={{ fontWeight: 800, color: isSharedParentFolder ? '#065f46' : '#1e3a8a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          📁 {currentTitleTrimmed || '[Nama / Judul Tugas]'}
+                          <span style={{ fontSize: '0.7rem', color: isSharedParentFolder ? '#047857' : '#64748b', fontWeight: isSharedParentFolder ? 700 : 400 }}>
+                            {isSharedParentFolder ? '(Folder Induk Bersama)' : '(Folder Induk Tugas Otomatis)'}
+                          </span>
+                        </div>
+
+                        {/* Existing classes already inside this task folder */}
+                        {priorClassNames.map((name) => (
+                          <div key={`prior_${name}`} style={{ paddingLeft: 22, marginTop: 4, color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>├──</span>
+                            <span>📂 Kelas {name}</span>
+                            <span style={{ fontSize: '0.67rem', color: '#475569', background: '#f1f5f9', padding: '1px 6px', borderRadius: 4 }}>
+                              Sudah ada di folder ini
+                            </span>
+                          </div>
+                        ))}
+
+                        {/* New selected classes being created */}
+                        {currentSelectedClasses.map((cls, idx, arr) => {
+                          const isLast = idx === arr.length - 1;
+                          return (
+                            <div key={cls.id} style={{ paddingLeft: 22, marginTop: 4, color: '#047857', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>{isLast ? '└──' : '├──'}</span>
+                              <span>📂 Kelas {cls.name}</span>
+                              <span style={{
+                                fontSize: '0.68rem',
+                                color: '#15803d',
+                                background: '#dcfce7',
+                                padding: '1px 6px',
+                                borderRadius: 4,
+                                fontWeight: 700
+                              }}>
+                                ✓ {isSharedParentFolder ? 'Masuk ke folder induk yang sama' : 'Folder kelas otomatis dibuat'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div style={{ marginTop: 8, fontSize: '0.74rem', color: isSharedParentFolder ? '#065f46' : '#1e40af', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <CheckCircle2 size={13} color={isSharedParentFolder ? '#059669' : '#2563eb'} />
+                        <span>
+                          {isSharedParentFolder
+                            ? `Setiap tugas dengan nama "${currentTitleTrimmed}" otomatis mengelompokkan subfolder kelasnya ke dalam satu folder induk yang sama.`
+                            : 'Saat tugas diterbitkan, sistem otomatis membuat folder tugas dan subfolder untuk setiap kelas yang dipilih di atas.'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div className="form-group">
                   <label className="form-label">Petunjuk & Instruksi Pengerjaan</label>

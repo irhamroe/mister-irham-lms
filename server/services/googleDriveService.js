@@ -227,7 +227,7 @@ async function uploadSubmissionFile({
  * Automatically create Task Folder and Class Subfolder(s) in Google Drive & Local Storage
  * Triggered as soon as an admin or teacher creates an assignment and selects class(es)
  */
-async function createTaskAndClassFolders({ folderTask, folderClass, folderClasses }) {
+async function createTaskAndClassFolders({ folderTask, folderClass, folderClasses, existingTaskFolderUrl }) {
   const settings = getDriveSettings();
   const cleanFolderTask = sanitizeName(folderTask) || 'Tugas Kelas';
 
@@ -282,7 +282,7 @@ async function createTaskAndClassFolders({ folderTask, folderClass, folderClasse
           return {
             success: true,
             taskFolderId: driveRes.taskFolderId,
-            taskFolderUrl: driveRes.taskFolderUrl,
+            taskFolderUrl: existingTaskFolderUrl || driveRes.taskFolderUrl,
             classFolderId: driveRes.classFolderId,
             classFolderUrl: driveRes.classFolderUrl,
             classFolders: classFoldersMap,
@@ -314,7 +314,7 @@ async function createTaskAndClassFolders({ folderTask, folderClass, folderClasse
   return {
     success: true,
     taskFolderId: `local_task_${Date.now()}`,
-    taskFolderUrl: `/uploads/assignments/${encodeURIComponent(cleanFolderTask)}`,
+    taskFolderUrl: existingTaskFolderUrl || `/uploads/assignments/${encodeURIComponent(cleanFolderTask)}`,
     classFolderId: `local_class_${Date.now()}`,
     classFolderUrl: primaryUrl,
     classFolders: classFoldersMap,
