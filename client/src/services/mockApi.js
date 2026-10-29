@@ -5031,7 +5031,20 @@ export async function handleMockRequest(endpoint, options = {}) {
   // ==========================================
   if (path === '/cbt/exams') {
     let exams = getStored(STORAGE_KEYS.EXAMS, DEFAULT_EXAMS);
-    if (method === 'GET') return exams;
+    if (method === 'GET') {
+      const classId = params.get('class_id');
+      const subjectId = params.get('subject_id');
+      let filtered = [...exams];
+      if (currentUser.role === 'siswa') {
+        filtered = filtered.filter(e => !e.class_name || e.class_name === currentUser.kelas);
+      } else if (classId) {
+        filtered = filtered.filter(e => e.class_id === Number(classId));
+      }
+      if (subjectId) {
+        filtered = filtered.filter(e => e.subject_id === Number(subjectId));
+      }
+      return filtered;
+    }
     if (method === 'POST') {
       const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
       const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);

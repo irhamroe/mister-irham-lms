@@ -77,3 +77,4 @@ export default function MobileBottomNav({ activeTab, setActiveTab, onOpenMenu })
     </nav>
   );
 }
+

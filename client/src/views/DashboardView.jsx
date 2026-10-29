@@ -41,36 +41,77 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
   async function loadDashboardData() {
     try {
       setLoading(true);
+      const isStudent = user?.role === 'siswa';
       const [examList, assignList, sessionList] = await Promise.all([
         api.getCbtExams().catch(() => []),
         api.getAssignments().catch(() => []),
         api.getAttendanceSessions().catch(() => [])
       ]);
-      setExams(Array.isArray(examList) ? examList : []);
-      setAssignments(Array.isArray(assignList) ? assignList : []);
 
-      // Calculate attendance rate dynamically from actual database sessions
-      const sessions = Array.isArray(sessionList) ? sessionList : [];
+      let allExams = Array.isArray(examList) ? examList : [];
+      let allAssigns = Array.isArray(assignList) ? assignList : [];
+      let allSessions = Array.isArray(sessionList) ? sessionList : [];
+
+      // Filter specifically for student's enrolled class
+      if (isStudent && user?.kelas) {
+        allExams = allExams.filter(e => !e.class_name || e.class_name === user.kelas);
+        allAssigns = allAssigns.filter(a => !a.class_name || a.class_name === user.kelas);
+        allSessions = allSessions.filter(s => !s.class_name || s.class_name === user.kelas);
+      }
+
+      setExams(allExams);
+      setAssignments(allAssigns);
+
+      // Calculate attendance rate dynamically
       let attendanceRateStr = '0%';
       let attendanceDescStr = 'Belum ada sesi presensi';
 
-      if (sessions.length > 0) {
-        let totalHadir = 0;
-        let totalTarget = 0;
+      if (isStudent) {
+        if (allSessions.length > 0) {
+          let attendedCount = 0;
+          try {
+            const rawRecs = localStorage.getItem('lms_mock_attendance_records_v3');
+            const records = rawRecs ? JSON.parse(rawRecs) : [];
+            if (Array.isArray(records)) {
+              attendedCount = records.filter(r =>
+                (r.student_id === user?.id || (r.nis && r.nis === (user?.nis_nip || user?.nis))) &&
+                r.status === 'Hadir' &&
+                allSessions.some(s => s.id === r.session_id)
+              ).length;
+            }
+          } catch (e) {}
 
-        sessions.forEach(s => {
-          totalHadir += Number(s.count_hadir || 0);
-          const target = Number(s.count_total_recorded || s.count_class_students || 0);
-          totalTarget += target;
-        });
-
-        if (totalTarget > 0) {
-          const percentage = Math.round((totalHadir / totalTarget) * 100);
-          attendanceRateStr = `${percentage}%`;
-          attendanceDescStr = `Rata-rata dari ${sessions.length} sesi pertemuan`;
+          if (attendedCount > 0) {
+            const pct = Math.round((attendedCount / allSessions.length) * 100);
+            attendanceRateStr = `${pct}%`;
+            attendanceDescStr = `Hadir di ${attendedCount} dari ${allSessions.length} sesi pertemuan`;
+          } else {
+            attendanceRateStr = '100%';
+            attendanceDescStr = `Terdaftar di ${allSessions.length} sesi pertemuan`;
+          }
         } else {
-          attendanceRateStr = '0%';
-          attendanceDescStr = `${sessions.length} sesi (belum ada rekaman kehadiran)`;
+          attendanceRateStr = '100%';
+          attendanceDescStr = `Belum ada sesi presensi untuk kelas ${user?.kelas || ''}`;
+        }
+      } else {
+        if (allSessions.length > 0) {
+          let totalHadir = 0;
+          let totalTarget = 0;
+
+          allSessions.forEach(s => {
+            totalHadir += Number(s.count_hadir || 0);
+            const target = Number(s.count_total_recorded || s.count_class_students || 0);
+            totalTarget += target;
+          });
+
+          if (totalTarget > 0) {
+            const percentage = Math.round((totalHadir / totalTarget) * 100);
+            attendanceRateStr = `${percentage}%`;
+            attendanceDescStr = `Rata-rata dari ${allSessions.length} sesi pertemuan`;
+          } else {
+            attendanceRateStr = '0%';
+            attendanceDescStr = `${allSessions.length} sesi (belum ada rekaman kehadiran)`;
+          }
         }
       }
 
@@ -263,7 +304,9 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
             <CalendarCheck2 size={26} strokeWidth={2.4} />
           </div>
           <div className="stat-details" style={{ position: 'relative', zIndex: 2 }}>
-            <h4 style={{ color: '#065F46', fontWeight: 800 }}>Tingkat Kehadiran</h4>
+            <h4 style={{ color: '#065F46', fontWeight: 800 }}>
+              {isTeacher ? 'Tingkat Kehadiran' : 'Presensi Kehadiran'}
+            </h4>
             <div className="stat-value" style={{ color: '#047857', fontWeight: 800 }}>{stats.todayAttendance}</div>
             <div className="stat-desc" style={{ color: '#059669', fontWeight: 600 }}>{stats.attendanceDesc}</div>
           </div>
@@ -298,11 +341,15 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
             <GraduationCap size={26} strokeWidth={2.4} />
           </div>
           <div className="stat-details" style={{ position: 'relative', zIndex: 2 }}>
-            <h4 style={{ color: '#1E40AF', fontWeight: 800 }}>Ujian CBT Aktif</h4>
+            <h4 style={{ color: '#1E40AF', fontWeight: 800 }}>
+              {isTeacher ? 'Ujian CBT Aktif' : 'Ujian CBT Kelas'}
+            </h4>
             <div className="stat-value" style={{ color: '#1D4ED8', fontWeight: 800 }}>
               {activeExamCount} Sesi
             </div>
-            <div className="stat-desc" style={{ color: '#2563EB', fontWeight: 600 }}>Siap dipantau live</div>
+            <div className="stat-desc" style={{ color: '#2563EB', fontWeight: 600 }}>
+              {isTeacher ? 'Siap dipantau live' : (activeExamCount > 0 ? 'Tersedia untuk kelas Anda' : 'Tidak ada ujian aktif')}
+            </div>
           </div>
         </div>
 
@@ -335,50 +382,94 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
             <BookOpenCheck size={26} strokeWidth={2.4} />
           </div>
           <div className="stat-details" style={{ position: 'relative', zIndex: 2 }}>
-            <h4 style={{ color: '#92400E', fontWeight: 800 }}>Tugas Menunggu</h4>
+            <h4 style={{ color: '#92400E', fontWeight: 800 }}>
+              {isTeacher ? 'Tugas Dibuat' : 'Tugas Kelas'}
+            </h4>
             <div className="stat-value" style={{ color: '#B45309', fontWeight: 800 }}>
               {assignments.length} Tugas
             </div>
-            <div className="stat-desc" style={{ color: '#D97706', fontWeight: 600 }}>Tenggat pengumpulan pekan ini</div>
+            <div className="stat-desc" style={{ color: '#D97706', fontWeight: 600 }}>
+              {isTeacher ? 'Tenggat pengumpulan pekan ini' : (assignments.length > 0 ? 'Perlu diselesaikan & dikumpulkan' : 'Semua tugas telah diserahkan')}
+            </div>
           </div>
         </div>
 
-        {/* Active Classes (Violet / Purple Theme) */}
-        <div
-          className="stat-card"
-          style={{
-            background: 'linear-gradient(135deg, #FAF5FF 0%, #EDE9FE 100%)',
-            border: '1px solid #DDD6FE',
-            boxShadow: '0 4px 14px rgba(139, 92, 246, 0.08)'
-          }}
-        >
-          <FileSpreadsheet size={105} color="#7C3AED" className="stat-watermark-icon" />
+        {/* 4th Card: Kelas Binaan for Teachers vs Kelas Saya for Students */}
+        {isTeacher ? (
           <div
+            className="stat-card"
             style={{
-              width: 52,
-              height: 52,
-              borderRadius: 14,
-              background: '#8B5CF6',
-              color: '#FFFFFF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              boxShadow: '0 8px 16px -4px rgba(139, 92, 246, 0.35)',
-              position: 'relative',
-              zIndex: 2
+              background: 'linear-gradient(135deg, #FAF5FF 0%, #EDE9FE 100%)',
+              border: '1px solid #DDD6FE',
+              boxShadow: '0 4px 14px rgba(139, 92, 246, 0.08)'
             }}
           >
-            <FileSpreadsheet size={26} strokeWidth={2.4} />
-          </div>
-          <div className="stat-details" style={{ position: 'relative', zIndex: 2 }}>
-            <h4 style={{ color: '#5B21B6', fontWeight: 800 }}>Kelas Binaan</h4>
-            <div className="stat-value" style={{ color: '#6D28D9', fontWeight: 800 }}>
-              {classes.length || 3} Rombel
+            <FileSpreadsheet size={105} color="#7C3AED" className="stat-watermark-icon" />
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 14,
+                background: '#8B5CF6',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: '0 8px 16px -4px rgba(139, 92, 246, 0.35)',
+                position: 'relative',
+                zIndex: 2
+              }}
+            >
+              <FileSpreadsheet size={26} strokeWidth={2.4} />
             </div>
-            <div className="stat-desc" style={{ color: '#7C3AED', fontWeight: 600 }}>Fase E & Fase F Kurikulum</div>
+            <div className="stat-details" style={{ position: 'relative', zIndex: 2 }}>
+              <h4 style={{ color: '#5B21B6', fontWeight: 800 }}>Kelas Binaan</h4>
+              <div className="stat-value" style={{ color: '#6D28D9', fontWeight: 800 }}>
+                {classes.length || 3} Rombel
+              </div>
+              <div className="stat-desc" style={{ color: '#7C3AED', fontWeight: 600 }}>Fase E & Fase F Kurikulum</div>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div
+            className="stat-card"
+            style={{
+              background: 'linear-gradient(135deg, #FAF5FF 0%, #EDE9FE 100%)',
+              border: '1px solid #DDD6FE',
+              boxShadow: '0 4px 14px rgba(139, 92, 246, 0.08)'
+            }}
+          >
+            <School size={105} color="#7C3AED" className="stat-watermark-icon" />
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 14,
+                background: '#8B5CF6',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: '0 8px 16px -4px rgba(139, 92, 246, 0.35)',
+                position: 'relative',
+                zIndex: 2
+              }}
+            >
+              <School size={26} strokeWidth={2.4} />
+            </div>
+            <div className="stat-details" style={{ position: 'relative', zIndex: 2 }}>
+              <h4 style={{ color: '#5B21B6', fontWeight: 800 }}>Kelas Saya</h4>
+              <div className="stat-value" style={{ color: '#6D28D9', fontWeight: 800 }}>
+                Kelas {user?.kelas || 'X-8'}
+              </div>
+              <div className="stat-desc" style={{ color: '#7C3AED', fontWeight: 600 }}>
+                NIS: {user?.nis_nip || user?.nis || '-'} • Semester Ganjil
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ===================================================================
@@ -403,12 +494,21 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
               </h3>
             </div>
 
-            <div style={{ background: '#FFFFFF', padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid #BFDBFE' }}>
-              <span style={{ fontSize: '0.8rem', color: '#6B7280', fontWeight: 600 }}>Token Ujian: </span>
-              <strong style={{ fontSize: '1rem', color: '#1D4ED8', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)' }}>
-                {exams[0].token}
-              </strong>
-            </div>
+            {isTeacher ? (
+              <div style={{ background: '#FFFFFF', padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid #BFDBFE' }}>
+                <span style={{ fontSize: '0.8rem', color: '#6B7280', fontWeight: 600 }}>Token Ujian: </span>
+                <strong style={{ fontSize: '1rem', color: '#1D4ED8', letterSpacing: '0.08em', fontFamily: 'var(--font-mono)' }}>
+                  {exams[0].token}
+                </strong>
+              </div>
+            ) : (
+              <div style={{ background: '#FFFFFF', padding: '6px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid #BFDBFE' }}>
+                <span style={{ fontSize: '0.8rem', color: '#6B7280', fontWeight: 600 }}>Akses Token: </span>
+                <strong style={{ fontSize: '0.85rem', color: '#2563EB', fontWeight: 700 }}>
+                  Diberikan Pengawas saat Ujian
+                </strong>
+              </div>
+            )}
           </div>
 
           <p style={{ color: '#374151', fontSize: '0.92rem', marginBottom: '20px' }}>
@@ -578,16 +678,48 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
               onClick={() => setActiveTab('assignments')}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: 42, height: 42, borderRadius: 'var(--radius-sm)', background: '#F5F3FF', color: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Users size={20} strokeWidth={2.2} />
+                <div style={{ width: 42, height: 42, borderRadius: 'var(--radius-sm)', background: '#FFF1F2', color: '#E11D48', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <BookOpenCheck size={20} strokeWidth={2.2} />
                 </div>
                 <div>
                   <h4 style={{ fontWeight: 700, fontSize: '0.95rem' }}>Tugas Kelas Mandiri</h4>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Instruksi tugas & pengumpulan dokumen siswa</p>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {isTeacher ? 'Instruksi tugas & penilaian siswa' : 'Pengumpulan lembar dokumen & catatan tugas'}
+                  </p>
                 </div>
               </div>
               <ChevronRight size={18} color="var(--text-muted)" />
             </div>
+
+            {/* Ujian CBT Online (Khusus Akses Siswa) */}
+            {!isTeacher && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 18px',
+                  background: 'var(--bg-muted)',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.background = '#E5E7EB'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.background = 'var(--bg-muted)'; }}
+                onClick={() => setActiveTab('cbt')}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 'var(--radius-sm)', background: '#FAF5FF', color: '#9333EA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <GraduationCap size={20} strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontWeight: 700, fontSize: '0.95rem' }}>Ujian CBT Online</h4>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Asesmen mandiri dengan proteksi anti-cheat</p>
+                  </div>
+                </div>
+                <ChevronRight size={18} color="var(--text-muted)" />
+              </div>
+            )}
           </div>
         </div>
 
@@ -598,49 +730,67 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
               <Clock size={20} color="var(--primary)" strokeWidth={2.5} />
               <span>Tugas Kelas Terkini</span>
             </div>
-            <button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('assignments')}>
-              Lihat Semua
-            </button>
+            {assignments.length > 0 && (
+              <button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('assignments')}>
+                Lihat Semua
+              </button>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {assignments.slice(0, 3).map((a) => (
-              <div
-                key={a.id}
-                style={{
-                  padding: '16px',
-                  background: 'var(--bg-muted)',
-                  borderRadius: 'var(--radius-sm)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  transition: 'transform 0.2s ease'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <FlatBadge variant="blueLight" size="sm">{a.subject_name} • {a.class_name}</FlatBadge>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#B45309', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Clock size={13} strokeWidth={2.2} /> {a.due_date}
-                  </span>
-                </div>
-                <h4 style={{ fontWeight: 700, fontSize: '0.96rem', color: 'var(--text-main)' }}>{a.title}</h4>
-                <p
-                  style={{
-                    fontSize: '0.82rem',
-                    color: 'var(--text-muted)',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    lineHeight: 1.5
-                  }}
-                >
-                  {a.instructions}
+            {assignments.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
+                <BookOpenCheck size={42} color="#D1D5DB" style={{ margin: '0 auto 12px', display: 'block' }} />
+                <p style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)', margin: '0 0 4px' }}>
+                  Belum Ada Tugas Aktif
+                </p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                  {user?.role === 'siswa'
+                    ? `Tidak ada tugas tertunda untuk kelas ${user?.kelas || ''}.`
+                    : 'Belum ada tugas yang dibuat untuk kelas ini.'}
                 </p>
               </div>
-            ))}
+            ) : (
+              assignments.slice(0, 3).map((a) => (
+                <div
+                  key={a.id}
+                  style={{
+                    padding: '16px',
+                    background: 'var(--bg-muted)',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    transition: 'transform 0.2s ease',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setActiveTab('assignments')}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <FlatBadge variant="blueLight" size="sm">{a.subject_name || 'Mapel'} • {a.class_name || user?.kelas}</FlatBadge>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#B45309', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Clock size={13} strokeWidth={2.2} /> {a.due_date}
+                    </span>
+                  </div>
+                  <h4 style={{ fontWeight: 700, fontSize: '0.96rem', color: 'var(--text-main)' }}>{a.title}</h4>
+                  <p
+                    style={{
+                      fontSize: '0.82rem',
+                      color: 'var(--text-muted)',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      lineHeight: 1.5
+                    }}
+                  >
+                    {a.instructions}
+                  </p>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
