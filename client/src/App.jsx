@@ -14,7 +14,6 @@ import CbtMonitorView from './views/CbtMonitorView';
 import CbtExamView from './views/CbtExamView';
 import ManagementView from './views/ManagementView';
 import LoginView from './views/LoginView';
-import MobileBottomNav from './components/MobileBottomNav';
 
 function MainApp() {
   const { user, loading } = useAuth();
@@ -146,13 +145,6 @@ function MainApp() {
             <ManagementView initialTab="users" />
           )}
         </main>
-
-        {/* Modern Mobile Bottom Navigation Bar */}
-        <MobileBottomNav
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          onOpenMenu={() => setMobileMenuOpen(true)}
-        />
       </div>
     </div>
   );

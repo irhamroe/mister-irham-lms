@@ -1532,7 +1532,7 @@ a {
   }
 
   .content-view {
-    padding: 14px 12px 88px 12px !important;
+    padding: 14px 12px 24px 12px !important;
     width: 100% !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
@@ -1667,23 +1667,9 @@ a {
     justify-content: center !important;
   }
 
-  /* 9. NATIVE MOBILE BOTTOM NAVIGATION BAR */
+  /* 9. NATIVE MOBILE BOTTOM NAVIGATION BAR (HIDDEN BY USER PREFERENCE) */
   .mobile-bottom-nav {
-    display: flex !important;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 60px;
-    background: rgba(255, 255, 255, 0.94);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border-top: 1px solid var(--border-color);
-    box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.07);
-    z-index: 1000;
-    align-items: center;
-    justify-content: space-around;
-    padding: 0 4px calc(env(safe-area-inset-bottom, 0px) + 2px) 4px;
+    display: none !important;
   }
 
   .mobile-bottom-tab {
