@@ -14,14 +14,12 @@ import {
   UserCog,
   Layers,
   BookOpen,
-  X,
-  LogOut
+  X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { StudentAvatar } from './StudentAvatar';
 
 export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobileOpen }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const isTeacherOrAdmin = user && (user.role === 'guru' || user.role === 'admin');
 
@@ -239,33 +237,6 @@ export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobile
             </>
           )}
         </nav>
-
-        {/* User Card on Mobile Drawer */}
-        {user && (
-          <div className="sidebar-footer">
-            <div className="user-profile-card">
-              <div className="user-profile-info">
-                <StudentAvatar name={user.name} size={36} className="user-profile-avatar" />
-                <div className="user-profile-details">
-                  <div className="user-profile-name">{user.name}</div>
-                  <div className="user-profile-role">
-                    {user.role === 'guru' && 'Guru Mapel'}
-                    {user.role === 'admin' && 'Administrator'}
-                    {user.role === 'siswa' && `Siswa (${user.kelas || 'X-8'})`}
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn-logout"
-                onClick={logout}
-                title="Keluar dari akun"
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
-          </div>
-        )}
       </aside>
     </>
   );
