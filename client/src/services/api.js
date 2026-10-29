@@ -1,62 +1,8 @@
-import { handleMockRequest, DEFAULT_USERS } from './mockApi';
-import { syncToFirebase } from './firebaseSyncService';
-import bcrypt from 'bcryptjs';
+// Unified API Service for LMS Pintar & CBT
+// Uses 100% Online Cloud Database (Firebase Realtime Database)
+// Ensures every device (Laptop, HP, Tablet, Admin, Guru, Siswa) accesses the exact same data live.
 
-function syncUserChangesToCloud(updater) {
-  try {
-    const USERS_KEY = 'lms_mock_users_v3';
-    const stored = localStorage.getItem(USERS_KEY);
-    let users = stored ? JSON.parse(stored) : [];
-    if (!Array.isArray(users) || users.length === 0) {
-      users = typeof DEFAULT_USERS !== 'undefined' ? [...DEFAULT_USERS] : [];
-    }
-    if (Array.isArray(users)) {
-      const nextUsers = updater(users);
-      if (Array.isArray(nextUsers)) {
-        localStorage.setItem(USERS_KEY, JSON.stringify(nextUsers));
-        syncToFirebase(USERS_KEY, nextUsers);
-      }
-    }
-  } catch (e) {
-    console.warn('Sync user changes to Firebase failed:', e);
-  }
-}
-
-function syncSubjectChangesToCloud(updater) {
-  try {
-    const KEY = 'lms_mock_subjects_v3';
-    const stored = localStorage.getItem(KEY);
-    let items = stored ? JSON.parse(stored) : [];
-    if (Array.isArray(items)) {
-      const nextItems = updater(items);
-      if (Array.isArray(nextItems)) {
-        localStorage.setItem(KEY, JSON.stringify(nextItems));
-        syncToFirebase(KEY, nextItems);
-      }
-    }
-  } catch (e) {
-    console.warn('Sync subject changes to Firebase failed:', e);
-  }
-}
-
-function syncClassChangesToCloud(updater) {
-  try {
-    const KEY = 'lms_mock_classes_v3';
-    const stored = localStorage.getItem(KEY);
-    let items = stored ? JSON.parse(stored) : [];
-    if (Array.isArray(items)) {
-      const nextItems = updater(items);
-      if (Array.isArray(nextItems)) {
-        localStorage.setItem(KEY, JSON.stringify(nextItems));
-        syncToFirebase(KEY, nextItems);
-      }
-    }
-  } catch (e) {
-    console.warn('Sync class changes to Firebase failed:', e);
-  }
-}
-
-const API_BASE = '/api';
+import { handleMockRequest } from './mockApi';
 
 export function getToken() {
   return localStorage.getItem('lms_token');
@@ -70,49 +16,9 @@ export function setToken(token) {
   }
 }
 
+// Single Source of Truth: All requests route directly to the online cloud database handler
 async function request(endpoint, options = {}) {
-  const token = getToken();
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers
-  };
-
-  try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers
-    });
-
-    const contentType = response.headers.get('content-type') || '';
-    if (response.ok && contentType.includes('application/json')) {
-      return await response.json();
-    }
-
-    // If server responded with a genuine JSON error response (e.g. 400 Bad Request with error message)
-    if (contentType.includes('application/json')) {
-      const errorData = await response.json().catch(() => ({}));
-      if (errorData.error) {
-        throw new Error(errorData.error);
-      }
-    }
-
-    // If backend is not running or gateway timeout (500/502/504 proxy error), fallback to mockApi
-    return await handleMockRequest(endpoint, options);
-  } catch (err) {
-    // If it's a specific validation/auth error message from server, re-throw so user sees it
-    if (err.message && 
-        !err.message.includes('fetch') && 
-        !err.message.includes('Failed to fetch') && 
-        !err.message.includes('NetworkError') && 
-        !err.message.includes('Gateway') && 
-        !err.message.includes('ECONNREFUSED') &&
-        !err.message.includes('Error 50')) {
-      throw err;
-    }
-    // Backend server is unreachable, fall back to mockApi
-    return await handleMockRequest(endpoint, options);
-  }
+  return await handleMockRequest(endpoint, options);
 }
 
 function toQueryString(params = {}) {
@@ -195,126 +101,25 @@ export const api = {
   // Management
   getManagementStats: () => request('/management/stats'),
   getManagementClasses: () => request('/management/classes'),
-  createManagementClass: async (payload) => {
-    const res = await request('/management/classes', { method: 'POST', body: JSON.stringify(payload) });
-    syncClassChangesToCloud((classes) => [...classes, res]);
-    return res;
-  },
-  updateManagementClass: async (id, payload) => {
-    const res = await request(`/management/classes/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-    syncClassChangesToCloud((classes) => classes.map(c => Number(c.id) === Number(id) ? { ...c, ...res } : c));
-    return res;
-  },
-  deleteManagementClass: async (id) => {
-    const res = await request(`/management/classes/${id}`, { method: 'DELETE' });
-    syncClassChangesToCloud((classes) => classes.filter(c => Number(c.id) !== Number(id)));
-    return res;
-  },
+  createManagementClass: (payload) => request('/management/classes', { method: 'POST', body: JSON.stringify(payload) }),
+  updateManagementClass: (id, payload) => request(`/management/classes/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteManagementClass: (id) => request(`/management/classes/${id}`, { method: 'DELETE' }),
 
   getManagementStudents: (params = {}) => request(`/management/students${toQueryString(params)}`),
-  createManagementStudent: async (payload) => {
-    const res = await request('/management/students', { method: 'POST', body: JSON.stringify(payload) });
-    syncUserChangesToCloud((users) => {
-      const item = { ...res };
-      if (payload.password && payload.password.trim()) {
-        item.password = payload.password.trim();
-      }
-      return [...users, item];
-    });
-    return res;
-  },
-  updateManagementStudent: async (id, payload) => {
-    const res = await request(`/management/students/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-    syncUserChangesToCloud((users) => {
-      return users.map(u => {
-        const isMatch = Number(u.id) === Number(id) || 
-          (u.username && payload?.nis && u.username.toLowerCase() === String(payload.nis).trim().toLowerCase()) ||
-          (u.username && res?.username && u.username.toLowerCase() === res.username.toLowerCase());
-        if (isMatch) {
-          const updated = { ...u, ...res };
-          if (payload.password && payload.password.trim()) {
-            const cleanP = payload.password.trim();
-            updated.password = cleanP;
-            try {
-              updated.password_hash = bcrypt.hashSync(cleanP, 10);
-            } catch (e) {}
-          } else if (res && res.password_hash) {
-            updated.password_hash = res.password_hash;
-          }
-          return updated;
-        }
-        return u;
-      });
-    });
-    return res;
-  },
-  deleteManagementStudent: async (id) => {
-    const res = await request(`/management/students/${id}`, { method: 'DELETE' });
-    syncUserChangesToCloud((users) => users.filter(u => Number(u.id) !== Number(id)));
-    return res;
-  },
+  createManagementStudent: (payload) => request('/management/students', { method: 'POST', body: JSON.stringify(payload) }),
+  updateManagementStudent: (id, payload) => request(`/management/students/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteManagementStudent: (id) => request(`/management/students/${id}`, { method: 'DELETE' }),
   importManagementStudentsBatch: (students) => request('/management/students/batch-import', { method: 'POST', body: JSON.stringify({ students }) }),
 
   getManagementUsers: (params = {}) => request(`/management/users${toQueryString(params)}`),
-  createManagementUser: async (payload) => {
-    const res = await request('/management/users', { method: 'POST', body: JSON.stringify(payload) });
-    syncUserChangesToCloud((users) => {
-      const item = { ...res };
-      if (payload.password && payload.password.trim()) {
-        item.password = payload.password.trim();
-      }
-      return [...users, item];
-    });
-    return res;
-  },
-  updateManagementUser: async (id, payload) => {
-    const res = await request(`/management/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-    syncUserChangesToCloud((users) => {
-      return users.map(u => {
-        const isMatch = Number(u.id) === Number(id) || 
-          (u.username && payload?.username && u.username.toLowerCase() === payload.username.trim().toLowerCase()) ||
-          (u.username && res?.username && u.username.toLowerCase() === res.username.toLowerCase());
-        if (isMatch) {
-          const updated = { ...u, ...res };
-          if (payload.password && payload.password.trim()) {
-            const cleanP = payload.password.trim();
-            updated.password = cleanP;
-            try {
-              updated.password_hash = bcrypt.hashSync(cleanP, 10);
-            } catch (e) {}
-          } else if (res && res.password_hash) {
-            updated.password_hash = res.password_hash;
-          }
-          return updated;
-        }
-        return u;
-      });
-    });
-    return res;
-  },
-  deleteManagementUser: async (id) => {
-    const res = await request(`/management/users/${id}`, { method: 'DELETE' });
-    syncUserChangesToCloud((users) => users.filter(u => Number(u.id) !== Number(id)));
-    return res;
-  },
+  createManagementUser: (payload) => request('/management/users', { method: 'POST', body: JSON.stringify(payload) }),
+  updateManagementUser: (id, payload) => request(`/management/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteManagementUser: (id) => request(`/management/users/${id}`, { method: 'DELETE' }),
 
   getManagementSubjects: (params = {}) => request(`/management/subjects${toQueryString(params)}`),
-  createManagementSubject: async (payload) => {
-    const res = await request('/management/subjects', { method: 'POST', body: JSON.stringify(payload) });
-    syncSubjectChangesToCloud((subjects) => [...subjects, res]);
-    return res;
-  },
-  updateManagementSubject: async (id, payload) => {
-    const res = await request(`/management/subjects/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-    syncSubjectChangesToCloud((subjects) => subjects.map(s => Number(s.id) === Number(id) ? { ...s, ...res } : s));
-    return res;
-  },
-  deleteManagementSubject: async (id) => {
-    const res = await request(`/management/subjects/${id}`, { method: 'DELETE' });
-    syncSubjectChangesToCloud((subjects) => subjects.filter(s => Number(s.id) !== Number(id)));
-    return res;
-  }
+  createManagementSubject: (payload) => request('/management/subjects', { method: 'POST', body: JSON.stringify(payload) }),
+  updateManagementSubject: (id, payload) => request(`/management/subjects/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteManagementSubject: (id) => request(`/management/subjects/${id}`, { method: 'DELETE' })
 };
 
 export default api;
-

@@ -118,6 +118,7 @@ export const DEFAULT_USERS = [
     "gender": "L",
     "email": "admin@sekolah.sch.id",
     "phone": "08120000001",
+    "password_hash": "$2b$10$z7jYa/Mbw07NNASEkmIim.ozKsrG5Kj2EfSW5GpBbqsWxnrRASQQi",
     "avatar": generateInitialsAvatarDataUrl("Administrator"),
     "created_at": "2026-10-01"
   },
@@ -4570,13 +4571,17 @@ export async function handleMockRequest(endpoint, options = {}) {
     return updated;
   });
   if (hasAvatarMigrated) {
-    setStored(STORAGE_KEYS.USERS, users);
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    } catch (e) {}
   }
   if (!users.some(u => u.username === 'irham')) {
     const irhamDefault = DEFAULT_USERS.find(u => u.username === 'irham');
     if (irhamDefault) {
       users.splice(1, 0, irhamDefault);
-      setStored(STORAGE_KEYS.USERS, users);
+      try {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+      } catch (e) {}
     }
   }
   let currentUserId = Number(localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID) || 2);
