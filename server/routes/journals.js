@@ -45,8 +45,8 @@ router.get('/', authenticateToken, (req, res) => {
     }
 
     if (search) {
-      query += ' AND (j.topic LIKE ? OR j.activities LIKE ? OR j.student_notes LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      query += ' AND (j.topic LIKE ? OR j.activities LIKE ? OR j.student_notes LIKE ? OR j.absent_students LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     query += ' ORDER BY j.date DESC, j.id DESC';
@@ -69,7 +69,8 @@ router.post('/', authenticateToken, requireRole(['admin', 'guru']), (req, res) =
       learning_outcomes,
       activities,
       student_notes,
-      follow_up
+      follow_up,
+      absent_students
     } = req.body;
 
     if (!class_id || !subject_id || !date || !topic || !activities) {
@@ -79,8 +80,8 @@ router.post('/', authenticateToken, requireRole(['admin', 'guru']), (req, res) =
     const insert = db.prepare(`
       INSERT INTO teaching_journals (
         teacher_id, class_id, subject_id, date, time_slot, topic,
-        learning_outcomes, activities, student_notes, follow_up
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        learning_outcomes, activities, student_notes, follow_up, absent_students
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = insert.run(
@@ -93,7 +94,8 @@ router.post('/', authenticateToken, requireRole(['admin', 'guru']), (req, res) =
       learning_outcomes || '',
       activities,
       student_notes || '',
-      follow_up || ''
+      follow_up || '',
+      absent_students || ''
     );
 
     const newJournal = db.prepare(`
@@ -130,13 +132,14 @@ router.put('/:id', authenticateToken, requireRole(['admin', 'guru']), (req, res)
       learning_outcomes,
       activities,
       student_notes,
-      follow_up
+      follow_up,
+      absent_students
     } = req.body;
 
     db.prepare(`
       UPDATE teaching_journals SET
         class_id = ?, subject_id = ?, date = ?, time_slot = ?, topic = ?,
-        learning_outcomes = ?, activities = ?, student_notes = ?, follow_up = ?
+        learning_outcomes = ?, activities = ?, student_notes = ?, follow_up = ?, absent_students = ?
       WHERE id = ?
     `).run(
       class_id || journal.class_id,
@@ -148,6 +151,7 @@ router.put('/:id', authenticateToken, requireRole(['admin', 'guru']), (req, res)
       activities || journal.activities,
       student_notes !== undefined ? student_notes : journal.student_notes,
       follow_up !== undefined ? follow_up : journal.follow_up,
+      absent_students !== undefined ? absent_students : journal.absent_students,
       req.params.id
     );
 

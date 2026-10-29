@@ -289,6 +289,9 @@ function initDatabase() {
     db.exec('ALTER TABLE assignments ADD COLUMN task_folder_url TEXT');
   } catch (e) {}
   try {
+    db.exec('ALTER TABLE teaching_journals ADD COLUMN absent_students TEXT');
+  } catch (e) {}
+  try {
     db.exec("UPDATE users SET kelas = NULL WHERE role != 'siswa'");
     db.exec("DELETE FROM classes WHERE name LIKE '%IPA%'");
     

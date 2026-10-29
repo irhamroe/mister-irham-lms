@@ -5656,6 +5656,7 @@ export async function handleMockRequest(endpoint, options = {}) {
     if (method === 'GET') {
       const classId = params.get('class_id');
       const subjectId = params.get('subject_id');
+      const date = params.get('date');
 
       let filtered = sessions;
       if (currentUser.role === 'siswa') {
@@ -5665,6 +5666,9 @@ export async function handleMockRequest(endpoint, options = {}) {
       }
       if (subjectId) {
         filtered = filtered.filter(s => s.subject_id === Number(subjectId));
+      }
+      if (date) {
+        filtered = filtered.filter(s => s.date === date);
       }
 
       return filtered.map(s => {

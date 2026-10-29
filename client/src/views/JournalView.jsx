@@ -10,7 +10,11 @@ import {
   Trash2,
   AlertCircle,
   FileText,
-  Printer
+  Printer,
+  Users,
+  RotateCw,
+  CheckCircle2,
+  Info
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/AlertContext';
@@ -31,6 +35,8 @@ export default function JournalView() {
   const [showModal, setShowModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [selectedHours, setSelectedHours] = useState([1, 2]);
+  const [isCheckingAttendance, setIsCheckingAttendance] = useState(false);
+  const [attendanceSyncStatus, setAttendanceSyncStatus] = useState(null);
   const [form, setForm] = useState({
     class_id: '',
     subject_id: '',
@@ -40,7 +46,8 @@ export default function JournalView() {
     learning_outcomes: '',
     activities: '',
     student_notes: '',
-    follow_up: ''
+    follow_up: '',
+    absent_students: ''
   });
 
   const isTeacher = user?.role === 'guru' || user?.role === 'admin';
@@ -104,22 +111,121 @@ export default function JournalView() {
     });
   }
 
+  async function checkAndAutoFillAttendance(classId, subjectId, date, force = false) {
+    if (!classId || !date) return;
+    try {
+      setIsCheckingAttendance(true);
+      setAttendanceSyncStatus({ type: 'loading', message: 'Mengecek data presensi kelas...' });
+
+      const sessions = await api.getAttendanceSessions({
+        class_id: classId,
+        date: date
+      });
+
+      const sessionList = Array.isArray(sessions) ? sessions : [];
+      if (sessionList.length === 0) {
+        setAttendanceSyncStatus({
+          type: 'warning',
+          message: 'Belum ada sesi presensi untuk kelas dan tanggal ini. Anda dapat menulis daftar siswa secara manual.'
+        });
+        if (force) {
+          showToast('info', 'Tidak ditemukan sesi presensi pada kelas dan tanggal ini.');
+        }
+        return;
+      }
+
+      // Prioritize session that matches subject_id
+      let targetSession = sessionList.find(s => Number(s.subject_id) === Number(subjectId));
+      if (!targetSession) {
+        targetSession = sessionList[0];
+      }
+
+      const details = await api.getAttendanceSessionDetails(targetSession.id);
+      const studentList = details?.students || [];
+      const stats = details?.stats || {};
+
+      const absentList = [];
+      studentList.forEach(st => {
+        const rec = st.record || {};
+        const status = rec.status || st.status || 'Belum Presensi';
+        const notes = (rec.notes || st.notes || '').trim();
+
+        if (['Sakit', 'Izin', 'Alpa', 'Tidak Hadir'].includes(status)) {
+          absentList.push(`${st.name} (${status}${notes ? `: ${notes}` : ''})`);
+        } else if (status === 'Belum Presensi' && ((stats.hadir || 0) > 0 || (stats.sakit || 0) > 0 || (stats.izin || 0) > 0 || (stats.alpa || 0) > 0)) {
+          absentList.push(`${st.name} (Belum Presensi / Alpa)`);
+        }
+      });
+
+      let absentResult = '';
+      if (absentList.length > 0) {
+        absentResult = absentList.join(', ');
+        setAttendanceSyncStatus({
+          type: 'success',
+          message: `Tersinkron dari presensi (${targetSession.session_title || 'Sesi Presensi'} ${targetSession.time_start || ''}-${targetSession.time_end || ''}): ${absentList.length} siswa tidak masuk.`
+        });
+        if (force) {
+          showToast('success', `${absentList.length} siswa tidak masuk berhasil disinkronkan dari presensi.`);
+        }
+      } else {
+        if ((stats.hadir || 0) > 0 || studentList.length > 0) {
+          absentResult = 'Nihil (Semua siswa hadir)';
+          setAttendanceSyncStatus({
+            type: 'success',
+            message: `Tersinkron dari presensi (${targetSession.session_title || 'Sesi Presensi'} ${targetSession.time_start || ''}-${targetSession.time_end || ''}): Semua siswa hadir (Nihil).`
+          });
+          if (force) {
+            showToast('success', 'Semua siswa tercatat hadir (Nihil).');
+          }
+        } else {
+          setAttendanceSyncStatus({
+            type: 'info',
+            message: `Sesi "${targetSession.session_title}" ditemukan, namun presensi belum dicatat.`
+          });
+        }
+      }
+
+      setForm(prev => ({
+        ...prev,
+        absent_students: absentResult
+      }));
+    } catch (err) {
+      console.error('Check attendance error:', err);
+      setAttendanceSyncStatus({
+        type: 'error',
+        message: 'Gagal mengecek presensi: ' + err.message
+      });
+    } finally {
+      setIsCheckingAttendance(false);
+    }
+  }
+
   function handleOpenCreate() {
     setEditId(null);
     const initialHours = [1, 2];
     setSelectedHours(initialHours);
+    const initialClassId = classes[0]?.id || '';
+    const initialSubjectId = subjects[0]?.id || '';
+    const initialDate = new Date().toISOString().split('T')[0];
+
     setForm({
-      class_id: classes[0]?.id || '',
-      subject_id: subjects[0]?.id || '',
-      date: new Date().toISOString().split('T')[0],
+      class_id: initialClassId,
+      subject_id: initialSubjectId,
+      date: initialDate,
       time_slot: formatHoursToSlot(initialHours),
       topic: '',
       learning_outcomes: '',
       activities: '',
       student_notes: '',
-      follow_up: ''
+      follow_up: '',
+      absent_students: ''
     });
+    setAttendanceSyncStatus(null);
     setShowModal(true);
+
+    if (initialClassId && initialDate) {
+      checkAndAutoFillAttendance(initialClassId, initialSubjectId, initialDate, false);
+    }
   }
 
   function handleOpenEdit(j) {
@@ -135,8 +241,14 @@ export default function JournalView() {
       learning_outcomes: j.learning_outcomes || '',
       activities: j.activities,
       student_notes: j.student_notes || '',
-      follow_up: j.follow_up || ''
+      follow_up: j.follow_up || '',
+      absent_students: j.absent_students || ''
     });
+    setAttendanceSyncStatus(
+      j.absent_students
+        ? { type: 'info', message: 'Menampilkan data siswa tidak masuk yang tersimpan pada jurnal ini. Klik "Sinkronkan dari Presensi" jika ingin memperbarui dari data presensi kelas.' }
+        : null
+    );
     setShowModal(true);
   }
 
@@ -286,6 +398,36 @@ export default function JournalView() {
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.6 }}>{j.activities}</p>
               </div>
 
+              {j.absent_students && (
+                <div style={{
+                  marginBottom: 14,
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: j.absent_students.toLowerCase().includes('nihil') ? '#ecfdf5' : '#fff1f2',
+                  border: `1px solid ${j.absent_students.toLowerCase().includes('nihil') ? '#a7f3d0' : '#fecdd3'}`
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <Users size={14} color={j.absent_students.toLowerCase().includes('nihil') ? '#059669' : '#e11d48'} />
+                    <strong style={{
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      color: j.absent_students.toLowerCase().includes('nihil') ? '#047857' : '#be123c'
+                    }}>
+                      Siswa Tidak Masuk:
+                    </strong>
+                  </div>
+                  <p style={{
+                    fontSize: '0.86rem',
+                    color: j.absent_students.toLowerCase().includes('nihil') ? '#065f46' : '#9f1239',
+                    margin: 0,
+                    fontWeight: 600
+                  }}>
+                    {j.absent_students}
+                  </p>
+                </div>
+              )}
+
               {(j.student_notes || j.follow_up) && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14, paddingTop: 12, borderTop: '1px solid var(--border-color)' }}>
                   {j.student_notes && (
@@ -340,7 +482,11 @@ export default function JournalView() {
                     <select
                       className="form-control"
                       value={form.class_id}
-                      onChange={(e) => setForm({ ...form, class_id: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm(f => ({ ...f, class_id: val }));
+                        checkAndAutoFillAttendance(val, form.subject_id, form.date);
+                      }}
                       required
                     >
                       {classes.map(c => <option key={c.id} value={c.id}>Kelas {c.name}</option>)}
@@ -351,7 +497,11 @@ export default function JournalView() {
                     <select
                       className="form-control"
                       value={form.subject_id}
-                      onChange={(e) => setForm({ ...form, subject_id: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm(f => ({ ...f, subject_id: val }));
+                        checkAndAutoFillAttendance(form.class_id, val, form.date);
+                      }}
                       required
                     >
                       {subjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
@@ -366,7 +516,11 @@ export default function JournalView() {
                       type="date"
                       className="form-control"
                       value={form.date}
-                      onChange={(e) => setForm({ ...form, date: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm(f => ({ ...f, date: val }));
+                        checkAndAutoFillAttendance(form.class_id, form.subject_id, val);
+                      }}
                       required
                     />
                   </div>
@@ -446,6 +600,57 @@ export default function JournalView() {
                     onChange={(e) => setForm({ ...form, activities: e.target.value })}
                     required
                   />
+                </div>
+
+                <div className="form-group">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+                    <label className="form-label" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Users size={16} color="var(--primary)" /> Siswa yang Tidak Masuk (Presensi)
+                    </label>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => checkAndAutoFillAttendance(form.class_id, form.subject_id, form.date, true)}
+                      disabled={isCheckingAttendance}
+                      style={{ fontSize: '0.78rem', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
+                      title="Sinkronkan ulang daftar siswa tidak masuk dari presensi kelas"
+                    >
+                      <RotateCw size={13} className={isCheckingAttendance ? 'spin' : ''} />
+                      {isCheckingAttendance ? 'Mengecek Presensi...' : 'Sinkronkan dari Presensi'}
+                    </button>
+                  </div>
+
+                  {attendanceSyncStatus && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '7px 12px',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      marginBottom: 8,
+                      background: attendanceSyncStatus.type === 'success' ? '#ecfdf5' : (attendanceSyncStatus.type === 'warning' ? '#fffbeb' : '#f0f9ff'),
+                      border: `1px solid ${attendanceSyncStatus.type === 'success' ? '#a7f3d0' : (attendanceSyncStatus.type === 'warning' ? '#fde68a' : '#bae6fd')}`,
+                      color: attendanceSyncStatus.type === 'success' ? '#065f46' : (attendanceSyncStatus.type === 'warning' ? '#92400e' : '#0369a1')
+                    }}>
+                      {attendanceSyncStatus.type === 'success' && <CheckCircle2 size={14} className="flex-shrink-0" />}
+                      {attendanceSyncStatus.type === 'warning' && <AlertCircle size={14} className="flex-shrink-0" />}
+                      {attendanceSyncStatus.type === 'info' && <Info size={14} className="flex-shrink-0" />}
+                      {attendanceSyncStatus.type === 'loading' && <RotateCw size={14} className="flex-shrink-0 spin" />}
+                      <span>{attendanceSyncStatus.message}</span>
+                    </div>
+                  )}
+
+                  <textarea
+                    className="form-control"
+                    rows={2}
+                    placeholder="Otomatis terisi dari presensi kelas (atau tulis manual jika belum ada presensi)..."
+                    value={form.absent_students}
+                    onChange={(e) => setForm({ ...form, absent_students: e.target.value })}
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>
+                    Daftar siswa yang tidak masuk otomatis ditarik dari sesi presensi kelas pada jam pembelajaran terkait. Anda tetap dapat mengedit atau menambahkan catatan secara manual jika diperlukan.
+                  </span>
                 </div>
               </div>
               <div className="modal-footer" style={{ flexShrink: 0 }}>
