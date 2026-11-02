@@ -28,7 +28,10 @@ import {
   FileSpreadsheet,
   FileText,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Image,
+  UploadCloud,
+  ExternalLink
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -109,6 +112,40 @@ export default function QuestionBankView({ onNavigateToCbt }) {
   const [importPreviewSummary, setImportPreviewSummary] = useState(null);
   const [importFilterTab, setImportFilterTab] = useState('ALL'); // 'ALL' | 'VALID' | 'INVALID'
   const [isImporting, setIsImporting] = useState(false);
+
+  // Question Image Upload State
+  const [questionImageFile, setQuestionImageFile] = useState(null);
+  const [questionImagePreview, setQuestionImagePreview] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isDriveConfigured, setIsDriveConfigured] = useState(false);
+
+  useEffect(() => {
+    try {
+      const driveSettings = JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}');
+      setIsDriveConfigured(Boolean(driveSettings.webhookUrl));
+    } catch (e) {}
+  }, []);
+
+  function handleImageSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('File yang dipilih harus berupa gambar (JPG, PNG, WebP)!');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Ukuran gambar maksimal 10MB.');
+      return;
+    }
+
+    setQuestionImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setQuestionImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }
 
   useEffect(() => {
     loadInitialData();
@@ -269,6 +306,8 @@ export default function QuestionBankView({ onNavigateToCbt }) {
   // Open modal for brand new question or package
   function openCreateModal(prefillTitle = '', prefillSubjectId = '', prefillGrade = '', prefillTopic = '') {
     setEditingQuestion(null);
+    setQuestionImageFile(null);
+    setQuestionImagePreview(null);
     setQuestionForm({
       subject_id: prefillSubjectId || subjects[0]?.id || 1,
       grade_level: prefillGrade || 'Kelas X',
@@ -291,6 +330,8 @@ export default function QuestionBankView({ onNavigateToCbt }) {
 
   function openEditModal(q) {
     setEditingQuestion(q);
+    setQuestionImageFile(null);
+    setQuestionImagePreview(q.image_url || null);
     const opts = q.options || [];
     setQuestionForm({
       subject_id: q.subject_id,
@@ -476,6 +517,34 @@ export default function QuestionBankView({ onNavigateToCbt }) {
 
       const titleToUse = questionForm.source_exam_title?.trim() || 'Bank Soal Mandiri';
 
+      let imageUrl = editingQuestion?.image_url || null;
+      let imageDriveUrl = editingQuestion?.image_drive_url || null;
+
+      if (questionImageFile && questionImagePreview) {
+        setIsUploadingImage(true);
+        try {
+          const uploadRes = await api.uploadCbtImage({
+            fileName: `${titleToUse.replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}_${questionImageFile.name}`,
+            fileBase64: questionImagePreview,
+            mimeType: questionImageFile.type,
+            folderClass: titleToUse,
+            examTitle: titleToUse
+          });
+          if (uploadRes && uploadRes.imageUrl) {
+            imageUrl = uploadRes.imageUrl;
+            imageDriveUrl = uploadRes.fileUrl || uploadRes.imageUrl;
+          }
+        } catch (uploadErr) {
+          console.warn('Gagal upload gambar ke Google Drive, menggunakan fallback:', uploadErr);
+          imageUrl = questionImagePreview;
+        } finally {
+          setIsUploadingImage(false);
+        }
+      } else if (!questionImagePreview) {
+        imageUrl = null;
+        imageDriveUrl = null;
+      }
+
       const payload = {
         subject_id: Number(questionForm.subject_id),
         grade_level: questionForm.grade_level,
@@ -487,7 +556,9 @@ export default function QuestionBankView({ onNavigateToCbt }) {
         points: Number(questionForm.points) || 10,
         explanation: questionForm.explanation,
         difficulty: questionForm.difficulty,
-        source_exam_title: titleToUse
+        source_exam_title: titleToUse,
+        image_url: imageUrl,
+        image_drive_url: imageDriveUrl
       };
 
       if (editingQuestion) {
@@ -1145,6 +1216,36 @@ export default function QuestionBankView({ onNavigateToCbt }) {
                               {q.question_text}
                             </p>
 
+                            {/* Question Image if present */}
+                            {q.image_url && (
+                              <div style={{ marginBottom: 12 }}>
+                                <img
+                                  src={q.image_url}
+                                  alt="Gambar Soal"
+                                  style={{
+                                    maxWidth: '100%',
+                                    maxHeight: 200,
+                                    borderRadius: 6,
+                                    border: '1px solid var(--border-color)',
+                                    objectFit: 'contain',
+                                    background: 'white'
+                                  }}
+                                />
+                                {q.image_drive_url && (
+                                  <div style={{ marginTop: 4 }}>
+                                    <a
+                                      href={q.image_drive_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      style={{ fontSize: '0.73rem', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+                                    >
+                                      <ExternalLink size={12} /> Buka Gambar di Google Drive
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
                             {/* Multiple Choice Options */}
                             {q.question_type === 'MULTIPLE_CHOICE' && q.options?.length > 0 && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
@@ -1493,6 +1594,85 @@ export default function QuestionBankView({ onNavigateToCbt }) {
                   />
                 </div>
 
+                {/* Upload Gambar / Ilustrasi Soal */}
+                <div className="form-group" style={{ marginBottom: 16 }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                      <Image size={15} color="var(--primary)" /> Gambar / Diagram Soal (Opsional)
+                    </span>
+                    {isDriveConfigured && (
+                      <span className="badge badge-success" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <UploadCloud size={12} /> Google Drive Aktif
+                      </span>
+                    )}
+                  </label>
+
+                  {!questionImagePreview ? (
+                    <div style={{
+                      border: '2px dashed var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '14px',
+                      textAlign: 'center',
+                      background: '#f8fafc',
+                      cursor: 'pointer'
+                    }}>
+                      <input
+                        type="file"
+                        id="qb-question-img-input"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={handleImageSelect}
+                      />
+                      <label htmlFor="qb-question-img-input" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, margin: 0 }}>
+                        <Image size={24} color="var(--primary)" />
+                        <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--primary)' }}>
+                          Pilih Gambar / Diagram Soal
+                        </span>
+                        <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>
+                          Format JPG, PNG, WebP (Otomatis disimpan ke Google Drive Anda)
+                        </span>
+                      </label>
+                    </div>
+                  ) : (
+                    <div style={{
+                      position: 'relative',
+                      padding: 10,
+                      background: 'white',
+                      border: '1.5px solid var(--primary)',
+                      borderRadius: 'var(--radius-md)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12
+                    }}>
+                      <img
+                        src={questionImagePreview}
+                        alt="Preview Soal"
+                        style={{ width: 80, height: 64, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-main)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          {questionImageFile?.name || 'Gambar Tersimpan'}
+                        </div>
+                        <div style={{ fontSize: '0.74rem', color: isDriveConfigured ? '#059669' : 'var(--text-muted)', marginTop: 2 }}>
+                          {isDriveConfigured ? '✓ Disimpan ke Google Drive: 📁 Gambar Soal CBT' : 'Tersimpan ke database'}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        style={{ color: '#ef4444', borderColor: '#fca5a5' }}
+                        onClick={() => {
+                          setQuestionImageFile(null);
+                          setQuestionImagePreview(null);
+                        }}
+                        title="Hapus gambar ini"
+                      >
+                        <X size={14} /> Hapus
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Multiple Choice Options */}
                 {questionForm.question_type === 'MULTIPLE_CHOICE' && (
                   <div style={{ background: '#f8fafc', padding: 14, borderRadius: 'var(--radius-sm)', border: '1px solid #e2e8f0', marginBottom: 14 }}>
@@ -1558,8 +1738,10 @@ export default function QuestionBankView({ onNavigateToCbt }) {
                 <button type="button" className="btn btn-outline" onClick={() => setShowCreateModal(false)}>
                   Batal
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingQuestion ? 'Simpan Perubahan Soal' : 'Simpan Butir Soal ke Judul Ini'}
+                <button type="submit" className="btn btn-primary" disabled={isUploadingImage}>
+                  {isUploadingImage
+                    ? 'Mengunggah ke Google Drive...'
+                    : (editingQuestion ? 'Simpan Perubahan Soal' : 'Simpan Butir Soal ke Judul Ini')}
                 </button>
               </div>
             </form>

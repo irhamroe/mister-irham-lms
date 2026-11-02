@@ -5097,6 +5097,57 @@ export async function handleMockRequest(endpoint, options = {}) {
   // ==========================================
   // CBT & EXAMS
   // ==========================================
+  if (path === '/cbt/upload-image') {
+    const driveSettings = JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}');
+    const fileName = body.fileName || `gambar_soal_${Date.now()}.png`;
+    const folderClass = body.folderClass || body.examTitle || 'Bank Soal CBT';
+    let rawBase64 = body.fileBase64 || '';
+    if (rawBase64.includes(';base64,')) rawBase64 = rawBase64.split(';base64,')[1];
+    const mimeType = body.mimeType || 'image/png';
+
+    if (driveSettings.webhookUrl && rawBase64) {
+      try {
+        const response = await fetch(driveSettings.webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'upload',
+            parentFolderId: driveSettings.parentFolderId || '',
+            folderTask: 'Gambar Soal CBT',
+            folderClass: folderClass,
+            fileName: fileName,
+            fileBase64: rawBase64,
+            mimeType: mimeType
+          })
+        });
+        if (response.ok) {
+          const resJson = await response.json();
+          if (resJson && resJson.success && resJson.fileId) {
+            const fileId = resJson.fileId;
+            const directUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+            return {
+              success: true,
+              fileId: fileId,
+              fileUrl: resJson.fileUrl,
+              imageUrl: directUrl,
+              taskFolderUrl: resJson.taskFolderUrl,
+              isDrive: true
+            };
+          }
+        }
+      } catch (err) {
+        console.warn('Google Drive CBT image upload fallback to base64:', err);
+      }
+    }
+
+    const fullDataUrl = body.fileBase64?.startsWith('data:') ? body.fileBase64 : `data:${mimeType};base64,${rawBase64}`;
+    return {
+      success: true,
+      imageUrl: fullDataUrl,
+      isDrive: false
+    };
+  }
+
   if (path === '/cbt/exams') {
     let exams = getStored(STORAGE_KEYS.EXAMS, DEFAULT_EXAMS);
     if (method === 'GET') {
@@ -5382,6 +5433,44 @@ export async function handleMockRequest(endpoint, options = {}) {
       success: true,
       importedCount,
       message: `Berhasil mengimpor ${importedCount} butir soal ke Bank Soal!`
+    };
+  }
+
+  if (path === '/question-bank/export-to-exam' && method === 'POST') {
+    const examId = Number(body.exam_id);
+    const questionIds = Array.isArray(body.question_ids) ? body.question_ids.map(Number) : [];
+    let questions = getStored(STORAGE_KEYS.QUESTIONS, DEFAULT_QUESTIONS);
+    const qb = getStored(STORAGE_KEYS.QUESTION_BANK, DEFAULT_QUESTION_BANK);
+
+    let addedCount = 0;
+    const currentExamQuestionsCount = questions.filter(q => q.exam_id === examId).length;
+
+    questionIds.forEach((qId, idx) => {
+      const source = qb.find(q => q.id === qId);
+      if (source) {
+        const newQ = {
+          id: Date.now() + idx,
+          exam_id: examId,
+          question_number: currentExamQuestionsCount + addedCount + 1,
+          question_text: source.question_text,
+          question_type: source.question_type || 'MULTIPLE_CHOICE',
+          options: source.options || [],
+          correct_answer: source.correct_answer,
+          points: source.points || 10,
+          explanation: source.explanation || '',
+          image_url: source.image_url || null,
+          image_drive_url: source.image_drive_url || null
+        };
+        questions.push(newQ);
+        addedCount++;
+      }
+    });
+
+    setStored(STORAGE_KEYS.QUESTIONS, questions);
+    return {
+      success: true,
+      added_count: addedCount,
+      message: `Berhasil menambahkan ${addedCount} soal ke ujian!`
     };
   }
 

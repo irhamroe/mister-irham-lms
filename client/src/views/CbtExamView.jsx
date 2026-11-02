@@ -460,9 +460,40 @@ export default function CbtExamView({ exam, token, onFinish }) {
           </div>
 
           {/* Question Text */}
-          <div style={{ fontSize: '1.08rem', fontWeight: 600, color: 'var(--text-main)', lineHeight: 1.6, marginBottom: 24, whiteSpace: 'pre-line' }}>
+          <div style={{ fontSize: '1.08rem', fontWeight: 600, color: 'var(--text-main)', lineHeight: 1.6, marginBottom: 20, whiteSpace: 'pre-line' }}>
             {currentQ.question_text}
           </div>
+
+          {/* Question Image if present */}
+          {currentQ.image_url && (
+            <div style={{
+              marginBottom: 24,
+              padding: '12px',
+              background: '#f8fafc',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border-color)',
+              textAlign: 'center'
+            }}>
+              <img
+                src={currentQ.image_url}
+                alt="Gambar / Diagram Soal"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: 360,
+                  borderRadius: 8,
+                  objectFit: 'contain',
+                  cursor: 'zoom-in',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  background: 'white'
+                }}
+                onClick={() => window.open(currentQ.image_url, '_blank')}
+                title="Klik untuk melihat ukuran penuh di tab baru"
+              />
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: 8 }}>
+                🔍 Klik / ketuk gambar untuk memperbesar tampilan di tab baru
+              </div>
+            </div>
+          )}
 
           {/* Options / Essay Input */}
           <div style={{ flex: 1 }}>

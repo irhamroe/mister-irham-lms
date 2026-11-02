@@ -18,7 +18,11 @@ import {
   CheckSquare,
   Bookmark,
   Download,
-  Check
+  Check,
+  Image,
+  UploadCloud,
+  X,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/AlertContext';
@@ -64,8 +68,36 @@ export default function CbtView({ onStartExam, onOpenMonitor }) {
     optionE: '',
     correct_answer: 'A',
     points: 10,
-    explanation: ''
+    explanation: '',
+    image_url: null,
+    image_drive_url: null
   });
+  const [questionImageFile, setQuestionImageFile] = useState(null);
+  const [questionImagePreview, setQuestionImagePreview] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isDriveConfigured, setIsDriveConfigured] = useState(false);
+
+  useEffect(() => {
+    try {
+      const ds = JSON.parse(localStorage.getItem('lms_google_drive_settings') || '{}');
+      setIsDriveConfigured(Boolean(ds.isConfigured || ds.webhookUrl?.trim()));
+    } catch (e) {}
+  }, []);
+
+  function handleImageSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Ukuran gambar maksimal 10 MB!');
+      return;
+    }
+    setQuestionImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (loadEvt) => {
+      setQuestionImagePreview(loadEvt.target.result);
+    };
+    reader.readAsDataURL(file);
+  }
 
   // Master Question Bank integration states
   const [showImportBankModal, setShowImportBankModal] = useState(false);
@@ -145,6 +177,28 @@ export default function CbtView({ onStartExam, onOpenMonitor }) {
     if (!activeExamQuestions) return;
 
     try {
+      setIsUploadingImage(true);
+      let uploadedImageUrl = questionImagePreview;
+      let uploadedDriveUrl = null;
+
+      // If user selected an image file, upload to Google Drive via webhook
+      if (questionImageFile && questionImagePreview) {
+        try {
+          const upRes = await api.uploadCbtImage({
+            fileBase64: questionImagePreview,
+            fileName: `soal_${activeExamQuestions.exam.id}_${Date.now()}_${questionImageFile.name}`,
+            mimeType: questionImageFile.type || 'image/png',
+            examTitle: activeExamQuestions.exam.title || 'Ujian CBT'
+          });
+          if (upRes && upRes.imageUrl) {
+            uploadedImageUrl = upRes.imageUrl;
+            uploadedDriveUrl = upRes.fileUrl || null;
+          }
+        } catch (upErr) {
+          console.warn('Image upload error, fallback to base64:', upErr);
+        }
+      }
+
       let options = [];
       if (newQuestionForm.question_type === 'MULTIPLE_CHOICE') {
         options = [
@@ -164,7 +218,9 @@ export default function CbtView({ onStartExam, onOpenMonitor }) {
         options,
         correct_answer: newQuestionForm.correct_answer,
         points: Number(newQuestionForm.points) || 10,
-        explanation: newQuestionForm.explanation
+        explanation: newQuestionForm.explanation,
+        image_url: uploadedImageUrl || null,
+        image_drive_url: uploadedDriveUrl || null
       });
 
       // Reload exam questions in modal
@@ -183,12 +239,18 @@ export default function CbtView({ onStartExam, onOpenMonitor }) {
         optionE: '',
         correct_answer: 'A',
         points: 10,
-        explanation: ''
+        explanation: '',
+        image_url: null,
+        image_drive_url: null
       });
+      setQuestionImageFile(null);
+      setQuestionImagePreview(null);
       setShowAddQuestionForm(false);
       alert('Butir soal baru berhasil ditambahkan ke ujian!');
     } catch (err) {
       alert('Gagal menambahkan butir soal: ' + err.message);
+    } finally {
+      setIsUploadingImage(false);
     }
   }
 
@@ -571,6 +633,85 @@ export default function CbtView({ onStartExam, onOpenMonitor }) {
                       />
                     </div>
 
+                    {/* Gambar / Ilustrasi Soal CBT */}
+                    <div className="form-group" style={{ marginBottom: 16 }}>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                          <Image size={15} color="var(--primary)" /> Gambar / Ilustrasi Soal (Opsional)
+                        </span>
+                        {isDriveConfigured && (
+                          <span className="badge badge-success" style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <UploadCloud size={12} /> Google Drive Aktif
+                          </span>
+                        )}
+                      </label>
+
+                      {!questionImagePreview ? (
+                        <div style={{
+                          border: '2px dashed var(--border-color)',
+                          borderRadius: 'var(--radius-md)',
+                          padding: '14px',
+                          textAlign: 'center',
+                          background: '#f8fafc',
+                          cursor: 'pointer'
+                        }}>
+                          <input
+                            type="file"
+                            id="cbt-question-img-input"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={handleImageSelect}
+                          />
+                          <label htmlFor="cbt-question-img-input" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, margin: 0 }}>
+                            <Image size={24} color="var(--primary)" />
+                            <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--primary)' }}>
+                              Pilih Gambar / Diagram Soal
+                            </span>
+                            <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)' }}>
+                              Format JPG, PNG, WebP (Otomatis disimpan ke Google Drive Anda)
+                            </span>
+                          </label>
+                        </div>
+                      ) : (
+                        <div style={{
+                          position: 'relative',
+                          padding: 10,
+                          background: 'white',
+                          border: '1.5px solid var(--primary)',
+                          borderRadius: 'var(--radius-md)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12
+                        }}>
+                          <img
+                            src={questionImagePreview}
+                            alt="Preview Soal"
+                            style={{ width: 80, height: 64, objectFit: 'cover', borderRadius: 6, border: '1px solid #e2e8f0' }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-main)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                              {questionImageFile?.name || 'Gambar Terpilih'}
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: isDriveConfigured ? '#059669' : 'var(--text-muted)', marginTop: 2 }}>
+                              {isDriveConfigured ? '✓ Disimpan ke Google Drive: 📁 Gambar Soal CBT' : 'Tersimpan ke database'}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            style={{ color: '#ef4444', borderColor: '#fca5a5' }}
+                            onClick={() => {
+                              setQuestionImageFile(null);
+                              setQuestionImagePreview(null);
+                            }}
+                            title="Hapus gambar ini"
+                          >
+                            <X size={14} /> Hapus
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     {newQuestionForm.question_type === 'MULTIPLE_CHOICE' && (
                       <div style={{ marginBottom: 14 }}>
                         <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>
@@ -632,8 +773,8 @@ export default function CbtView({ onStartExam, onOpenMonitor }) {
                       <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowAddQuestionForm(false)}>
                         Batal
                       </button>
-                      <button type="submit" className="btn btn-primary btn-sm">
-                        Simpan Soal ke Bank Ujian
+                      <button type="submit" className="btn btn-primary btn-sm" disabled={isUploadingImage}>
+                        {isUploadingImage ? 'Mengunggah ke Google Drive...' : 'Simpan Soal ke Bank Ujian'}
                       </button>
                     </div>
                   </form>
@@ -679,6 +820,36 @@ export default function CbtView({ onStartExam, onOpenMonitor }) {
                       <p style={{ fontSize: '0.92rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: 12, whiteSpace: 'pre-line' }}>
                         {q.question_text}
                       </p>
+
+                      {q.image_url && (
+                        <div style={{ marginBottom: 12, textAlign: 'left' }}>
+                          <img
+                            src={q.image_url}
+                            alt="Ilustrasi Soal"
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: 220,
+                              borderRadius: 6,
+                              border: '1px solid var(--border-color)',
+                              objectFit: 'contain',
+                              background: '#fff',
+                              display: 'block'
+                            }}
+                          />
+                          {q.image_drive_url && (
+                            <div style={{ marginTop: 4 }}>
+                              <a
+                                href={q.image_drive_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ fontSize: '0.74rem', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+                              >
+                                <ExternalLink size={12} /> Buka Gambar di Google Drive
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {q.options?.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>

@@ -85,6 +85,7 @@ export const api = {
   submitCbtExam: (id) => request(`/cbt/exams/${id}/submit`, { method: 'POST' }),
   getCbtMonitor: (id) => request(`/cbt/exams/${id}/monitor`),
   executeCbtAction: (id, payload) => request(`/cbt/exams/${id}/action`, { method: 'POST', body: JSON.stringify(payload) }),
+  uploadCbtImage: (payload) => request('/cbt/upload-image', { method: 'POST', body: JSON.stringify(payload) }),
 
   // Question Bank (Bank Soal Terpadu)
   getQuestionBank: (params = {}) => request(`/question-bank${toQueryString(params)}`),
