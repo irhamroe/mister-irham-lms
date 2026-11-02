@@ -5250,9 +5250,49 @@ export async function handleMockRequest(endpoint, options = {}) {
       };
     }
 
+    if (parts[4] === 'start') {
+      const exam = exams.find(e => e.id === examId) || exams[0];
+      const examQuestions = questions.filter(q => q.exam_id === examId);
+      // Phase 2 Anti-Cheat: Sembunyikan kunci jawaban dan pembahasan dari siswa selama ujian berlangsung
+      const safeQuestions = examQuestions.map(q => {
+        const { correct_answer, explanation, ...safeQ } = q;
+        return safeQ;
+      });
+      return {
+        ...exam,
+        token: undefined,
+        questions: safeQuestions
+      };
+    }
+
+    if (parts[4] === 'save-answer') {
+      return { success: true };
+    }
+
+    if (parts[4] === 'violation') {
+      return { success: true, violation_count: body.violation_count || 1 };
+    }
+
+    if (parts[4] === 'submit') {
+      return { success: true, message: 'Ujian berhasil dikumpulkan!' };
+    }
+
     // Default exam details
     const exam = exams.find(e => e.id === examId) || exams[0];
     const examQuestions = questions.filter(q => q.exam_id === examId);
+
+    // Phase 2 Anti-Cheat: Jika role siswa, sembunyikan kunci jawaban
+    if (currentUser.role === 'siswa') {
+      const safeQuestions = examQuestions.map(q => {
+        const { correct_answer, explanation, ...safeQ } = q;
+        return safeQ;
+      });
+      return {
+        ...exam,
+        questions: safeQuestions
+      };
+    }
+
     return {
       ...exam,
       questions: examQuestions
