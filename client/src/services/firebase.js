@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { getDatabase } from "firebase/database";
+import { getAuth, signInAnonymously } from "firebase/auth";
 
 // Web app's Firebase configuration
 export const firebaseConfig = {
@@ -20,6 +21,15 @@ export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getA
 
 // Initialize Realtime Database
 export const database = getDatabase(app);
+
+// Initialize Firebase Auth (Transparent Anonymous Sign-In for Security Rules)
+export const auth = getAuth(app);
+if (typeof window !== "undefined") {
+  signInAnonymously(auth).catch((err) => {
+    // Graceful fallback if anonymous auth is not yet toggled on Firebase Console
+    console.info("Firebase Auth info:", err?.code || err?.message);
+  });
+}
 
 // Initialize Analytics safely
 export let analytics = null;
