@@ -126,23 +126,23 @@ function MainApp() {
           )}
 
           {activeTab === 'manage-classes' && (
-            <ManagementView initialTab="classes" />
+            <ManagementView key="classes" initialTab="classes" />
           )}
 
           {activeTab === 'manage-subjects' && (
-            <ManagementView initialTab="subjects" />
+            <ManagementView key="subjects" initialTab="subjects" />
           )}
 
           {activeTab === 'manage-teachers' && (
-            <ManagementView initialTab="teachers" />
+            <ManagementView key="teachers" initialTab="teachers" />
           )}
 
           {activeTab === 'manage-students' && (
-            <ManagementView initialTab="students" />
+            <ManagementView key="students" initialTab="students" />
           )}
 
           {activeTab === 'manage-users' && (
-            <ManagementView initialTab="users" />
+            <ManagementView key="users" initialTab="users" />
           )}
         </main>
       </div>

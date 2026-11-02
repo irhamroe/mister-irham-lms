@@ -618,109 +618,44 @@ export default function ManagementView({ initialTab = 'classes' }) {
 
   return (
     <div className="content-view">
-      {/* Top Header & Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 14 }}>
-        <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 10 }}>
-            {activeTab === 'classes' && <><School size={22} color="var(--primary)" /> Data Kelas</>}
-            {activeTab === 'subjects' && <><BookOpen size={22} color="var(--primary)" /> Data Mapel</>}
-            {activeTab === 'teachers' && <><UserCheck size={22} color="var(--primary)" /> Data Guru</>}
-            {activeTab === 'students' && <><Users size={22} color="var(--primary)" /> Data Siswa</>}
-            {activeTab === 'users' && <><UserCog size={22} color="var(--primary)" /> Management User</>}
-          </h2>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 2 }}>
-            {activeTab === 'classes' && 'Pengelolaan daftar rombongan belajar, tingkat jenjang, dan data akademik'}
-            {activeTab === 'subjects' && 'Pengelolaan mata pelajaran kurikulum, kode mapel, dan alokasi guru pengampu'}
-            {activeTab === 'teachers' && 'Pengelolaan data tenaga pendidik, NIP/NUPTK, kontak, dan penugasan mata pelajaran'}
-            {activeTab === 'students' && 'Registrasi peserta didik, nomor induk siswa (NIS), dan alokasi kelas'}
-            {activeTab === 'users' && 'Pengelolaan akun pengguna (Admin, Guru, Siswa), hak akses, dan kredensial'}
-          </p>
-        </div>
+      {/* Top Action Buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
+        {activeTab === 'classes' && (
+          <button className="btn btn-primary" onClick={handleOpenCreateClass}>
+            <Plus size={16} /> Tambah Kelas Baru
+          </button>
+        )}
 
-        <div>
-          {activeTab === 'classes' && (
-            <button className="btn btn-primary" onClick={handleOpenCreateClass}>
-              <Plus size={16} /> Tambah Kelas Baru
+        {activeTab === 'subjects' && (
+          <button className="btn btn-primary" onClick={handleOpenCreateSubject}>
+            <Plus size={16} /> Tambah Mapel Baru
+          </button>
+        )}
+
+        {activeTab === 'teachers' && user?.role === 'admin' && (
+          <button className="btn btn-primary" onClick={handleOpenCreateTeacher}>
+            <Plus size={16} /> Tambah Guru Baru
+          </button>
+        )}
+
+        {activeTab === 'students' && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-outline"
+              onClick={handleOpenImportStudentModal}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: '#10b981', color: '#10b981' }}
+            >
+              <FileSpreadsheet size={16} /> Impor dari Excel
             </button>
-          )}
-
-          {activeTab === 'subjects' && (
-            <button className="btn btn-primary" onClick={handleOpenCreateSubject}>
-              <Plus size={16} /> Tambah Mapel Baru
+            <button className="btn btn-primary" onClick={handleOpenCreateStudent}>
+              <Plus size={16} /> Tambah Siswa Baru
             </button>
-          )}
+          </div>
+        )}
 
-          {activeTab === 'teachers' && user?.role === 'admin' && (
-            <button className="btn btn-primary" onClick={handleOpenCreateTeacher}>
-              <Plus size={16} /> Tambah Guru Baru
-            </button>
-          )}
-
-          {activeTab === 'students' && (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button
-                className="btn btn-outline"
-                onClick={handleOpenImportStudentModal}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: '#10b981', color: '#10b981' }}
-              >
-                <FileSpreadsheet size={16} /> Impor dari Excel
-              </button>
-              <button className="btn btn-primary" onClick={handleOpenCreateStudent}>
-                <Plus size={16} /> Tambah Siswa Baru
-              </button>
-            </div>
-          )}
-
-          {activeTab === 'users' && user?.role === 'admin' && (
-            <button className="btn btn-primary" onClick={handleOpenCreateUser}>
-              <Plus size={16} /> Tambah Akun Pengguna
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Mobile-Friendly Management Category Tab Bar */}
-      <div className="tabs-nav management-tab-bar" style={{ marginBottom: 18 }}>
-        <button
-          type="button"
-          className={`tab-btn ${activeTab === 'classes' ? 'active' : ''}`}
-          onClick={() => setActiveTab('classes')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <School size={15} /> Data Kelas
-        </button>
-        <button
-          type="button"
-          className={`tab-btn ${activeTab === 'subjects' ? 'active' : ''}`}
-          onClick={() => setActiveTab('subjects')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <BookOpen size={15} /> Data Mapel
-        </button>
-        <button
-          type="button"
-          className={`tab-btn ${activeTab === 'students' ? 'active' : ''}`}
-          onClick={() => setActiveTab('students')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <Users size={15} /> Data Siswa
-        </button>
-        <button
-          type="button"
-          className={`tab-btn ${activeTab === 'teachers' ? 'active' : ''}`}
-          onClick={() => setActiveTab('teachers')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <UserCheck size={15} /> Data Guru
-        </button>
-        {user?.role === 'admin' && (
-          <button
-            type="button"
-            className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
-            onClick={() => setActiveTab('users')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          >
-            <UserCog size={15} /> Management User
+        {activeTab === 'users' && user?.role === 'admin' && (
+          <button className="btn btn-primary" onClick={handleOpenCreateUser}>
+            <Plus size={16} /> Tambah Akun Pengguna
           </button>
         )}
       </div>
@@ -730,9 +665,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
         <div className="stats-grid" style={{ marginBottom: 22 }}>
           <div
             className="stat-card"
-            style={{ padding: '14px 18px', borderLeft: '4px solid #6366f1', cursor: 'pointer' }}
-            onClick={() => setActiveTab('classes')}
-            title="Klik untuk membuka Data Kelas"
+            style={{ padding: '14px 18px', borderLeft: '4px solid #6366f1' }}
           >
             <div className="stat-icon indigo" style={{ width: 40, height: 40 }}>
               <School size={20} />
@@ -745,9 +678,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
 
           <div
             className="stat-card"
-            style={{ padding: '14px 18px', borderLeft: '4px solid #3b82f6', cursor: 'pointer' }}
-            onClick={() => setActiveTab('subjects')}
-            title="Klik untuk membuka Data Mapel"
+            style={{ padding: '14px 18px', borderLeft: '4px solid #3b82f6' }}
           >
             <div className="stat-icon cyan" style={{ width: 40, height: 40 }}>
               <BookOpen size={20} />
@@ -760,9 +691,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
 
           <div
             className="stat-card"
-            style={{ padding: '14px 18px', borderLeft: '4px solid #10b981', cursor: 'pointer' }}
-            onClick={() => setActiveTab('students')}
-            title="Klik untuk membuka Data Siswa"
+            style={{ padding: '14px 18px', borderLeft: '4px solid #10b981' }}
           >
             <div className="stat-icon emerald" style={{ width: 40, height: 40 }}>
               <Users size={20} />
@@ -775,9 +704,7 @@ export default function ManagementView({ initialTab = 'classes' }) {
 
           <div
             className="stat-card"
-            style={{ padding: '14px 18px', borderLeft: '4px solid #f59e0b', cursor: 'pointer' }}
-            onClick={() => setActiveTab('teachers')}
-            title="Klik untuk membuka Data Guru"
+            style={{ padding: '14px 18px', borderLeft: '4px solid #f59e0b' }}
           >
             <div className="stat-icon amber" style={{ width: 40, height: 40 }}>
               <UserCheck size={20} />
