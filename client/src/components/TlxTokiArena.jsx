@@ -34,9 +34,11 @@ export default function TlxTokiArena({
   isSubmitting = false
 }) {
   // Problems List from material or fallback to standard TLX Pemrograman Dasar problems
-  const problems = (material?.tlx_problems && material.tlx_problems.length > 0)
-    ? material.tlx_problems
-    : [
+  const problems = (material?.roadmap_modules && material.roadmap_modules.length > 0)
+    ? material.roadmap_modules
+    : (material?.tlx_problems && material.tlx_problems.length > 0)
+      ? material.tlx_problems
+      : [
         {
           id: 'prob-a',
           letter: 'A',
@@ -421,7 +423,7 @@ export default function TlxTokiArena({
         </div>
 
         {/* Center: Problem Quick Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflowX: 'auto', maxWidth: '55%', padding: '4px 0' }}>
           {problems.map((p, idx) => {
             const v = verdicts[p.id];
             const isActive = idx === activeIdx;

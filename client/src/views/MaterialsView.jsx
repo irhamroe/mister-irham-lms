@@ -70,6 +70,9 @@ export default function MaterialsView() {
   // Dedicated TLX TOKI Arena Workspace State
   const [tlxArenaMaterial, setTlxArenaMaterial] = useState(null);
 
+  // Active Roadmap Module Index inside Bab 2 (Algoritma dan Pemrograman)
+  const [activeRoadmapIdx, setActiveRoadmapIdx] = useState(0);
+
   // Student Coding LKPD State
   const [studentCodeLang, setStudentCodeLang] = useState('python');
   const [studentCode, setStudentCode] = useState('');
@@ -196,18 +199,17 @@ export default function MaterialsView() {
       return;
     }
 
-    // If material is configured with TLX TOKI style, launch the dedicated Arena directly!
-    if (material.is_tlx_style) {
-      setTlxArenaMaterial(material);
-      return;
-    }
-
     setStudyModal(material);
     setStudyTab('content');
+    setActiveRoadmapIdx(0);
 
     const defaultLang = material.code_language || 'python';
     setStudentCodeLang(defaultLang);
-    setStudentCode(material.starter_code || LANGUAGE_CONFIG[defaultLang]?.defaultCode || '');
+    const initialStarter = material.roadmap_modules?.[0]?.starter_codes?.[defaultLang]
+      || material.starter_code
+      || LANGUAGE_CONFIG[defaultLang]?.defaultCode
+      || '';
+    setStudentCode(initialStarter);
     setCodeEvaluationResult(null);
 
     if (material.my_submission) {
@@ -1189,6 +1191,119 @@ else:
                     {studyModal.content || 'Konten materi belum diisi oleh guru.'}
                   </div>
 
+                  {/* EMBEDDED PYTHON ROADMAP (14 MODUL ALGORITMA & PEMROGRAMAN) */}
+                  {studyModal.roadmap_modules && studyModal.roadmap_modules.length > 0 && (
+                    <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1.5px solid var(--border-color)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+                        <div>
+                          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Terminal size={20} color="var(--primary)" /> Roadmap Belajar Python (14 Modul)
+                          </h4>
+                          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                            Pilih modul di bawah untuk mempelajari materi, aturan sintaks, dan mencoba programnya secara interaktif:
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() => {
+                            const target = studyModal;
+                            setStudyModal(null);
+                            setTlxArenaMaterial(target);
+                          }}
+                          style={{
+                            background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
+                            border: 'none',
+                            color: '#fff',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontWeight: 700
+                          }}
+                        >
+                          <Terminal size={14} /> Buka Arena TLX TOKI (Split-Screen)
+                        </button>
+                      </div>
+
+                      {/* 14 Modul Roadmap Stack (Tampilan Sesuai Gambar Petani Kode/Roadmap) */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                        {studyModal.roadmap_modules.map((mod, mIdx) => {
+                          const isSelected = mIdx === activeRoadmapIdx;
+                          return (
+                            <div
+                              key={mod.id || mIdx}
+                              onClick={() => {
+                                setActiveRoadmapIdx(mIdx);
+                                if (mod.starter_codes?.python) {
+                                  setStudentCode(mod.starter_codes.python);
+                                }
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 12,
+                                padding: '12px 18px',
+                                borderRadius: 8,
+                                border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                                background: isSelected ? '#eff6ff' : '#f8fafc',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                boxShadow: isSelected ? '0 2px 8px rgba(37,99,235,0.15)' : 'none'
+                              }}
+                            >
+                              <FileText size={18} color={isSelected ? '#2563eb' : '#475569'} />
+                              <span style={{ flex: 1, fontSize: '0.9rem', fontWeight: isSelected ? 800 : 500, color: isSelected ? '#1e40af' : '#1e293b' }}>
+                                {mod.title}
+                              </span>
+                              {isSelected && (
+                                <span className="badge badge-primary" style={{ fontSize: '0.72rem', fontWeight: 800 }}>
+                                  Modul Aktif
+                                </span>
+                              )}
+                              <ChevronRight size={16} color={isSelected ? '#2563eb' : '#94a3b8'} />
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Detail & Compiler untuk Modul yang Sedang Dipilih */}
+                      {studyModal.roadmap_modules[activeRoadmapIdx] && (
+                        <div style={{ background: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: 8, padding: 20, marginBottom: 20 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                            <span className="badge badge-primary" style={{ fontWeight: 800 }}>
+                              {studyModal.roadmap_modules[activeRoadmapIdx].letter || `#${activeRoadmapIdx + 1}`}
+                            </span>
+                            <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                              {studyModal.roadmap_modules[activeRoadmapIdx].title}
+                            </h4>
+                          </div>
+
+                          <div style={{ fontSize: '0.92rem', lineHeight: 1.65, color: '#334155', whiteSpace: 'pre-line', marginBottom: 16 }}>
+                            {studyModal.roadmap_modules[activeRoadmapIdx].description}
+                          </div>
+
+                          {studyModal.roadmap_modules[activeRoadmapIdx].editorial && (
+                            <div style={{ background: '#e0f2fe', borderLeft: '4px solid #0284c7', padding: '12px 16px', borderRadius: '0 6px 6px 0', fontSize: '0.86rem', color: '#0369a1', marginBottom: 18 }}>
+                              <strong>💡 Petunjuk Konsep & Sintaks:</strong>
+                              <div style={{ whiteSpace: 'pre-line', marginTop: 4 }}>
+                                {studyModal.roadmap_modules[activeRoadmapIdx].editorial}
+                              </div>
+                            </div>
+                          )}
+
+                          <CodePlayground
+                            key={studyModal.roadmap_modules[activeRoadmapIdx].id || activeRoadmapIdx}
+                            initialLanguage="python"
+                            initialCode={studyModal.roadmap_modules[activeRoadmapIdx].starter_codes?.python || ''}
+                            title={`Compiler Interaktif: ${studyModal.roadmap_modules[activeRoadmapIdx].short_title || studyModal.roadmap_modules[activeRoadmapIdx].title}`}
+                            height="280px"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* External File Link if present */}
                   {studyModal.file_url && (
                     <div style={{ marginTop: 16 }}>
@@ -1204,8 +1319,8 @@ else:
                     </div>
                   )}
 
-                  {/* INTERACTIVE IN-LESSON COMPILER PLAYGROUND */}
-                  {(studyModal.has_code_playground || studyModal.is_coding_task) && (
+                  {/* INTERACTIVE IN-LESSON COMPILER PLAYGROUND (For non-roadmap materials) */}
+                  {!studyModal.roadmap_modules?.length && (studyModal.has_code_playground || studyModal.is_coding_task) && (
                     <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1.5px dashed var(--border-color)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                         <div>
