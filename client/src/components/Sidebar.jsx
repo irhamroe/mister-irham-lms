@@ -14,6 +14,7 @@ import {
   UserCog,
   Layers,
   BookOpen,
+  BookMarked,
   X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -55,6 +56,14 @@ export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobile
       roles: ['admin', 'guru', 'siswa'],
       color: '#0284C7',
       bgColor: '#F0F9FF'
+    },
+    {
+      id: 'materials',
+      label: 'Materi & LKPD',
+      icon: BookMarked,
+      roles: ['admin', 'guru', 'siswa'],
+      color: '#0891B2',
+      bgColor: '#ECFEFF'
     },
     {
       id: 'assignments',

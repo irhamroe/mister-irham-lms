@@ -120,7 +120,19 @@ export const api = {
   getManagementSubjects: (params = {}) => request(`/management/subjects${toQueryString(params)}`),
   createManagementSubject: (payload) => request('/management/subjects', { method: 'POST', body: JSON.stringify(payload) }),
   updateManagementSubject: (id, payload) => request(`/management/subjects/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
-  deleteManagementSubject: (id) => request(`/management/subjects/${id}`, { method: 'DELETE' })
+  deleteManagementSubject: (id) => request(`/management/subjects/${id}`, { method: 'DELETE' }),
+
+  // Materials & LKPD (Pembelajaran Mandiri & Lembar Kerja Siswa Bertingkat)
+  getMaterials: (params = {}) => request(`/materials${toQueryString(params)}`),
+  getMaterialDetails: (id) => request(`/materials/${id}`),
+  createMaterial: (payload) => request('/materials', { method: 'POST', body: JSON.stringify(payload) }),
+  updateMaterial: (id, payload) => request(`/materials/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteMaterial: (id) => request(`/materials/${id}`, { method: 'DELETE' }),
+  markMaterialRead: (id) => request(`/materials/${id}/mark-read`, { method: 'POST' }),
+  submitLkpd: (id, payload) => request(`/materials/${id}/submit-lkpd`, { method: 'POST', body: JSON.stringify(payload) }),
+  getMaterialSubmissions: (id) => request(`/materials/${id}/submissions`),
+  gradeLkpdSubmission: (id, payload) => request(`/materials/submissions/${id}/grade`, { method: 'POST', body: JSON.stringify(payload) }),
+  getMaterialsClassProgress: (params = {}) => request(`/materials/progress${toQueryString(params)}`)
 };
 
 export default api;

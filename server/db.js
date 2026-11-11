@@ -266,6 +266,60 @@ function initDatabase() {
       value TEXT,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    -- LEARNING MATERIALS & LKPD (PEMBELAJARAN MANDIRI BERTINGKAT)
+    CREATE TABLE IF NOT EXISTS learning_materials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      class_id INTEGER NOT NULL,
+      subject_id INTEGER NOT NULL,
+      order_index INTEGER DEFAULT 1,
+      title TEXT NOT NULL,
+      description TEXT,
+      estimated_time TEXT DEFAULT '45 Menit',
+      video_url TEXT,
+      file_url TEXT,
+      content TEXT NOT NULL,
+      lkpd_title TEXT,
+      lkpd_instructions TEXT,
+      lkpd_questions TEXT,
+      require_previous INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+      FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+    );
+
+    -- STUDENT MATERIAL PROGRESS
+    CREATE TABLE IF NOT EXISTS material_progress (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      material_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      is_read INTEGER DEFAULT 0,
+      read_at DATETIME,
+      is_completed INTEGER DEFAULT 0,
+      completed_at DATETIME,
+      UNIQUE(material_id, user_id),
+      FOREIGN KEY (material_id) REFERENCES learning_materials(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    -- LKPD SUBMISSIONS
+    CREATE TABLE IF NOT EXISTS lkpd_submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      material_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      student_nis TEXT,
+      answer_text TEXT NOT NULL,
+      file_url TEXT,
+      submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      status TEXT CHECK(status IN ('SUBMITTED', 'GRADED', 'REVISION')) DEFAULT 'SUBMITTED',
+      score REAL,
+      teacher_feedback TEXT,
+      graded_at DATETIME,
+      graded_by TEXT,
+      UNIQUE(material_id, user_id),
+      FOREIGN KEY (material_id) REFERENCES learning_materials(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
   `);
 
   // Safe schema migrations

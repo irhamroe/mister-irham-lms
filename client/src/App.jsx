@@ -8,6 +8,7 @@ import AttendanceView from './views/AttendanceView';
 import JournalView from './views/JournalView';
 import GradesView from './views/GradesView';
 import AssignmentsView from './views/AssignmentsView';
+import MaterialsView from './views/MaterialsView';
 import CbtView from './views/CbtView';
 import QuestionBankView from './views/QuestionBankView';
 import CbtMonitorView from './views/CbtMonitorView';
@@ -105,6 +106,8 @@ function MainApp() {
           {activeTab === 'journals' && <JournalView />}
 
           {activeTab === 'grades' && <GradesView />}
+
+          {activeTab === 'materials' && <MaterialsView />}
 
           {activeTab === 'assignments' && <AssignmentsView />}
 

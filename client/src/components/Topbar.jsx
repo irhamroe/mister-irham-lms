@@ -12,6 +12,7 @@ export default function Topbar({ activeTab, onToggleMobileMenu, isMobileMenuOpen
     attendance: { tag: 'Presensi', title: 'Presensi Siswa', desc: 'Pencatatan kehadiran kelas, sesi mandiri & rekap' },
     journals: { tag: 'Jurnal', title: 'Jurnal Mengajar Guru', desc: 'Agenda harian mengajar & catatan perkembangan belajar siswa' },
     grades: { tag: 'Nilai', title: 'Daftar Nilai & Asesmen', desc: 'Buku nilai dengan kustomisasi bobot kurikulum otomatis' },
+    materials: { tag: 'Materi Mandiri', title: 'Materi & LKPD', desc: 'Pembelajaran mandiri bertingkat dan lembar kerja peserta didik' },
     assignments: { tag: 'Tugas', title: 'Tugas Kelas', desc: 'Manajemen pengumpulan dokumen & umpan balik tugas siswa' },
     cbt: { tag: 'CBT', title: 'Ujian CBT Kelas', desc: 'Pelaksanaan ujian online anti-cheat & pengacakan soal' },
     'question-bank': { tag: 'Bank Soal', title: 'Bank Soal Terpadu', desc: 'Repositori butir soal master untuk digunakan kembali' },

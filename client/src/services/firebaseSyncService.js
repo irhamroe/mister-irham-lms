@@ -15,7 +15,10 @@ export const SYNC_MAP = {
   'lms_mock_cbt_questions_v3': 'lms_v3/cbt_questions',
   'lms_mock_question_bank_v3': 'lms_v3/question_bank',
   'lms_mock_journals_v3': 'lms_v3/journals',
-  'lms_google_drive_settings': 'lms_v3/google_drive_settings'
+  'lms_google_drive_settings': 'lms_v3/google_drive_settings',
+  'lms_mock_learning_materials_v3': 'lms_v3/learning_materials',
+  'lms_mock_material_progress_v3': 'lms_v3/material_progress',
+  'lms_mock_lkpd_submissions_v3': 'lms_v3/lkpd_submissions'
 };
 
 let isInitialized = false;

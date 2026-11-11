@@ -18,6 +18,9 @@ const STORAGE_KEYS = {
   EXAMS: 'lms_mock_cbt_exams_v3',
   QUESTIONS: 'lms_mock_cbt_questions_v3',
   QUESTION_BANK: 'lms_mock_question_bank_v3',
+  MATERIALS: 'lms_mock_learning_materials_v3',
+  MATERIAL_PROGRESS: 'lms_mock_material_progress_v3',
+  LKPD_SUBMISSIONS: 'lms_mock_lkpd_submissions_v3',
   CURRENT_USER_ID: 'lms_mock_current_user_id'
 };
 
@@ -4503,6 +4506,118 @@ const DEFAULT_ASSIGNMENTS = [];
 const DEFAULT_ASSIGNMENT_SUBMISSIONS = [];
 const DEFAULT_ATTENDANCE = [];
 const DEFAULT_ATT_RECORDS = [];
+const DEFAULT_MATERIALS = [
+  {
+    id: 1,
+    class_id: 1,
+    class_name: 'X-8',
+    subject_id: 7,
+    subject_name: 'INFORMATIKA',
+    order_index: 1,
+    title: 'Bab 1: Fondasi Berpikir Komputasional (Computational Thinking)',
+    description: 'Mempelajari 4 pilar computational thinking: Dekomposisi, Pengenalan Pola, Abstraksi, dan Perancangan Algoritma untuk menyelesaikan masalah kompleks.',
+    estimated_time: '45 Menit',
+    video_url: 'https://www.youtube.com/watch?v=mUXo-S7gkds',
+    file_url: '',
+    content: `### Pengantar Berpikir Komputasional
+Berpikir komputasional (Computational Thinking) adalah landasan pemecahan masalah (problem solving) yang efektif tidak hanya dalam dunia ilmu komputer, tetapi di semua aspek kehidupan akademik dan profesional.
+
+#### 4 Pilar Berpikir Komputasional:
+1. **Dekomposisi (Decomposition)**
+   Memecah masalah yang rumit atau sistem yang besar menjadi bagian-bagian yang lebih kecil, terstruktur, dan lebih mudah dikelola. Contoh: Menyusun laporan keuangan dengan membaginya per departemen dan kategori pos belanja.
+2. **Pengenalan Pola (Pattern Recognition)**
+   Mengamati kesamaan, keteraturan, atau tren di antara masalah-masalah kecil tersebut untuk memprediksi hasil atau menggunakan metode yang terbukti berhasil sebelumnya.
+3. **Abstraksi (Abstraction)**
+   Menyaring dan memfokuskan perhatian hanya pada informasi inti yang relevan, serta mengabaikan detail-detail yang tidak penting agar tidak membingungkan proses penalaran.
+4. **Perancangan Algoritma (Algorithm Design)**
+   Mengembangkan panduan langkah-demi-langkah atau aturan berurutan yang logis dan jelas untuk menyelesaikan masalah secara konsisten.
+
+> **Tips Belajar:** Kuasai keempat pilar ini sebelum melanjutkan ke Lembar Kerja Peserta Didik (LKPD) di bawah ini!`,
+    lkpd_title: 'LKPD 1: Studi Kasus Penerapan 4 Pilar Berpikir Komputasional',
+    lkpd_instructions: 'Bacalah permasalahan di bawah ini dengan saksama. Tuliskan analisis pemecahan masalah Anda secara mandiri pada formulir jawaban yang disediakan.',
+    lkpd_questions: `Kasus: Di sekolah Anda, terjadi antrean panjang di kantin saat jam istirahat yang hanya berdurasi 30 menit, sehingga banyak siswa tidak sempat makan tepat waktu.
+
+Tugas Anda:
+1. Dekomposisi: Uraikan faktor-faktor penyebab antrean panjang tersebut menjadi 3 sub-masalah utama!
+2. Pengenalan Pola: Apa pola pesanan atau waktu yang biasanya memicu penumpukan antrean terparah?
+3. Abstraksi: Tentukan aspek prioritas yang harus ditangani terlebih dahulu dan aspek mana yang dapat diabaikan sementara!
+4. Algoritma: Rancang 4 langkah sistematis (SOP) solusi antrean pemesanan makanan agar alur lebih cepat dan tertib!`,
+    require_previous: false,
+    created_at: '2026-11-01T08:00:00.000Z'
+  },
+  {
+    id: 2,
+    class_id: 1,
+    class_name: 'X-8',
+    subject_id: 7,
+    subject_name: 'INFORMATIKA',
+    order_index: 2,
+    title: 'Bab 2: Integrasi Aplikasi Perkantoran (Office Automation & OLE)',
+    description: 'Mendalami teknik integrasi lintas dokumen antara pengolah kata (Word), pengolah angka (Excel), dan presentasi (PowerPoint) dengan Mail Merge dan Object Linking & Embedding.',
+    estimated_time: '60 Menit',
+    video_url: '',
+    file_url: '',
+    content: `### Integrasi Konten Aplikasi Perkantoran
+Dalam dunia kerja modern, efisiensi administrasi bergantung pada kemampuan menghubungkan berbagai jenis aplikasi perkantoran secara dinamis.
+
+#### Pokok Bahasan Utama:
+1. **Penyatuan Data dengan Mail Merge (Surat Massal)**
+   Mail Merge memungkinkan pembuatan ratusan dokumen serupa (surat undangan, kartu peserta ujian, sertifikat kelulusan) dengan menghubungkan *template* dokumen di Microsoft Word atau Google Docs dengan tabel basis data (Excel atau Google Sheets).
+2. **Object Linking and Embedding (OLE)**
+   - **Embedding (Menyematkan):** Menempelkan objek data (misal grafik Excel ke dokumen Word). Objek menjadi bagian dari dokumen penampung, tetapi jika sumber Excel berubah di luar, grafik tidak akan otomatis terbarui.
+   - **Linking (Menghubungkan):** Objek yang ditempelkan tetap terhubung dinamis ke file sumber. Setiap kali angka di spreadsheet Excel diedit, tampilan tabel atau grafik di dokumen Word otomatis sinkron dan diperbarui.
+3. **Pembuatan Daftar Isi Dinamis & Section Break**
+   Penggunaan heading styles dan page numbering format romawi/angka berbeda dalam satu dokumen master akademik.`,
+    lkpd_title: 'LKPD 2: Eksplorasi Mail Merge dan Penautan Grafik Dinamis (OLE)',
+    lkpd_instructions: 'Jawablah pertanyaan analisis teknis di bawah ini berdasarkan pemahaman materi integrasi aplikasi perkantoran yang telah Anda pelajari.',
+    lkpd_questions: `1. Kapan seorang staf administrasi sekolah sebaiknya memilih teknik "Link Data (Tautan)" dibandingkan "Embed Data (Penyematan Biasa)"? Jelaskan dampaknya terhadap ukuran file dan keandalan data!
+2. Uraikan secara berurutan langkah-langkah membuat 50 Surat Undangan Pengambilan Raport yang mencantumkan Nama Siswa, NIS, dan Nama Orang Tua menggunakan fitur Mail Merge!
+3. Jika file sumber Excel yang ditautkan dipindahkan ke flashdisk yang berbeda drive letter, apa yang terjadi pada dokumen Word? Bagaimana cara menanganinya?`,
+    require_previous: true,
+    created_at: '2026-11-02T08:00:00.000Z'
+  },
+  {
+    id: 3,
+    class_id: 1,
+    class_name: 'X-8',
+    subject_id: 7,
+    subject_name: 'INFORMATIKA',
+    order_index: 3,
+    title: 'Bab 3: Topologi Jaringan Komputer & Keamanan Siber Dasar',
+    description: 'Menganalisis jenis topologi jaringan komputer (Star, Bus, Mesh), model komunikasi TCP/IP, pengalamatan IP, dan prinsip proteksi data di internet.',
+    estimated_time: '60 Menit',
+    video_url: '',
+    file_url: '',
+    content: `### Topologi Jaringan dan Arsitektur Komunikasi
+Jaringan komputer menghubungkan perangkat-perangkat agar dapat bertukar data, berbagi sumber daya (printer, storage), dan mengakses internet secara aman.
+
+#### 1. Macam-Macam Topologi Fisik:
+- **Topologi Star (Bintang):** Setiap komputer tersambung langsung ke perangkat pusat (Switch/Hub). Kelebihan: jika salah satu kabel PC putus, jaringan lain tidak terganggu. Sangat umum digunakan di laboratorium sekolah dan perkantoran.
+- **Topologi Mesh (Jala):** Setiap perangkat saling terhubung satu sama lain dengan redundansi tinggi. Sangat andal namun boros kabel dan biaya instalasi tinggi.
+- **Topologi Bus & Ring:** Topologi sekuensial dengan biaya murah namun rentan kegagalan titik tunggal (single point of failure).
+
+#### 2. Komponen Utama Jaringan:
+- **Switch:** Menghubungkan perangkat di dalam jaringan lokal (LAN) dengan cerdas membaca alamat MAC.
+- **Router:** Menghubungkan antar jaringan berbeda (misal menghubungkan LAN sekolah ke WAN/Internet global) dengan routing protokol IP.
+- **Access Point (AP):** Memancarkan sinyal Wi-Fi nirkabel untuk perangkat mobile (laptop, smartphone).
+
+#### 3. Keamanan Siber Dasar (Cyber Security):
+Prinsip CIA Triad: Confidentiality (Kerahasiaan), Integrity (Keutuhan Data), Availability (Ketersediaan Layanan). Penerapan firewall, password kuat, enkripsi HTTPS, dan pencegahan sniffing.`,
+    lkpd_title: 'LKPD 3: Perancangan Desain Topologi Laboratorium Komputer Sekolah',
+    lkpd_instructions: 'Rancanglah arsitektur jaringan komputer untuk lab sekolah baru dengan 36 unit komputer siswa dan 1 unit komputer guru pengawas.',
+    lkpd_questions: `Skenario: Sekolah Anda baru saja menerima bantuan 36 unit komputer untuk ruang Laboratorium CBT Ujian Mandiri.
+
+Tugas Anda:
+1. Topologi fisik apa yang paling ideal dan aman untuk ruang lab tersebut? Kemukakan 3 alasan ilmiah pemilihan topologi tersebut!
+2. Sebutkan spesifikasi dan jumlah perangkat keras jaringan yang dibutuhkan (jumlah Switch port, panjang kabel UTP Cat6, Router gateway, dan Access Point pendukung)!
+3. Rancang skema pengalamatan IP Address (contoh segmen: 192.168.10.x / 24) untuk komputer guru, komputer siswa 1-36, dan server lokal ujian CBT!`,
+    require_previous: true,
+    created_at: '2026-11-03T08:00:00.000Z'
+  }
+];
+
+const DEFAULT_MATERIAL_PROGRESS = [];
+const DEFAULT_LKPD_SUBMISSIONS = [];
 
 function getStored(key, fallback) {
   try {
@@ -4531,7 +4646,8 @@ if (typeof window !== 'undefined') {
     initFirebaseSync({
       [STORAGE_KEYS.USERS]: DEFAULT_USERS,
       [STORAGE_KEYS.CLASSES]: DEFAULT_CLASSES,
-      [STORAGE_KEYS.SUBJECTS]: DEFAULT_SUBJECTS
+      [STORAGE_KEYS.SUBJECTS]: DEFAULT_SUBJECTS,
+      [STORAGE_KEYS.MATERIALS]: DEFAULT_MATERIALS
     });
   }, 100);
 }
@@ -6117,6 +6233,375 @@ export async function handleMockRequest(endpoint, options = {}) {
         predicate: 'A',
         isPassed: true
       }))
+    };
+  }
+
+  // ==========================================
+  // LEARNING MATERIALS & LKPD (PEMBELAJARAN MANDIRI BERTINGKAT)
+  // ==========================================
+  if (path === '/materials' && method === 'GET') {
+    let materials = getStored(STORAGE_KEYS.MATERIALS, DEFAULT_MATERIALS);
+    const progress = getStored(STORAGE_KEYS.MATERIAL_PROGRESS, DEFAULT_MATERIAL_PROGRESS);
+    const submissions = getStored(STORAGE_KEYS.LKPD_SUBMISSIONS, DEFAULT_LKPD_SUBMISSIONS);
+    const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
+    const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);
+    const queryClassId = params.get('class_id');
+    const querySubjectId = params.get('subject_id');
+
+    // Siswa view: filter by class, compute sequential lock status
+    if (currentUser?.role === 'siswa') {
+      const studentClassObj = classes.find(c => c.name === currentUser.kelas || c.id === currentUser.class_id) || classes[0];
+      const studentClassId = studentClassObj ? studentClassObj.id : 1;
+
+      // Filter by student class & optionally subject
+      let filtered = materials.filter(m => {
+        const matchClass = m.class_id === studentClassId || m.class_name === currentUser.kelas;
+        const matchSubject = !querySubjectId || Number(m.subject_id) === Number(querySubjectId);
+        return matchClass && matchSubject;
+      });
+
+      // Sort by order_index
+      filtered.sort((a, b) => (Number(a.order_index) || 0) - (Number(b.order_index) || 0));
+
+      let previousCompleted = true; // First chapter is always unlocked
+      return filtered.map((m, idx) => {
+        const myProg = progress.find(p => p.material_id === m.id && p.user_id === currentUser.id);
+        const mySub = submissions.find(s => s.material_id === m.id && s.user_id === currentUser.id);
+
+        const isRead = Boolean(myProg && myProg.is_read);
+        const isSubmitted = Boolean(mySub);
+        const isCompleted = isRead && isSubmitted;
+
+        let isUnlocked = true;
+        let lockedReason = '';
+
+        if (idx > 0 && m.require_previous !== false) {
+          if (!previousCompleted) {
+            isUnlocked = false;
+            const prevTitle = filtered[idx - 1]?.title || 'Bab sebelumnya';
+            lockedReason = `Materi ini terkunci. Pelajari materi dan selesaikan LKPD pada "${prevTitle}" untuk membuka materi ini.`;
+          }
+        }
+
+        previousCompleted = isCompleted;
+
+        if (!isUnlocked) {
+          return {
+            id: m.id,
+            order_index: m.order_index,
+            title: m.title,
+            description: m.description,
+            estimated_time: m.estimated_time,
+            class_id: m.class_id,
+            class_name: m.class_name,
+            subject_id: m.subject_id,
+            subject_name: m.subject_name,
+            require_previous: m.require_previous,
+            is_unlocked: false,
+            locked_reason: lockedReason,
+            is_read: false,
+            is_lkpd_submitted: false,
+            is_completed: false,
+            my_submission: null
+          };
+        }
+
+        return {
+          ...m,
+          is_unlocked: true,
+          locked_reason: '',
+          is_read: isRead,
+          is_lkpd_submitted: isSubmitted,
+          is_completed: isCompleted,
+          my_submission: mySub || null
+        };
+      });
+    }
+
+    // Teacher / Admin view: include overview stats
+    let filtered = materials.filter(m => {
+      const matchClass = !queryClassId || Number(m.class_id) === Number(queryClassId);
+      const matchSubject = !querySubjectId || Number(m.subject_id) === Number(querySubjectId);
+      return matchClass && matchSubject;
+    });
+
+    filtered.sort((a, b) => (Number(a.order_index) || 0) - (Number(b.order_index) || 0));
+
+    return filtered.map(m => {
+      const classStudents = users.filter(u => u.role === 'siswa' && (u.kelas === m.class_name || u.class_id === m.class_id));
+      const matProgress = progress.filter(p => p.material_id === m.id);
+      const matSubs = submissions.filter(s => s.material_id === m.id);
+      const gradedSubs = matSubs.filter(s => s.status === 'GRADED');
+      return {
+        ...m,
+        total_students: classStudents.length,
+        read_count: matProgress.filter(p => p.is_read).length,
+        submission_count: matSubs.length,
+        graded_count: gradedSubs.length,
+        completed_count: matProgress.filter(p => p.is_completed).length
+      };
+    });
+  }
+
+  if (path === '/materials' && method === 'POST') {
+    let materials = getStored(STORAGE_KEYS.MATERIALS, DEFAULT_MATERIALS);
+    const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
+    const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);
+
+    const classObj = classes.find(c => Number(c.id) === Number(body.class_id));
+    const subjectObj = subjects.find(s => Number(s.id) === Number(body.subject_id));
+
+    const newMaterial = {
+      id: Date.now(),
+      class_id: Number(body.class_id),
+      class_name: classObj?.name || 'X-8',
+      subject_id: Number(body.subject_id),
+      subject_name: subjectObj?.name || 'INFORMATIKA',
+      order_index: Number(body.order_index) || (materials.length + 1),
+      title: body.title || 'Materi Baru',
+      description: body.description || '',
+      estimated_time: body.estimated_time || '45 Menit',
+      video_url: body.video_url || '',
+      file_url: body.file_url || '',
+      content: body.content || '',
+      lkpd_title: body.lkpd_title || 'LKPD ' + (body.order_index || 1),
+      lkpd_instructions: body.lkpd_instructions || '',
+      lkpd_questions: body.lkpd_questions || '',
+      require_previous: body.require_previous !== false,
+      created_at: new Date().toISOString()
+    };
+
+    materials.push(newMaterial);
+    setStored(STORAGE_KEYS.MATERIALS, materials);
+    return { success: true, material: newMaterial, message: 'Materi & LKPD berhasil ditambahkan!' };
+  }
+
+  // Single material details
+  const materialDetailMatch = path.match(/^\/materials\/(\d+)$/);
+  if (materialDetailMatch) {
+    const matId = Number(materialDetailMatch[1]);
+    let materials = getStored(STORAGE_KEYS.MATERIALS, DEFAULT_MATERIALS);
+    const mat = materials.find(m => m.id === matId);
+    if (!mat) throw new Error('Materi tidak ditemukan');
+
+    if (method === 'GET') {
+      const progress = getStored(STORAGE_KEYS.MATERIAL_PROGRESS, DEFAULT_MATERIAL_PROGRESS);
+      const submissions = getStored(STORAGE_KEYS.LKPD_SUBMISSIONS, DEFAULT_LKPD_SUBMISSIONS);
+      const myProg = progress.find(p => p.material_id === matId && p.user_id === currentUser?.id);
+      const mySub = submissions.find(s => s.material_id === matId && s.user_id === currentUser?.id);
+
+      return {
+        ...mat,
+        is_read: Boolean(myProg?.is_read),
+        is_lkpd_submitted: Boolean(mySub),
+        is_completed: Boolean(myProg?.is_completed),
+        my_submission: mySub || null
+      };
+    }
+
+    if (method === 'PUT') {
+      const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
+      const subjects = getStored(STORAGE_KEYS.SUBJECTS, DEFAULT_SUBJECTS);
+      const classObj = classes.find(c => Number(c.id) === Number(body.class_id));
+      const subjectObj = subjects.find(s => Number(s.id) === Number(body.subject_id));
+
+      Object.assign(mat, {
+        title: body.title !== undefined ? body.title : mat.title,
+        order_index: body.order_index !== undefined ? Number(body.order_index) : mat.order_index,
+        class_id: body.class_id !== undefined ? Number(body.class_id) : mat.class_id,
+        class_name: classObj?.name || mat.class_name,
+        subject_id: body.subject_id !== undefined ? Number(body.subject_id) : mat.subject_id,
+        subject_name: subjectObj?.name || mat.subject_name,
+        description: body.description !== undefined ? body.description : mat.description,
+        estimated_time: body.estimated_time !== undefined ? body.estimated_time : mat.estimated_time,
+        video_url: body.video_url !== undefined ? body.video_url : mat.video_url,
+        file_url: body.file_url !== undefined ? body.file_url : mat.file_url,
+        content: body.content !== undefined ? body.content : mat.content,
+        lkpd_title: body.lkpd_title !== undefined ? body.lkpd_title : mat.lkpd_title,
+        lkpd_instructions: body.lkpd_instructions !== undefined ? body.lkpd_instructions : mat.lkpd_instructions,
+        lkpd_questions: body.lkpd_questions !== undefined ? body.lkpd_questions : mat.lkpd_questions,
+        require_previous: body.require_previous !== undefined ? body.require_previous : mat.require_previous,
+        updated_at: new Date().toISOString()
+      });
+
+      setStored(STORAGE_KEYS.MATERIALS, materials);
+      return { success: true, material: mat, message: 'Materi & LKPD berhasil diperbarui!' };
+    }
+
+    if (method === 'DELETE') {
+      materials = materials.filter(m => m.id !== matId);
+      setStored(STORAGE_KEYS.MATERIALS, materials);
+      return { success: true, message: 'Materi & LKPD berhasil dihapus!' };
+    }
+  }
+
+  // Student mark material as read
+  const markReadMatch = path.match(/^\/materials\/(\d+)\/mark-read$/);
+  if (markReadMatch && method === 'POST') {
+    const matId = Number(markReadMatch[1]);
+    let progress = getStored(STORAGE_KEYS.MATERIAL_PROGRESS, DEFAULT_MATERIAL_PROGRESS);
+    const submissions = getStored(STORAGE_KEYS.LKPD_SUBMISSIONS, DEFAULT_LKPD_SUBMISSIONS);
+    const hasSub = submissions.some(s => s.material_id === matId && s.user_id === currentUser.id);
+
+    let prog = progress.find(p => p.material_id === matId && p.user_id === currentUser.id);
+    if (prog) {
+      prog.is_read = true;
+      prog.read_at = prog.read_at || new Date().toISOString();
+      prog.is_completed = hasSub;
+      if (hasSub && !prog.completed_at) prog.completed_at = new Date().toISOString();
+    } else {
+      prog = {
+        id: Date.now(),
+        material_id: matId,
+        user_id: currentUser.id,
+        user_name: currentUser.name,
+        class_id: currentUser.class_id || 1,
+        is_read: true,
+        read_at: new Date().toISOString(),
+        is_completed: hasSub,
+        completed_at: hasSub ? new Date().toISOString() : null
+      };
+      progress.push(prog);
+    }
+
+    setStored(STORAGE_KEYS.MATERIAL_PROGRESS, progress);
+    return { success: true, message: 'Materi berhasil ditandai telah dipelajari!', progress: prog };
+  }
+
+  // Student submit LKPD
+  const submitLkpdMatch = path.match(/^\/materials\/(\d+)\/submit-lkpd$/);
+  if (submitLkpdMatch && method === 'POST') {
+    const matId = Number(submitLkpdMatch[1]);
+    if (!body.answer_text?.trim() && !body.file_url?.trim()) {
+      throw new Error('Jawaban uraian LKPD atau link dokumen wajib diisi.');
+    }
+
+    let submissions = getStored(STORAGE_KEYS.LKPD_SUBMISSIONS, DEFAULT_LKPD_SUBMISSIONS);
+    const newSub = {
+      id: Date.now(),
+      material_id: matId,
+      user_id: currentUser.id,
+      user_name: currentUser.name,
+      student_nis: currentUser.nis_nip || currentUser.username,
+      class_id: currentUser.class_id || 1,
+      class_name: currentUser.kelas || '',
+      answer_text: body.answer_text || '',
+      file_url: body.file_url || '',
+      submitted_at: new Date().toISOString(),
+      status: 'SUBMITTED',
+      score: null,
+      teacher_feedback: ''
+    };
+
+    submissions = submissions.filter(s => !(s.material_id === matId && s.user_id === currentUser.id));
+    submissions.push(newSub);
+    setStored(STORAGE_KEYS.LKPD_SUBMISSIONS, submissions);
+
+    // Update progress to completed
+    let progress = getStored(STORAGE_KEYS.MATERIAL_PROGRESS, DEFAULT_MATERIAL_PROGRESS);
+    let prog = progress.find(p => p.material_id === matId && p.user_id === currentUser.id);
+    if (prog) {
+      prog.is_read = true;
+      prog.is_completed = true;
+      prog.completed_at = new Date().toISOString();
+    } else {
+      progress.push({
+        id: Date.now() + 1,
+        material_id: matId,
+        user_id: currentUser.id,
+        user_name: currentUser.name,
+        class_id: currentUser.class_id || 1,
+        is_read: true,
+        read_at: new Date().toISOString(),
+        is_completed: true,
+        completed_at: new Date().toISOString()
+      });
+    }
+    setStored(STORAGE_KEYS.MATERIAL_PROGRESS, progress);
+
+    return {
+      success: true,
+      message: 'LKPD berhasil dikumpulkan! Materi berikutnya telah otomatis terbuka.',
+      submission: newSub
+    };
+  }
+
+  // Submissions list for a material (for teacher)
+  const submissionsMatch = path.match(/^\/materials\/(\d+)\/submissions$/);
+  if (submissionsMatch && method === 'GET') {
+    const matId = Number(submissionsMatch[1]);
+    const submissions = getStored(STORAGE_KEYS.LKPD_SUBMISSIONS, DEFAULT_LKPD_SUBMISSIONS);
+    return submissions.filter(s => s.material_id === matId);
+  }
+
+  // Teacher grades a submission
+  const gradeSubMatch = path.match(/^\/materials\/submissions\/(\d+)\/grade$/);
+  if (gradeSubMatch && method === 'POST') {
+    const subId = Number(gradeSubMatch[1]);
+    let submissions = getStored(STORAGE_KEYS.LKPD_SUBMISSIONS, DEFAULT_LKPD_SUBMISSIONS);
+    const sub = submissions.find(s => s.id === subId);
+    if (!sub) throw new Error('Pengumpulan LKPD tidak ditemukan');
+
+    sub.score = Number(body.score) || 0;
+    sub.teacher_feedback = body.teacher_feedback || '';
+    sub.status = 'GRADED';
+    sub.graded_at = new Date().toISOString();
+    sub.graded_by = currentUser?.name || 'Guru Pengampu';
+
+    setStored(STORAGE_KEYS.LKPD_SUBMISSIONS, submissions);
+    return { success: true, submission: sub, message: 'Nilai dan umpan balik LKPD berhasil disimpan!' };
+  }
+
+  // Overall class progress for monitoring
+  if (path === '/materials/progress' && method === 'GET') {
+    const queryClassId = params.get('class_id');
+    const querySubjectId = params.get('subject_id');
+    const materials = getStored(STORAGE_KEYS.MATERIALS, DEFAULT_MATERIALS);
+    const progress = getStored(STORAGE_KEYS.MATERIAL_PROGRESS, DEFAULT_MATERIAL_PROGRESS);
+    const submissions = getStored(STORAGE_KEYS.LKPD_SUBMISSIONS, DEFAULT_LKPD_SUBMISSIONS);
+    const classes = getStored(STORAGE_KEYS.CLASSES, DEFAULT_CLASSES);
+
+    const targetClass = classes.find(c => Number(c.id) === Number(queryClassId)) || classes[0];
+    const targetStudents = users.filter(u => u.role === 'siswa' && (u.kelas === targetClass.name || u.class_id === targetClass.id));
+
+    const classMaterials = materials.filter(m => {
+      const matchC = m.class_id === targetClass.id || m.class_name === targetClass.name;
+      const matchS = !querySubjectId || Number(m.subject_id) === Number(querySubjectId);
+      return matchC && matchS;
+    }).sort((a, b) => (Number(a.order_index) || 0) - (Number(b.order_index) || 0));
+
+    const rows = targetStudents.map(student => {
+      let completedCount = 0;
+      const chapterStatuses = classMaterials.map(mat => {
+        const prog = progress.find(p => p.material_id === mat.id && p.user_id === student.id);
+        const sub = submissions.find(s => s.material_id === mat.id && s.user_id === student.id);
+        const isCompleted = Boolean(prog?.is_completed);
+        if (isCompleted) completedCount++;
+        return {
+          material_id: mat.id,
+          order_index: mat.order_index,
+          title: mat.title,
+          is_read: Boolean(prog?.is_read),
+          is_submitted: Boolean(sub),
+          is_completed: isCompleted,
+          score: sub?.score ?? null,
+          status: sub?.status || (prog?.is_read ? 'READ' : 'NOT_STARTED')
+        };
+      });
+
+      return {
+        student,
+        completed_chapters: completedCount,
+        total_chapters: classMaterials.length,
+        progress_percentage: classMaterials.length > 0 ? Math.round((completedCount / classMaterials.length) * 100) : 0,
+        chapters: chapterStatuses
+      };
+    });
+
+    return {
+      class: targetClass,
+      materials: classMaterials,
+      rows
     };
   }
 
