@@ -18,9 +18,9 @@ const STORAGE_KEYS = {
   EXAMS: 'lms_mock_cbt_exams_v3',
   QUESTIONS: 'lms_mock_cbt_questions_v3',
   QUESTION_BANK: 'lms_mock_question_bank_v3',
-  MATERIALS: 'lms_mock_learning_materials_v3',
-  MATERIAL_PROGRESS: 'lms_mock_material_progress_v3',
-  LKPD_SUBMISSIONS: 'lms_mock_lkpd_submissions_v3',
+  MATERIALS: 'lms_mock_learning_materials_v5',
+  MATERIAL_PROGRESS: 'lms_mock_material_progress_v5',
+  LKPD_SUBMISSIONS: 'lms_mock_lkpd_submissions_v5',
   CURRENT_USER_ID: 'lms_mock_current_user_id'
 };
 
@@ -36,7 +36,10 @@ if (typeof localStorage !== 'undefined') {
     'lms_mock_assignments', 'lms_mock_assignments_v2',
     'lms_mock_assignment_submissions', 'lms_mock_assignment_submissions_v2',
     'lms_mock_cbt_exams', 'lms_mock_cbt_exams_v2',
-    'lms_mock_cbt_questions', 'lms_mock_cbt_questions_v2'
+    'lms_mock_cbt_questions', 'lms_mock_cbt_questions_v2',
+    'lms_mock_learning_materials_v3', 'lms_mock_learning_materials_v4',
+    'lms_mock_material_progress_v3', 'lms_mock_material_progress_v4',
+    'lms_mock_lkpd_submissions_v3', 'lms_mock_lkpd_submissions_v4'
   ].forEach(k => {
     try { localStorage.removeItem(k); } catch (e) {}
   });
@@ -4508,300 +4511,523 @@ const DEFAULT_ATTENDANCE = [];
 const DEFAULT_ATT_RECORDS = [];
 const DEFAULT_MATERIALS = [
   {
-    id: 1,
-    class_id: 1,
-    class_name: 'X-8',
-    subject_id: 7,
-    subject_name: 'INFORMATIKA',
-    order_index: 1,
-    title: 'Bab 1: Fondasi Berpikir Komputasional (Computational Thinking)',
-    description: 'Mempelajari 4 pilar computational thinking: Dekomposisi, Pengenalan Pola, Abstraksi, dan Perancangan Algoritma untuk menyelesaikan masalah kompleks.',
-    estimated_time: '45 Menit',
-    video_url: 'https://www.youtube.com/watch?v=mUXo-S7gkds',
-    file_url: '',
-    content: `### Pengantar Berpikir Komputasional
-Berpikir komputasional (Computational Thinking) adalah landasan pemecahan masalah (problem solving) yang efektif tidak hanya dalam dunia ilmu komputer, tetapi di semua aspek kehidupan akademik dan profesional.
-
-#### 4 Pilar Berpikir Komputasional:
-1. **Dekomposisi (Decomposition)**
-   Memecah masalah yang rumit atau sistem yang besar menjadi bagian-bagian yang lebih kecil, terstruktur, dan lebih mudah dikelola. Contoh: Menyusun laporan keuangan dengan membaginya per departemen dan kategori pos belanja.
-2. **Pengenalan Pola (Pattern Recognition)**
-   Mengamati kesamaan, keteraturan, atau tren di antara masalah-masalah kecil tersebut untuk memprediksi hasil atau menggunakan metode yang terbukti berhasil sebelumnya.
-3. **Abstraksi (Abstraction)**
-   Menyaring dan memfokuskan perhatian hanya pada informasi inti yang relevan, serta mengabaikan detail-detail yang tidak penting agar tidak membingungkan proses penalaran.
-4. **Perancangan Algoritma (Algorithm Design)**
-   Mengembangkan panduan langkah-demi-langkah atau aturan berurutan yang logis dan jelas untuk menyelesaikan masalah secara konsisten.
-
-> **Tips Belajar:** Kuasai keempat pilar ini sebelum melanjutkan ke Lembar Kerja Peserta Didik (LKPD) di bawah ini!`,
-    lkpd_title: 'LKPD 1: Studi Kasus Penerapan 4 Pilar Berpikir Komputasional',
-    lkpd_instructions: 'Bacalah permasalahan di bawah ini dengan saksama. Tuliskan analisis pemecahan masalah Anda secara mandiri pada formulir jawaban yang disediakan.',
-    lkpd_questions: `Kasus: Di sekolah Anda, terjadi antrean panjang di kantin saat jam istirahat yang hanya berdurasi 30 menit, sehingga banyak siswa tidak sempat makan tepat waktu.
-
-Tugas Anda:
-1. Dekomposisi: Uraikan faktor-faktor penyebab antrean panjang tersebut menjadi 3 sub-masalah utama!
-2. Pengenalan Pola: Apa pola pesanan atau waktu yang biasanya memicu penumpukan antrean terparah?
-3. Abstraksi: Tentukan aspek prioritas yang harus ditangani terlebih dahulu dan aspek mana yang dapat diabaikan sementara!
-4. Algoritma: Rancang 4 langkah sistematis (SOP) solusi antrean pemesanan makanan agar alur lebih cepat dan tertib!`,
-    require_previous: false,
-    created_at: '2026-11-01T08:00:00.000Z'
-  },
-  {
-    id: 2,
-    class_id: 1,
-    class_name: 'X-8',
-    subject_id: 7,
-    subject_name: 'INFORMATIKA',
-    order_index: 2,
-    title: 'Bab 2: Algoritma dan Pemrograman Dasar (C++ & Python)',
-    description: 'Mempelajari sintaks, variabel, percabangan if-else, dan perulangan menggunakan bahasa C++ dan Python dengan compiler interaktif langsung di peramban.',
-    estimated_time: '60 Menit',
-    video_url: '',
-    file_url: '',
-    has_code_playground: true,
-    is_coding_task: true,
-    is_tlx_style: true,
-    code_language: 'python',
-    tlx_problems: [
+    "id": 1,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 1,
+    "title": "Belajar Python #01: Mengenal Bahasa Pemrograman Python",
+    "description": "Mengenal sejarah, filosofi, karakteristik bahasa Python, kelebihan dibanding bahasa lain, dan menulis program pertama Hello World.",
+    "estimated_time": "30 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Program Pertama: Mencetak Kalimat Sapaan\n# Tuliskan kode untuk mencetak dua baris berikut:\n# Baris 1: Halo Python!\n# Baris 2: Saya siap belajar pemrograman!\n\nprint(\"Halo Python!\")\nprint(\"Saya siap belajar pemrograman!\")\n",
+    "test_cases": [
       {
-        id: 'prob-a',
-        letter: 'A',
-        title: 'Halo, Dunia!',
-        time_limit: '1.000 detik',
-        memory_limit: '64.0 MB',
-        points: 25,
-        description: 'Pak Dengklek baru saja membeli komputer baru. Sebagai pemula di dunia pemrograman dan algoritma, Pak Dengklek ingin membuat program pertamanya yang menyapa seluruh dunia dengan ramah melalui layar monitor.\n\nTugas Anda adalah membantu Pak Dengklek menulis program yang mencetak kalimat sapaan tersebut tepat seperti yang diminta.',
-        input_format: 'Tidak ada masukan untuk soal ini.',
-        output_format: 'Cetak sebuah baris berisi tepat teks "Halo, Dunia!" (tanpa tanda kutip).',
-        constraints: 'Tidak ada batasan khusus.',
-        sample_cases: [
-          {
-            input: '',
-            output: 'Halo, Dunia!',
-            explanation: 'Program langsung mencetak teks tanpa memerlukan masukan pengguna.'
-          }
-        ],
-        editorial: 'Gunakan perintah dasar keluaran:\n- Python 3: print("Halo, Dunia!")\n- C++: cout << "Halo, Dunia!" << endl;',
-        starter_codes: {
-          python: '# Program Pertama Pak Dengklek\nprint("Halo, Dunia!")\n',
-          cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Halo, Dunia!" << endl;\n    return 0;\n}\n'
-        },
-        test_cases: [
-          { input: '', expected_output: 'Halo, Dunia!', description: 'Kasus Uji 1: Output Sesuai' }
-        ]
-      },
-      {
-        id: 'prob-b',
-        letter: 'B',
-        title: 'A Tambah B',
-        time_limit: '1.000 detik',
-        memory_limit: '64.0 MB',
-        points: 25,
-        description: 'Pak Dengklek memiliki dua buah kandang bebek. Kandang pertama berisi A ekor bebek, dan kandang kedua berisi B ekor bebek.\n\nPak Dengklek ingin mengetahui berapa jumlah seluruh bebek miliknya jika digabungkan. Bantulah Pak Dengklek menghitung total bebek tersebut!',
-        input_format: 'Satu baris berisi dua buah bilangan bulat A dan B yang dipisahkan oleh satu spasi.',
-        output_format: 'Satu baris berisi sebuah bilangan bulat yang merupakan hasil penjumlahan A + B.',
-        constraints: '1 ≤ A, B ≤ 1.000',
-        sample_cases: [
-          {
-            input: '4 7',
-            output: '11',
-            explanation: '4 bebek ditambah 7 bebek menghasilkan total 11 bebek.'
-          },
-          {
-            input: '15 25',
-            output: '40',
-            explanation: '15 + 25 = 40.'
-          }
-        ],
-        editorial: 'Membaca masukan dua integer dalam satu baris:\n- Python 3: a, b = map(int, input().split()) lalu print(a + b)\n- C++: cin >> a >> b; lalu cout << a + b << endl;',
-        starter_codes: {
-          python: '# Membaca dua bilangan A dan B dari satu baris\na, b = map(int, input().split())\n\n# Cetak hasil penjumlahan\nprint(a + b)\n',
-          cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}\n'
-        },
-        test_cases: [
-          { input: '4 7', expected_output: '11', description: 'Kasus Uji 1 (Sample 1)' },
-          { input: '15 25', expected_output: '40', description: 'Kasus Uji 2 (Sample 2)' },
-          { input: '100 250', expected_output: '350', description: 'Kasus Uji 3' },
-          { input: '999 1', expected_output: '1000', description: 'Kasus Uji 4' }
-        ]
-      },
-      {
-        id: 'prob-c',
-        letter: 'C',
-        title: 'Bebek untuk Teman (Pembagian & Modulo)',
-        time_limit: '1.000 detik',
-        memory_limit: '64.0 MB',
-        points: 25,
-        description: 'Pak Dengklek memiliki N ekor bebek. Hari ini, M orang temannya berkunjung ke peternakan. Pak Dengklek ingin membagikan bebek-bebek tersebut kepada semua temannya secara adil dan merata (setiap teman mendapat jumlah bebek bulat yang sama).\n\nJika ada bebek yang tersisa karena tidak bisa dibagi rata, sisa bebek tersebut akan tetap disimpan di peternakan Pak Dengklek.\n\nBantulah Pak Dengklek menghitung berapa ekor bebek yang didapat oleh masing-masing teman, dan berapa ekor bebek yang tersisa!',
-        input_format: 'Satu baris berisi dua buah bilangan bulat N dan M yang dipisahkan oleh spasi, masing-masing menyatakan banyaknya bebek dan banyaknya teman.',
-        output_format: 'Baris pertama berisi teks "masing-masing " diikuti jumlah bebek yang didapat setiap teman.\nBaris kedua berisi teks "bersisa " diikuti sisa bebek Pak Dengklek.',
-        constraints: '1 ≤ N ≤ 100.000\n1 ≤ M ≤ N',
-        sample_cases: [
-          {
-            input: '63 5',
-            output: 'masing-masing 12\nbersisa 3',
-            explanation: '63 bebek dibagi 5 orang: 63 / 5 = 12 dengan sisa 3 (karena 12 * 5 + 3 = 63).'
-          }
-        ],
-        editorial: 'Menggunakan operator pembagian bulat dan modulo (sisa bagi):\n- Python: setiap = n // m; sisa = n % m\n- C++: int setiap = n / m; int sisa = n % m;',
-        starter_codes: {
-          python: 'n, m = map(int, input().split())\n\n# Hitung pembagian bulat dan modulo\nsetiap = n // m\nsisa = n % m\n\nprint(f"masing-masing {setiap}")\nprint(f"bersisa {sisa}")\n',
-          cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    int n, m;\n    cin >> n >> m;\n    int setiap = n / m;\n    int sisa = n % m;\n    cout << "masing-masing " << setiap << endl;\n    cout << "bersisa " << sisa << endl;\n    return 0;\n}\n'
-        },
-        test_cases: [
-          { input: '63 5', expected_output: 'masing-masing 12\nbersisa 3', description: 'Kasus Uji 1 (Sample)' },
-          { input: '100 10', expected_output: 'masing-masing 10\nbersisa 0', description: 'Kasus Uji 2 (Habis Dibagi)' },
-          { input: '17 4', expected_output: 'masing-masing 4\nbersisa 1', description: 'Kasus Uji 3' }
-        ]
-      },
-      {
-        id: 'prob-d',
-        letter: 'D',
-        title: 'Penentu Bilangan Genap atau Ganjil',
-        time_limit: '1.000 detik',
-        memory_limit: '64.0 MB',
-        points: 25,
-        description: 'Pak Dengklek sedang melatih bebek-bebeknya untuk berbaris rapi. Setiap bebek diberi nomor dada berupa sebuah bilangan bulat positif N.\n\nBebek dengan nomor GENAP harus berbaris di sebelah kanan sungai, sedangkan bebek dengan nomor GANJIL harus berbaris di sebelah kiri sungai.\n\nBantulah Pak Dengklek membuat program penentu arah barisan tersebut!',
-        input_format: 'Satu baris berisi sebuah bilangan bulat positif N.',
-        output_format: 'Cetak tepat satu baris berisi kata "GENAP" jika N genap, atau "GANJIL" jika N ganjil (semua huruf kapital tanpa tanda kutip).',
-        constraints: '1 ≤ N ≤ 1.000.000',
-        sample_cases: [
-          {
-            input: '8',
-            output: 'GENAP',
-            explanation: '8 adalah bilangan genap karena habis dibagi 2.'
-          },
-          {
-            input: '15',
-            output: 'GANJIL',
-            explanation: '15 adalah bilangan ganjil karena bersisa 1 ketika dibagi 2.'
-          }
-        ],
-        editorial: 'Struktur percabangan if-else:\nJika n % 2 == 0 cetak "GENAP", jika tidak cetak "GANJIL".',
-        starter_codes: {
-          python: 'n = int(input())\n\n# Percabangan if-else penentu genap/ganjil\nif n % 2 == 0:\n    print("GENAP")\nelse:\n    print("GANJIL")\n',
-          cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    int n;\n    cin >> n;\n    if (n % 2 == 0) {\n        cout << "GENAP" << endl;\n    } else {\n        cout << "GANJIL" << endl;\n    }\n    return 0;\n}\n'
-        },
-        test_cases: [
-          { input: '8', expected_output: 'GENAP', description: 'Kasus Uji 1 (Genap)' },
-          { input: '15', expected_output: 'GANJIL', description: 'Kasus Uji 2 (Ganjil)' },
-          { input: '0', expected_output: 'GENAP', description: 'Kasus Uji 3 (Nol)' },
-          { input: '99999', expected_output: 'GANJIL', description: 'Kasus Uji 4 (Ganjil Besar)' }
-        ]
+        "input": "",
+        "expected_output": "Halo Python!\nSaya siap belajar pemrograman!",
+        "description": "Uji Coba Cetak Halo Python"
       }
     ],
-    starter_code: `# Program Penentu Bilangan Genap atau Ganjil
-# Masukkan sebuah angka bulat (integer) melalui input
-# Cetak tepat: "GENAP" jika angka genap, atau "GANJIL" jika angka ganjil
-
-angka = int(input())
-
-# Tuliskan struktur if-else Anda di bawah ini:
-if angka % 2 == 0:
-    print("GENAP")
-else:
-    print("GANJIL")
-`,
-    test_cases: [
-      {
-        input: '8',
-        expected_output: 'GENAP',
-        description: 'Uji Coba Angka 8 (Genap)'
-      },
-      {
-        input: '15',
-        expected_output: 'GANJIL',
-        description: 'Uji Coba Angka 15 (Ganjil)'
-      },
-      {
-        input: '0',
-        expected_output: 'GENAP',
-        description: 'Uji Coba Angka 0'
-      }
-    ],
-    content: `### Algoritma dan Pemrograman (AP)
-Algoritma adalah urutan langkah logis penyelesaian masalah yang disusun secara sistematis, sedangkan pemrograman adalah proses mengonversi algoritma tersebut ke dalam bahasa yang dipahami oleh komputer (seperti C++ atau Python).
-
-#### 1. Perbandingan Karakteristik C++ vs Python:
-- **Python 3:** Bahasa pemrograman tingkat tinggi dengan sintaks ringkas, mudah dipelajari (*clean syntax*), berorientasi objek, dan menggunakan indentasi sebagai pembatas blok kode. Sangat populer untuk data science, otomasi, dan kecerdasan buatan.
-- **C++:** Bahasa pemrograman berkinerja tinggi (*high performance*) yang diturunkan dari bahasa C. Menggunakan tanda titik-koma (\`;\`) dan kurung kurawal (\`{}\`) untuk blok kode. Sangat umum digunakan pada Olimpiade Sains Nasional (OSN) bidang Informatika dan sistem operasi.
-
-#### 2. Struktur Dasar Percabangan (If-Else):
-- **Dalam Python:**
-\`\`\`python
-nilai = int(input())
-if nilai >= 75:
-    print("LULUS")
-else:
-    print("REMEDIAL")
-\`\`\`
-- **Dalam C++:**
-\`\`\`cpp
-#include <iostream>
-using namespace std;
-
-int main() {
-    int nilai;
-    cin >> nilai;
-    if (nilai >= 75) {
-        cout << "LULUS" << endl;
-    } else {
-        cout << "REMEDIAL" << endl;
-    }
-    return 0;
-}
-\`\`\`
-
-> **Coba Langsung di Bawah Ini:** Anda dapat menggunakan kotak compiler di bawah untuk mencoba dan mengubah kode program C++ dan Python secara bebas!`,
-    lkpd_title: 'LKPD 2: Implementasi Algoritma Percabangan Ganjil-Genap dengan Compiler',
-    lkpd_instructions: 'Kerjakan tantangan koding berikut secara mandiri menggunakan Compiler C++ atau Python yang disediakan. Uji program Anda hingga lolos semua kasus uji.',
-    lkpd_questions: `Tantangan Koding:
-Buatlah sebuah program yang membaca satu bilangan bulat positif dari masukan (input).
-Aturan Program:
-1. Jika bilangan tersebut habis dibagi 2, cetak kata "GENAP" (huruf kapital).
-2. Jika bilangan tersebut tidak habis dibagi 2, cetak kata "GANJIL" (huruf kapital).
-
-Petunjuk:
-Gunakan tombol "▶ Uji & Jalankan Kode LKPD" untuk memeriksa apakah program Anda sudah benar dan bebas dari error sintaks maupun logika. Jika masih salah, sistem akan menampilkan alert merah!`,
-    require_previous: true,
-    created_at: '2026-11-02T08:00:00.000Z'
+    "content": "### Belajar Python #01: Mengenal Bahasa Pemrograman Python\n\nPython adalah salah satu bahasa pemrograman paling populer di dunia saat ini. Dibuat pertama kali oleh **Guido van Rossum** dan dirilis pada tahun 1991, Python didesain dengan filosofi yang mengutamakan **keterbacaan kode (code readability)**.\n\n#### 1. Mengapa Memilih Belajar Python?\n- **Sintaks Sederhana & Ramah Pemula:** Kode Python menyerupai bahasa Inggris sehari-hari (*pseudo-code*) sehingga sangat mudah dipelajari oleh siswa sekolah.\n- **Multi-tujuan (General Purpose):** Digunakan untuk pengembangan web, kecerdasan buatan (*Artificial Intelligence / AI*), *Data Science*, otomasi tugas, hingga keamanan siber.\n- **Bahasa Tingkat Tinggi (Interpreted Language):** Kode dijalankan langsung oleh interpreter baris demi baris tanpa perlu proses kompilasi manual yang rumit.\n- **Komunitas Global Terbesar:** Memiliki ribuan modul gratis yang siap digunakan.\n\n#### 2. Filosofi Python (The Zen of Python):\n- *\"Beautiful is better than ugly.\"*\n- *\"Explicit is better than implicit.\"*\n- *\"Simple is better than complex.\"*\n- *\"Readability counts.\"*\n\n#### 3. Program Pertama di Python:\n```python\nprint(\"Hello, World!\")\n```\nFungsi `print()` digunakan untuk menampilkan teks ke layar monitor. Teks wajib dibungkus dengan tanda kutip ganda (`\"`) atau tanda kutip tunggal (`'`).",
+    "lkpd_title": "LKPD #01: Eksekusi Program Pertama Hello Python",
+    "lkpd_instructions": "Gunakan editor compiler di bawah untuk menuliskan program pertama Anda. Cetak tepat 2 baris sesuai ketentuan soal.",
+    "lkpd_questions": "Tantangan Koding:\nBuatlah sebuah program Python yang mencetak tepat dua baris ke layar:\nBaris 1: \"Halo Python!\" (tanpa tanda kutip)\nBaris 2: \"Saya siap belajar pemrograman!\" (tanpa tanda kutip)\n\nUji kode Anda dengan menekan tombol Uji & Jalankan Kode LKPD hingga lolos pengujian!",
+    "require_previous": false,
+    "created_at": "2026-11-01T08:00:00.000Z"
   },
   {
-    id: 3,
-    class_id: 1,
-    class_name: 'X-8',
-    subject_id: 7,
-    subject_name: 'INFORMATIKA',
-    order_index: 3,
-    title: 'Bab 3: Topologi Jaringan Komputer & Keamanan Siber Dasar',
-    description: 'Menganalisis jenis topologi jaringan komputer (Star, Bus, Mesh), model komunikasi TCP/IP, pengalamatan IP, dan prinsip proteksi data di internet.',
-    estimated_time: '60 Menit',
-    video_url: '',
-    file_url: '',
-    content: `### Topologi Jaringan dan Arsitektur Komunikasi
-Jaringan komputer menghubungkan perangkat-perangkat agar dapat bertukar data, berbagi sumber daya (printer, storage), dan mengakses internet secara aman.
-
-#### 1. Macam-Macam Topologi Fisik:
-- **Topologi Star (Bintang):** Setiap komputer tersambung langsung ke perangkat pusat (Switch/Hub). Kelebihan: jika salah satu kabel PC putus, jaringan lain tidak terganggu. Sangat umum digunakan di laboratorium sekolah dan perkantoran.
-- **Topologi Mesh (Jala):** Setiap perangkat saling terhubung satu sama lain dengan redundansi tinggi. Sangat andal namun boros kabel dan biaya instalasi tinggi.
-- **Topologi Bus & Ring:** Topologi sekuensial dengan biaya murah namun rentan kegagalan titik tunggal (single point of failure).
-
-#### 2. Komponen Utama Jaringan:
-- **Switch:** Menghubungkan perangkat di dalam jaringan lokal (LAN) dengan cerdas membaca alamat MAC.
-- **Router:** Menghubungkan antar jaringan berbeda (misal menghubungkan LAN sekolah ke WAN/Internet global) dengan routing protokol IP.
-- **Access Point (AP):** Memancarkan sinyal Wi-Fi nirkabel untuk perangkat mobile (laptop, smartphone).
-
-#### 3. Keamanan Siber Dasar (Cyber Security):
-Prinsip CIA Triad: Confidentiality (Kerahasiaan), Integrity (Keutuhan Data), Availability (Ketersediaan Layanan). Penerapan firewall, password kuat, enkripsi HTTPS, dan pencegahan sniffing.`,
-    lkpd_title: 'LKPD 3: Perancangan Desain Topologi Laboratorium Komputer Sekolah',
-    lkpd_instructions: 'Rancanglah arsitektur jaringan komputer untuk lab sekolah baru dengan 36 unit komputer siswa dan 1 unit komputer guru pengawas.',
-    lkpd_questions: `Skenario: Sekolah Anda baru saja menerima bantuan 36 unit komputer untuk ruang Laboratorium CBT Ujian Mandiri.
-
-Tugas Anda:
-1. Topologi fisik apa yang paling ideal dan aman untuk ruang lab tersebut? Kemukakan 3 alasan ilmiah pemilihan topologi tersebut!
-2. Sebutkan spesifikasi dan jumlah perangkat keras jaringan yang dibutuhkan (jumlah Switch port, panjang kabel UTP Cat6, Router gateway, dan Access Point pendukung)!
-3. Rancang skema pengalamatan IP Address (contoh segmen: 192.168.10.x / 24) untuk komputer guru, komputer siswa 1-36, dan server lokal ujian CBT!`,
-    require_previous: true,
-    created_at: '2026-11-03T08:00:00.000Z'
+    "id": 2,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 2,
+    "title": "Belajar Python #02: Persiapan Pemrograman Python di Windows",
+    "description": "Instalasi Python di sistem operasi Windows, konfigurasi Environment Variable PATH, REPL Shell, dan persiapan code editor VS Code.",
+    "estimated_time": "35 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Verifikasi Kesiapan Lingkungan Python\n# Cetak tepat teks: \"Python di Windows siap digunakan!\"\n\nprint(\"Python di Windows siap digunakan!\")\n",
+    "test_cases": [
+      {
+        "input": "",
+        "expected_output": "Python di Windows siap digunakan!",
+        "description": "Uji Pesan Kesiapan Lingkungan"
+      }
+    ],
+    "content": "### Belajar Python #02: Persiapan Pemrograman Python di Windows\n\nSebelum mulai menulis program berskala besar, kita perlu menyiapkan lingkungan pengembangan (*development environment*) di komputer Windows.\n\n#### 1. Langkah Instalasi Python di Windows:\n1. Kunjungi situs resmi: **https://www.python.org/downloads/**.\n2. Unduh versi stabil terbaru (contoh: Python 3.11 atau 3.12 untuk Windows 64-bit).\n3. Jalankan file installer (*.exe*).\n4. **PENTING (JANGAN TERLEWAT):** Centang kotak **\"Add python.exe to PATH\"** di bagian bawah jendela instalasi sebelum menekan *Install Now*. Langkah ini memastikan perintah `python` dapat dikenali dari Terminal / Command Prompt manapun.\n\n#### 2. Mengecek Hasil Instalasi:\nBuka **Command Prompt (CMD)** atau **PowerShell**, lalu ketik:\n```bash\npython --version\n```\nJika muncul versi Python (misal `Python 3.11.2`), berarti instalasi berhasil.\n\n#### 3. Menjalankan Python Interactive Shell (REPL):\nKetik `python` di CMD. Tanda prompt `>>>` menandakan Anda berada di mode interaktif. Anda dapat langsung mengetik perhitungan matematika seperti `10 + 20` dan melihat hasilnya seketika. Ketik `exit()` untuk keluar.\n\n#### 4. Kode Editor Rekomendasi:\n- **Visual Studio Code (VS Code):** Editor modern gratis dari Microsoft dengan ekstensi *Python* by Microsoft.\n- **IDLE:** Editor bawaan resmi saat Anda menginstal Python.",
+    "lkpd_title": "LKPD #02: Verifikasi Eksekusi Program Berkas Python",
+    "lkpd_instructions": "Tuliskan kode program yang mencetak pesan konfirmasi kesiapan sistem lingkungan eksekusi Python.",
+    "lkpd_questions": "Tantangan Koding:\nTuliskan program Python yang mencetak tepat teks berikut ke layar monitor:\n\"Python di Windows siap digunakan!\"\n\nPastikan penulisan huruf besar dan kecil serta tanda seru sesuai!",
+    "require_previous": true,
+    "created_at": "2026-11-02T08:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 3,
+    "title": "Belajar Python #03: Aturan Dasar Penulisan Sintaks Python",
+    "description": "Aturan sensitivitas huruf (case sensitivity), indentasi sebagai pembatas blok kode, penulisan komentar, dan standar PEP 8.",
+    "estimated_time": "40 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Perbaiki program berikut agar rapi sesuai sintaks Python\n# dan mencetak: \"Sintaks Python Bersih dan Rapi\"\n\npesan = \"Sintaks Python Bersih dan Rapi\"\nprint(pesan)\n",
+    "test_cases": [
+      {
+        "input": "",
+        "expected_output": "Sintaks Python Bersih dan Rapi",
+        "description": "Uji Sintaks dan Output"
+      }
+    ],
+    "content": "### Belajar Python #03: Aturan Dasar Penulisan Sintaks Python\n\nPython memiliki aturan tata bahasa (sintaks) yang khas dan berbeda dibandingkan bahasa C, C++, atau Java.\n\n#### 1. Case Sensitive (Sensitif Terhadap Huruf Besar & Kecil):\nHuruf besar dan kecil dianggap berbeda secara mutlak:\n```python\nnama = \"Budi\"\nNama = \"Siti\"\nprint(nama) # Mencetak Budi\nprint(Nama) # Mencetak Siti\n```\n\n#### 2. Indentasi Sebagai Pembatas Blok Kode:\nDi bahasa C++ atau Java, blok program dibatasi oleh kurung kurawal `{}`. Di Python, **indentasi (spasi/tab)** adalah penanda resmi hierarki blok kode!\nStandar resmi (*PEP 8*) menggunakan **4 spasi** untuk setiap tingkat indentasi.\n```python\n# Benar:\nif True:\n    print(\"Masuk ke dalam blok if\")\n\n# Salah (Akan memicu IndentationError):\nif True:\nprint(\"Salah posisi\")\n```\n\n#### 3. Penulisan Komentar:\nKomentar adalah catatan yang diabaikan oleh komputer:\n- **Satu Baris:** Gunakan tanda pagar `#`.\n  ```python\n  # Ini adalah komentar penjelasan\n  ```\n- **Multi-Baris:** Gunakan triple quotes (`'''` atau `\"\"\"`).\n\n#### 4. Tanpa Titik Koma (Semicolon):\nDi Python, Anda tidak perlu mengakhiri setiap baris dengan titik koma (`;`). Baris baru (*newline*) secara otomatis menandai akhir suatu instruksi.",
+    "lkpd_title": "LKPD #03: Penulisan Variabel dan Komentar Bersih",
+    "lkpd_instructions": "Terapkan kaidah penulisan sintaks Python yang benar untuk mencetak teks yang diminta.",
+    "lkpd_questions": "Tantangan Koding:\nTuliskan variabel bernama `pesan` yang berisi teks: \"Sintaks Python Bersih dan Rapi\".\nKemudian cetak variabel `pesan` tersebut menggunakan fungsi `print()`.",
+    "require_previous": true,
+    "created_at": "2026-11-03T08:00:00.000Z"
+  },
+  {
+    "id": 4,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 4,
+    "title": "Belajar Python #04: Mengenal Variabel dan Tipe Data di Python",
+    "description": "Konsep dynamic typing, variabel tanpa deklarasi tipe eksplisit, tipe data dasar (int, float, str, bool), dan type casting.",
+    "estimated_time": "45 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Hitung Total Pembelian Barang\n# Masukan:\n# Baris 1: harga barang (int)\n# Baris 2: jumlah barang (int)\n\nharga = int(input())\njumlah = int(input())\n\ntotal = harga * jumlah\nprint(total)\n",
+    "test_cases": [
+      {
+        "input": "5000\n3",
+        "expected_output": "15000",
+        "description": "Uji Harga 5000 x 3"
+      },
+      {
+        "input": "12500\n4",
+        "expected_output": "50000",
+        "description": "Uji Harga 12500 x 4"
+      }
+    ],
+    "content": "### Belajar Python #04: Mengenal Variabel dan Tipe Data di Python\n\nVariabel adalah wadah penyimpanan nilai di dalam memori komputer, sedangkan tipe data menentukan jenis nilai yang dapat ditampung.\n\n#### 1. Dynamic Typing di Python:\nPython menganut sistem *dynamic typing*, artinya Anda tidak perlu menuliskan kata kunci tipe data saat mendeklarasikan variabel:\n```python\numur = 16          # Tipe Integer\ntinggi = 168.5     # Tipe Float\nnama = \"Ahmad\"     # Tipe String\nis_active = True   # Tipe Boolean\n```\n\n#### 2. Empat Tipe Data Primitif Utama:\n1. **Integer (`int`):** Bilangan bulat positif atau negatif tanpa pecahan desimal (contoh: `10`, `-5`, `0`).\n2. **Float (`float`):** Bilangan riil yang memiliki pecahan desimal (contoh: `3.14`, `-0.5`).\n3. **String (`str`):** Kumpulan karakter teks yang dibungkus tanda petik (contoh: `\"Informatika\"`).\n4. **Boolean (`bool`):** Nilai logika yang hanya bernilai `True` atau `False`.\n\n#### 3. Mengecek dan Mengubah Tipe Data (Type Casting):\nGunakan fungsi `type()` untuk memeriksa tipe data variabel:\n```python\nprint(type(umur)) # <class 'int'>\n```\nKonversi tipe data:\n- `int(\"100\")` -> mengubah teks `\"100\"` menjadi angka `100`.\n- `float(\"3.5\")` -> mengubah teks menjadi desimal `3.5`.\n- `str(250)` -> mengubah angka menjadi teks `\"250\"`.",
+    "lkpd_title": "LKPD #04: Kalkulasi Perkalian Variabel Angka",
+    "lkpd_instructions": "Konversikan input menjadi integer, lakukan operasi perkalian, dan cetak hasilnya.",
+    "lkpd_questions": "Tantangan Koding:\nDiberikan 2 baris masukan dari pengguna:\nBaris 1: Harga satuan barang (bilangan bulat)\nBaris 2: Jumlah barang yang dibeli (bilangan bulat)\n\nHitunglah total biaya yang harus dibayar (harga dikalikan jumlah) dan cetak hasilnya!",
+    "require_previous": true,
+    "created_at": "2026-11-04T08:00:00.000Z"
+  },
+  {
+    "id": 5,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 5,
+    "title": "Belajar Python #05: Fungsi Input dan Output di Python",
+    "description": "Membaca masukan keyboard dengan input(), format output teks print(), parameter sep dan end, serta penggunaan f-string modern.",
+    "estimated_time": "45 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Membaca Dua Kata dari Satu Baris Masukan\ndepan, belakang = input().split()\n\n# Cetak kalimat menggunakan f-string:\nprint(f\"Selamat datang, {depan} {belakang}!\")\n",
+    "test_cases": [
+      {
+        "input": "Mohamad Irham",
+        "expected_output": "Selamat datang, Mohamad Irham!",
+        "description": "Uji Coba Nama Mohamad Irham"
+      },
+      {
+        "input": "Budi Santoso",
+        "expected_output": "Selamat datang, Budi Santoso!",
+        "description": "Uji Coba Nama Budi Santoso"
+      }
+    ],
+    "content": "### Belajar Python #05: Fungsi Input dan Output di Python\n\nInteraksi antara pengguna dan program dilakukan melalui proses Masukan (*Input*) dan Keluaran (*Output*).\n\n#### 1. Fungsi `input()` untuk Membaca Masukan:\nFungsi `input()` menerima ketikan teks dari pengguna di terminal.\n> **PENTING:** Apapun yang dimasukkan melalui `input()` akan **selalu bertipe data String (`str`)**!\n```python\n# Salah jika ingin menjumlahkan angka:\na = input() # bernilai \"5\" (string)\nb = input() # bernilai \"3\" (string)\nprint(a + b) # Hasilnya \"53\" (penggabungan teks, bukan 8!)\n\n# Benar:\na = int(input())\nb = int(input())\nprint(a + b) # Hasilnya 8\n```\n\n#### 2. Membaca Banyak Nilai dalam Satu Baris:\nUntuk membaca beberapa kata/angka yang dipisahkan spasi:\n```python\nx, y = map(int, input().split())\n```\n\n#### 3. Fungsi `print()` Lanjutan:\n- **Parameter `sep` (Separator):** Pemisah antar argumen.\n  ```python\n  print(\"2026\", \"11\", \"02\", sep=\"-\") # Mencetak: 2026-11-02\n  ```\n- **Parameter `end`:** Mengganti karakter di akhir baris (bawaannya adalah ganti baris `\\n`).\n  ```python\n  print(\"Halo\", end=\" \")\n  print(\"Dunia\") # Mencetak: Halo Dunia (dalam 1 baris)\n  ```\n\n#### 4. Format String Modern (`f-string`):\nDiawali huruf `f` sebelum tanda petik, variabel dimasukkan dalam kurung kurawal `{}`:\n```python\nnama = \"Irham\"\nskor = 100\nprint(f\"Siswa {nama} meraih skor {skor}!\")\n```",
+    "lkpd_title": "LKPD #05: Sambutan Personal dengan F-String",
+    "lkpd_instructions": "Gunakan fungsi input().split() dan f-string untuk mencetak kalimat sambutan yang ramah.",
+    "lkpd_questions": "Tantangan Koding:\nDiberikan satu baris masukan yang terdiri dari dua kata (Nama Depan dan Nama Belakang) yang dipisahkan oleh spasi.\nCetaklah kalimat:\n\"Selamat datang, [Nama Depan] [Nama Belakang]!\" (tanpa tanda kutip).",
+    "require_previous": true,
+    "created_at": "2026-11-05T08:00:00.000Z"
+  },
+  {
+    "id": 6,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 6,
+    "title": "Belajar Python #06: Operator di Python",
+    "description": "Operator aritmatika (+, -, *, /, //, %, **), perbandingan (==, !=, >, <, >=, <=), dan logika (and, or, not).",
+    "estimated_time": "50 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Membaca Dua Angka A dan B\na, b = map(int, input().split())\n\n# Cetak 3 Baris:\n# 1. Hasil penjumlahan (a + b)\n# 2. Hasil pembagian bulat (a // b)\n# 3. Sisa bagi (a % b)\n\nprint(a + b)\nprint(a // b)\nprint(a % b)\n",
+    "test_cases": [
+      {
+        "input": "14 3",
+        "expected_output": "17\n4\n2",
+        "description": "Uji Angka 14 dan 3"
+      },
+      {
+        "input": "20 5",
+        "expected_output": "25\n4\n0",
+        "description": "Uji Angka 20 dan 5"
+      }
+    ],
+    "content": "### Belajar Python #06: Operator di Python\n\nOperator adalah simbol-simbol khusus yang digunakan untuk memproses nilai atau variabel.\n\n#### 1. Operator Aritmatika:\n- Penjumlahan (`+`): `10 + 5 = 15`\n- Pengurangan (`-`): `10 - 5 = 5`\n- Perkalian (`*`): `10 * 5 = 50`\n- Pembagian Riil (`/`): Selalu menghasilkan float (`7 / 2 = 3.5`)\n- **Pembagian Bulat (`//` / Floor Division):** Membuang pecahan desimal (`7 // 2 = 3`)\n- **Modulo / Sisa Bagi (`%`):** Menghasilkan sisa setelah pembagian (`7 % 2 = 1`)\n- **Eksponen / Pangkat (`**`):** `2 ** 3 = 8`\n\n#### 2. Operator Perbandingan (Relasional):\nMenghasilkan nilai boolean (`True` atau `False`):\n- Sama dengan (`==`): `5 == 5` -> `True`\n- Tidak sama dengan (`!=`): `5 != 3` -> `True`\n- Lebih besar / kecil (`>`, `<`)\n- Lebih besar/kecil sama dengan (`>=`, `<=`)\n\n#### 3. Operator Logika:\n- `and`: Bernilai `True` hanya jika **kedua** kondisi benar.\n- `or`: Bernilai `True` jika **salah satu atau kedua** kondisi benar.\n- `not`: Membalikkan nilai logika (`not True` menjadi `False`).",
+    "lkpd_title": "LKPD #06: Kalkulator Operasi Penjumlahan & Modulo",
+    "lkpd_instructions": "Implementasikan operator aritmatika penjumlahan (+), pembagian bulat (//), dan modulo (%) sesuai instruksi.",
+    "lkpd_questions": "Tantangan Koding:\nDiberikan dua bilangan bulat $A$ dan $B$ dalam satu baris yang dipisahkan spasi.\nCetak tepat 3 baris:\nBaris 1: Hasil penjumlahan $A + B$\nBaris 2: Hasil pembagian bulat $A // B$\nBaris 3: Sisa bagi $A \\% B$",
+    "require_previous": true,
+    "created_at": "2026-11-06T08:00:00.000Z"
+  },
+  {
+    "id": 7,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 7,
+    "title": "Belajar Python #07: Percabangan di Python",
+    "description": "Pengambilan keputusan algoritma menggunakan struktur if, elif, else, operator keanggotaan, dan percabangan bertingkat.",
+    "estimated_time": "50 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Menentukan Predikat Nilai Siswa\nnilai = int(input())\n\nif nilai >= 90:\n    print(\"A\")\nelif nilai >= 80:\n    print(\"B\")\nelif nilai >= 70:\n    print(\"C\")\nelse:\n    print(\"D\")\n",
+    "test_cases": [
+      {
+        "input": "95",
+        "expected_output": "A",
+        "description": "Nilai 95 -> A"
+      },
+      {
+        "input": "82",
+        "expected_output": "B",
+        "description": "Nilai 82 -> B"
+      },
+      {
+        "input": "75",
+        "expected_output": "C",
+        "description": "Nilai 75 -> C"
+      },
+      {
+        "input": "60",
+        "expected_output": "D",
+        "description": "Nilai 60 -> D"
+      }
+    ],
+    "content": "### Belajar Python #07: Percabangan di Python\n\nPercabangan (*conditional statement*) memungkinkan program menentukan jalur eksekusi yang berbeda berdasarkan kondisi tertentu.\n\n#### 1. Sintaks `if`, `elif`, dan `else`:\n```python\nnilai = int(input())\n\nif nilai >= 90:\n    print(\"Predikat: Amat Baik (A)\")\nelif nilai >= 75:\n    print(\"Predikat: Baik (B)\")\nelif nilai >= 60:\n    print(\"Predikat: Cukup (C)\")\nelse:\n    print(\"Predikat: Kurang (D)\")\n```\n\n#### 2. Urutan Evaluasi:\nPython mengevaluasi kondisi dari atas ke bawah. Begitu ada kondisi yang bernilai `True`, blok kode tersebut akan dijalankan dan seluruh sisa `elif` dan `else` di bawahnya akan dilewati.\n\n#### 3. Percabangan Bersarang (*Nested If*):\nSebuah blok `if` dapat diletakkan di dalam `if` lainnya untuk pengujian bertingkat:\n```python\nif umur >= 17:\n    if punya_sim:\n        print(\"Boleh mengemudi kendaraan\")\n    else:\n        print(\"Wajib membuat SIM terlebih dahulu\")\n```",
+    "lkpd_title": "LKPD #07: Klasifikasi Predikat Kelulusan",
+    "lkpd_instructions": "Susun struktur percabangan if-elif-else untuk mengonversi angka nilai menjadi huruf predikat A, B, C, atau D.",
+    "lkpd_questions": "Tantangan Koding:\nDiberikan satu baris masukan sebuah bilangan bulat Nilai (0 - 100).\nTentukan predikatnya:\n- Jika Nilai >= 90: cetak \"A\"\n- Jika 80 <= Nilai < 90: cetak \"B\"\n- Jika 70 <= Nilai < 80: cetak \"C\"\n- Jika Nilai < 70: cetak \"D\"",
+    "require_previous": true,
+    "created_at": "2026-11-07T08:00:00.000Z"
+  },
+  {
+    "id": 8,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 8,
+    "title": "Belajar Python #08: Perulangan di Python",
+    "description": "Konsep loop pada algoritma: perulangan for dengan range(), perulangan while, dan kontrol loop (break, continue).",
+    "estimated_time": "50 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Cetak Deret Angka 1 sampai N\nn = int(input())\n\nderet = []\nfor i in range(1, n + 1):\n    deret.append(str(i))\n\nprint(\" \".join(deret))\n",
+    "test_cases": [
+      {
+        "input": "5",
+        "expected_output": "1 2 3 4 5",
+        "description": "Deret 1 sampai 5"
+      },
+      {
+        "input": "3",
+        "expected_output": "1 2 3",
+        "description": "Deret 1 sampai 3"
+      },
+      {
+        "input": "8",
+        "expected_output": "1 2 3 4 5 6 7 8",
+        "description": "Deret 1 sampai 8"
+      }
+    ],
+    "content": "### Belajar Python #08: Perulangan di Python\n\nPerulangan (*looping*) digunakan untuk mengeksekusi blok kode yang sama berulang kali secara otomatis.\n\n#### 1. Perulangan `for` dengan Fungsi `range()`:\nFungsi `range()` menghasilkan deret urutan angka:\n- `range(5)` -> menghasilkan angka 0, 1, 2, 3, 4 (berhenti sebelum 5).\n- `range(1, 6)` -> menghasilkan angka 1, 2, 3, 4, 5.\n- `range(1, 10, 2)` -> menghasilkan angka ganjil 1, 3, 5, 7, 9 (lompat 2).\n\n```python\nfor i in range(1, 6):\n    print(f\"Perulangan ke-{i}\")\n```\n\n#### 2. Perulangan `while`:\nBerjalan selama kondisi boolean bernilai `True`:\n```python\nhitung = 1\nwhile hitung <= 5:\n    print(hitung)\n    hitung += 1\n```\n\n#### 3. Kontrol Perulangan:\n- `break`: Menghentikan paksa dan keluar dari loop seketika.\n- `continue`: Melompati sisa instruksi pada putaran saat ini dan langsung menuju putaran berikutnya.",
+    "lkpd_title": "LKPD #08: Pembuatan Deret Angka Horisontal",
+    "lkpd_instructions": "Gunakan perulangan for untuk mencetak deret bilangan dari 1 hingga N dipisahkan spasi.",
+    "lkpd_questions": "Tantangan Koding:\nDiberikan satu bilangan bulat positif $N$.\nCetaklah deret angka dari 1 sampai $N$ yang dipisahkan oleh satu spasi dalam satu baris!",
+    "require_previous": true,
+    "created_at": "2026-11-08T08:00:00.000Z"
+  },
+  {
+    "id": 9,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 9,
+    "title": "Belajar Python #09: Struktur Data List",
+    "description": "Struktur data urutan yang mutable, manipulasi elemen (append, insert, remove, pop), pengurutan, dan pemotongan (slicing).",
+    "estimated_time": "55 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Menemukan Nilai Minimum dan Maksimum dalam List\nangka_list = list(map(int, input().split()))\n\nnilai_min = min(angka_list)\nnilai_max = max(angka_list)\n\nprint(f\"{nilai_min} {nilai_max}\")\n",
+    "test_cases": [
+      {
+        "input": "5 2 9 1 7",
+        "expected_output": "1 9",
+        "description": "List [5,2,9,1,7]"
+      },
+      {
+        "input": "100 45 200 12",
+        "expected_output": "12 200",
+        "description": "List [100,45,200,12]"
+      }
+    ],
+    "content": "### Belajar Python #09: Struktur Data List\n\nList adalah struktur data bawaan Python yang paling fleksibel untuk menyimpan sekumpulan item dalam satu variabel.\n\n#### 1. Karakteristik List:\n- **Ordered (Berurutan):** Item memiliki indeks tetap dimulai dari `0`.\n- **Mutable (Bisa Diubah):** Elemen dapat ditambah, diganti, atau dihapus sewaktu-waktu.\n- Dibuat menggunakan kurung siku `[]`: `buah = [\"Apel\", \"Jeruk\", \"Mangga\"]`.\n\n#### 2. Operasi Utama pada List:\n- Menambah elemen: `buah.append(\"Pisang\")`\n- Menyisipkan elemen: `buah.insert(1, \"Anggur\")`\n- Menghapus elemen: `buah.remove(\"Jeruk\")` atau `buah.pop()`\n- Menghitung panjang: `len(buah)`\n- Mengurutkan: `buah.sort()`\n- Mencari nilai ekstrem: `min(angka)`, `max(angka)`, `sum(angka)`\n\n#### 3. Slicing List:\nMengambil sebagian elemen: `angka[1:4]` mengambil indeks 1, 2, dan 3.",
+    "lkpd_title": "LKPD #09: Pencarian Nilai Ekstrem Minimum & Maksimum",
+    "lkpd_instructions": "Gunakan struktur data list dan fungsi min/max untuk menemukan nilai terendah dan tertinggi.",
+    "lkpd_questions": "Tantangan Koding:\nDiberikan sekumpulan bilangan bulat dalam satu baris yang dipisahkan spasi.\nCetaklah nilai terkecil (minimum) dan nilai terbesar (maksimum) dari kumpulan bilangan tersebut dalam satu baris dipisahkan spasi!\nFormat: \"[MIN] [MAX]\"",
+    "require_previous": true,
+    "created_at": "2026-11-09T08:00:00.000Z"
+  },
+  {
+    "id": 10,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 10,
+    "title": "Belajar Python #10: Struktur Data Tuple",
+    "description": "Struktur data urutan yang immutable (tetap), efisiensi memori, tuple packing & unpacking, dan perbandingan dengan List.",
+    "estimated_time": "40 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Menukar Dua Nilai Menggunakan Tuple Unpacking\nkata1, kata2 = input().split()\n\n# Buat tuple dan lakukan penukaran (swap)\nt = (kata1, kata2)\nkata2, kata1 = t\n\nprint(f\"{kata1} {kata2}\")\n",
+    "test_cases": [
+      {
+        "input": "Pagi Sore",
+        "expected_output": "Sore Pagi",
+        "description": "Tukar Pagi Sore"
+      },
+      {
+        "input": "Kiri Kanan",
+        "expected_output": "Kanan Kiri",
+        "description": "Tukar Kiri Kanan"
+      }
+    ],
+    "content": "### Belajar Python #10: Struktur Data Tuple\n\nTuple sangat mirip dengan List, namun memiliki satu perbedaan paling mendasar: **Tuple bersifat Immutable (tidak dapat diubah)**.\n\n#### 1. Cara Membuat Tuple:\nTuple dibungkus menggunakan tanda kurung biasa `()`:\n```python\ntitik_koordinat = (10, 20)\nwarna_rgb = (255, 128, 0)\n```\n\n#### 2. Sifat Immutable:\nSetelah tuple dibuat, Anda **TIDAK BISA** menambah (`append`), menghapus, atau mengganti isinya:\n```python\nt = (1, 2, 3)\n# t[0] = 99 -> Akan menghasilkan TypeError: 'tuple' object does not support item assignment\n```\n\n#### 3. Mengapa Menggunakan Tuple?\n- **Keamanan Data:** Menjamin data konstan tidak sengaja diubah di bagian kode lain.\n- **Efisiensi:** Tuple lebih hemat alokasi memori dan lebih cepat dieksekusi dibanding List.\n\n#### 4. Tuple Unpacking:\nMembongkar isi tuple ke dalam beberapa variabel sekaligus:\n```python\nkoordinat = (100, 200)\nx, y = koordinat\nprint(x) # 100\nprint(y) # 200\n```",
+    "lkpd_title": "LKPD #10: Penukaran Posisi Nilai dengan Tuple Unpacking",
+    "lkpd_instructions": "Gunakan tuple packing dan unpacking untuk menukar posisi dua kata masukan.",
+    "lkpd_questions": "Tantangan Koding:\nDiberikan dua kata masukan dalam satu baris (misalnya: \"Pagi Sore\").\nTukarlah posisi kedua kata tersebut menggunakan teknik Tuple Unpacking, lalu cetak hasilnya (misalnya: \"Sore Pagi\")!",
+    "require_previous": true,
+    "created_at": "2026-11-10T08:00:00.000Z"
+  },
+  {
+    "id": 11,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 11,
+    "title": "Belajar Python #11: Struktur Data Dictionary",
+    "description": "Penyimpanan data berbasis Key-Value Pair, pencarian cepat, method dictionary (keys, values, items, get), dan manipulasi entri.",
+    "estimated_time": "55 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Kamus Kode Mata Pelajaran\nkamus_mapel = {\n    \"INF\": \"Informatika\",\n    \"MAT\": \"Matematika\",\n    \"IPA\": \"Ilmu Pengetahuan Alam\",\n    \"ING\": \"Bahasa Inggris\"\n}\n\nkode = input().strip()\nhasil = kamus_mapel.get(kode, \"Tidak Ditemukan\")\nprint(hasil)\n",
+    "test_cases": [
+      {
+        "input": "INF",
+        "expected_output": "Informatika",
+        "description": "Cari kode INF"
+      },
+      {
+        "input": "MAT",
+        "expected_output": "Matematika",
+        "description": "Cari kode MAT"
+      },
+      {
+        "input": "FIS",
+        "expected_output": "Tidak Ditemukan",
+        "description": "Cari kode FIS (Tidak ada)"
+      }
+    ],
+    "content": "### Belajar Python #11: Struktur Data Dictionary\n\nDictionary adalah struktur data yang menyimpan informasi dalam format **Pasangan Kunci dan Nilai (*Key-Value Pairs*)**.\n\n#### 1. Sintaks Dictionary:\nDibungkus dengan tanda kurung kurawal `{}`:\n```python\nsiswa = {\n    \"nis\": \"0103111392\",\n    \"nama\": \"Nathania\",\n    \"kelas\": \"X-8\",\n    \"nilai\": 95\n}\n```\n\n#### 2. Mengakses Nilai:\n- Menggunakan kurung siku: `siswa[\"nama\"]`\n- Menggunakan method `.get()`: `siswa.get(\"nama\", \"Default\")` (Lebih aman karena tidak akan memicu *KeyError* jika key tidak ada).\n\n#### 3. Menambah dan Mengubah Data:\n```python\nsiswa[\"alamat\"] = \"Jakarta\" # Menambah key baru\nsiswa[\"nilai\"] = 100       # Mengubah key yang sudah ada\n```\n\n#### 4. Iterasi Dictionary:\n```python\nfor kunci, nilai in siswa.items():\n    print(f\"{kunci}: {nilai}\")\n```",
+    "lkpd_title": "LKPD #11: Pencarian Cepat Kode Mapel dengan Dictionary",
+    "lkpd_instructions": "Gunakan dictionary dan method .get() untuk mencari nama mata pelajaran berdasarkan kode singkatnya.",
+    "lkpd_questions": "Tantangan Koding:\nDiberikan kamus kode mapel berikut:\n- \"INF\" -> \"Informatika\"\n- \"MAT\" -> \"Matematika\"\n- \"IPA\" -> \"Ilmu Pengetahuan Alam\"\n- \"ING\" -> \"Bahasa Inggris\"\n\nBacalah satu kode masukan dari pengguna. Cetak nama mata pelajarannya. Jika kode tidak terdaftar, cetak \"Tidak Ditemukan\"!",
+    "require_previous": true,
+    "created_at": "2026-11-11T08:00:00.000Z"
+  },
+  {
+    "id": 12,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 12,
+    "title": "Belajar Python #12: Fungsi di Python",
+    "description": "Mendefinisikan fungsi modular dengan def, parameter & argumen, nilai kembalian (return), default parameter, dan scope variabel.",
+    "estimated_time": "55 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Fungsi Menghitung Faktorial n!\ndef faktorial(n):\n    hasil = 1\n    for i in range(1, n + 1):\n        hasil *= i\n    return hasil\n\nangka = int(input())\nprint(faktorial(angka))\n",
+    "test_cases": [
+      {
+        "input": "5",
+        "expected_output": "120",
+        "description": "5! = 120"
+      },
+      {
+        "input": "3",
+        "expected_output": "6",
+        "description": "3! = 6"
+      },
+      {
+        "input": "0",
+        "expected_output": "1",
+        "description": "0! = 1"
+      }
+    ],
+    "content": "### Belajar Python #12: Fungsi di Python\n\nFungsi (*Function*) adalah blok kode terorganisir dan dapat digunakan kembali (*reusable*) untuk melakukan suatu tugas tertentu.\n\n#### 1. Mendefinisikan Fungsi dengan `def`:\n```python\ndef sapa_siswa(nama):\n    print(f\"Halo {nama}, selamat belajar!\")\n\n# Memanggil fungsi:\nsapa_siswa(\"Budi\")\n```\n\n#### 2. Nilai Kembalian (`return`):\nGunakan kata kunci `return` untuk mengembalikan hasil perhitungan dari fungsi ke pemanggil:\n```python\ndef hitung_persegi_panjang(panjang, lebar):\n    luas = panjang * lebar\n    return luas\n\nhasil = hitung_persegi_panjang(10, 5)\nprint(hasil) # 50\n```\n\n#### 3. Parameter Bawaan (*Default Parameter*):\n```python\ndef hitung_pangkat(basis, eksponen=2):\n    return basis ** eksponen\n\nprint(hitung_pangkat(5))    # 25 (eksponen default 2)\nprint(hitung_pangkat(2, 3)) # 8\n```",
+    "lkpd_title": "LKPD #12: Pembuatan Fungsi Perhitungan Faktorial",
+    "lkpd_instructions": "Rancang fungsi bernama faktorial(n) dengan kata kunci def dan return value yang akurat.",
+    "lkpd_questions": "Tantangan Koding:\nBuatlah sebuah fungsi bernama `faktorial(n)` yang menerima satu bilangan bulat non-negatif $n$ dan mengembalikan nilai $n!$ ($n$ faktorial).\nCatatan: $0! = 1$, dan $5! = 5 \\times 4 \\times 3 \\times 2 \\times 1 = 120$.\nBaca masukan $N$ dan cetak hasil pemanggilan fungsi `faktorial(N)`!",
+    "require_previous": true,
+    "created_at": "2026-11-12T08:00:00.000Z"
+  },
+  {
+    "id": 13,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 13,
+    "title": "Belajar Python #13: Fungsi Lambda di Python",
+    "description": "Fungsi anonim satu baris (Anonymous Function), sintaks lambda arg: expr, serta integrasi dengan higher-order function map() dan filter().",
+    "estimated_time": "50 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Menyaring Angka Genap dengan Lambda & Filter\nangka_list = list(map(int, input().split()))\n\n# Gunakan lambda untuk menyaring angka genap:\ngenap = list(filter(lambda x: x % 2 == 0, angka_list))\n\nprint(\" \".join(map(str, genap)))\n",
+    "test_cases": [
+      {
+        "input": "1 2 3 4 5 6 7 8",
+        "expected_output": "2 4 6 8",
+        "description": "Filter Genap 1-8"
+      },
+      {
+        "input": "10 15 20 25",
+        "expected_output": "10 20",
+        "description": "Filter Genap [10,15,20,25]"
+      }
+    ],
+    "content": "### Belajar Python #13: Fungsi Lambda di Python\n\nFungsi Lambda adalah fungsi kecil tanpa nama (*anonymous function*) yang hanya dapat memiliki **satu baris ekspresi**.\n\n#### 1. Sintaks Lambda:\n```python\nlambda argumen: ekspresi\n```\nPerbandingan dengan fungsi biasa:\n```python\n# Fungsi Biasa:\ndef kuadrat(x):\n    return x ** 2\n\n# Fungsi Lambda:\nkuadrat_lambda = lambda x: x ** 2\n\nprint(kuadrat_lambda(5)) # 25\n```\n\n#### 2. Kapan Menggunakan Lambda?\nLambda sangat berguna sebagai argumen sementara untuk fungsi bawaan tingkat tinggi seperti:\n- **`filter(fungsi, iterable)`:** Menyaring elemen yang menghasilkan nilai `True`.\n  ```python\n  angka = [1, 2, 3, 4, 5, 6]\n  genap = list(filter(lambda x: x % 2 == 0, angka)) # [2, 4, 6]\n  ```\n- **`map(fungsi, iterable)`:** Mentransformasi seluruh elemen list.\n  ```python\n  kali_dua = list(map(lambda x: x * 2, angka)) # [2, 4, 6, 8, 10, 12]\n  ```",
+    "lkpd_title": "LKPD #13: Penyaringan Data dengan Lambda & Filter",
+    "lkpd_instructions": "Gunakan fungsi lambda bersama filter() untuk mengekstrak hanya bilangan genap dari sekumpulan angka.",
+    "lkpd_questions": "Tantangan Koding:\nDiberikan sekumpulan bilangan bulat dalam satu baris masukan yang dipisahkan spasi.\nGunakan ekspresi `lambda` bersama fungsi `filter()` untuk mengambil semua bilangan GENAP saja.\nCetak bilangan-bilangan genap tersebut dalam satu baris dipisahkan spasi!",
+    "require_previous": true,
+    "created_at": "2026-11-13T08:00:00.000Z"
+  },
+  {
+    "id": 14,
+    "class_id": 1,
+    "class_name": "X-8",
+    "subject_id": 7,
+    "subject_name": "INFORMATIKA",
+    "order_index": 14,
+    "title": "Belajar Python #14: Apa Maksud dari *args dan **kwargs pada Python?",
+    "description": "Parameter fleksibel variadic arguments: *args untuk argumen posisi dinamis (Tuple) dan **kwargs untuk keyword arguments dinamis (Dictionary).",
+    "estimated_time": "55 Menit",
+    "video_url": "",
+    "file_url": "",
+    "has_code_playground": true,
+    "is_coding_task": true,
+    "is_tlx_style": true,
+    "code_language": "python",
+    "starter_code": "# Menghitung Rata-rata dari Sejumlah Argumen Dinamis\ndef hitung_rata_rata(*args):\n    total = sum(args)\n    banyak = len(args)\n    rata = total / banyak\n    if rata.is_integer():\n        return int(rata)\n    return round(rata, 2)\n\nangka_input = list(map(int, input().split()))\nprint(hitung_rata_rata(*angka_input))\n",
+    "test_cases": [
+      {
+        "input": "10 20 30",
+        "expected_output": "20",
+        "description": "Rata-rata 10, 20, 30"
+      },
+      {
+        "input": "4 8 12 16",
+        "expected_output": "10",
+        "description": "Rata-rata 4, 8, 12, 16"
+      },
+      {
+        "input": "5 7",
+        "expected_output": "6",
+        "description": "Rata-rata 5, 7"
+      }
+    ],
+    "content": "### Belajar Python #14: Apa Maksud dari *args dan **kwargs pada Python?\n\nTerkadang kita perlu membuat fungsi yang dapat menerima jumlah argumen yang fleksibel dan tidak pasti jumlahnya. Di sinilah peran tanda bintang (`*` dan `**`).\n\n#### 1. Apa itu `*args` (Arbitrary Positional Arguments)?\nTanda satu bintang (`*`) mengumpulkan seluruh argumen posisi tambahan ke dalam bentuk **Tuple**:\n```python\ndef jumlahkan(*args):\n    # args bertindak sebagai Tuple\n    total = 0\n    for angka in args:\n        total += angka\n    return total\n\nprint(jumlahkan(1, 2))          # 3\nprint(jumlahkan(1, 2, 3, 4, 5)) # 15\n```\n\n#### 2. Apa itu `**kwargs` (Arbitrary Keyword Arguments)?\nTanda dua bintang (`**`) mengumpulkan seluruh argumen bernama (*key=value*) ke dalam bentuk **Dictionary**:\n```python\ndef info_peserta(**kwargs):\n    # kwargs bertindak sebagai Dictionary\n    for k, v in kwargs.items():\n        print(f\"{k} = {v}\")\n\ninfo_peserta(nama=\"Rizky\", kelas=\"X-8\", kota=\"Bandung\")\n```\n\n#### 3. Aturan Urutan Parameter dalam Fungsi:\nJika digabungkan, urutan penulisan parameter yang benar adalah:\n1. Parameter Biasa (*Standard arguments*)\n2. `*args`\n3. Parameter Default (*Default arguments*)\n4. `**kwargs`\n\n```python\ndef super_fungsi(a, b, *args, status=True, **kwargs):\n    pass\n```",
+    "lkpd_title": "LKPD #14: Implementasi Fungsi Rata-Rata Dinamis dengan *args",
+    "lkpd_instructions": "Rancang fungsi hitung_rata_rata(*args) yang mampu memproses argumen berapapun banyaknya menggunakan konsep tuple packing.",
+    "lkpd_questions": "Tantangan Koding:\nBuatlah sebuah fungsi bernama `hitung_rata_rata(*args)` yang menerima sejumlah angka berapapun melalui parameter variadik `*args`.\nFungsi harus menghitung jumlah total dibagi banyaknya angka, dan mengembalikan hasilnya.\nDiberikan sekumpulan angka dalam satu baris masukan yang dipisahkan spasi. Panggil fungsi `hitung_rata_rata(*angka)` dan cetak nilainya!",
+    "require_previous": true,
+    "created_at": "2026-11-14T08:00:00.000Z"
   }
 ];
 
@@ -4825,25 +5051,9 @@ function getStored(key, fallback) {
         if (!found) {
           parsed.push(item);
           updated = true;
-        } else {
-          if (item.is_tlx_style) {
-            found.is_tlx_style = item.is_tlx_style;
-            found.tlx_problems = item.tlx_problems;
-            updated = true;
-          }
-          if (item.has_code_playground && !found.has_code_playground) {
-            // Sync coding playground flags and starter code if outdated
-            found.has_code_playground = item.has_code_playground;
-            found.is_coding_task = item.is_coding_task;
-            found.code_language = item.code_language;
-            found.starter_code = item.starter_code;
-            found.test_cases = item.test_cases;
-            found.content = item.content;
-            found.lkpd_title = item.lkpd_title;
-            found.lkpd_questions = item.lkpd_questions;
-            found.lkpd_instructions = item.lkpd_instructions;
-            updated = true;
-          }
+        } else if (found.title !== item.title) {
+          Object.assign(found, item);
+          updated = true;
         }
       });
       if (updated) {
