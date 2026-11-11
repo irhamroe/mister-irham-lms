@@ -26,11 +26,20 @@ import {
   RefreshCw,
   X,
   Check,
-  MessageSquare
+  MessageSquare,
+  Code2,
+  Terminal,
+  Play,
+  AlertTriangle,
+  XCircle,
+  CheckSquare,
+  RotateCcw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/AlertContext';
 import { api } from '../services/api';
+import CodePlayground from '../components/CodePlayground';
+import { evaluateLkpdCode, LANGUAGE_CONFIG } from '../services/codeRunnerService';
 
 export default function MaterialsView() {
   const { user } = useAuth();
@@ -57,6 +66,12 @@ export default function MaterialsView() {
   const [isSubmittingLkpd, setIsSubmittingLkpd] = useState(false);
   const [isMarkingRead, setIsMarkingRead] = useState(false);
 
+  // Student Coding LKPD State
+  const [studentCodeLang, setStudentCodeLang] = useState('python');
+  const [studentCode, setStudentCode] = useState('');
+  const [isTestingCode, setIsTestingCode] = useState(false);
+  const [codeEvaluationResult, setCodeEvaluationResult] = useState(null); // { allPassed, results, firstError }
+
   // Teacher Create / Edit Material Modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState(null);
@@ -70,6 +85,11 @@ export default function MaterialsView() {
     video_url: '',
     file_url: '',
     content: '',
+    has_code_playground: true,
+    is_coding_task: false,
+    code_language: 'python',
+    starter_code: '',
+    test_cases: [],
     lkpd_title: '',
     lkpd_instructions: '',
     lkpd_questions: '',
@@ -171,6 +191,12 @@ export default function MaterialsView() {
     }
     setStudyModal(material);
     setStudyTab('content');
+
+    const defaultLang = material.code_language || 'python';
+    setStudentCodeLang(defaultLang);
+    setStudentCode(material.starter_code || LANGUAGE_CONFIG[defaultLang]?.defaultCode || '');
+    setCodeEvaluationResult(null);
+
     if (material.my_submission) {
       setLkpdAnswer(material.my_submission.answer_text || '');
       setLkpdFileUrl(material.my_submission.file_url || '');
@@ -186,7 +212,6 @@ export default function MaterialsView() {
     try {
       await api.markMaterialRead(materialId);
       showToast('success', 'Materi berhasil ditandai telah dipelajari!');
-      // Update local state
       setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, is_read: true } : m));
       if (studyModal && studyModal.id === materialId) {
         setStudyModal(prev => ({ ...prev, is_read: true }));
@@ -198,23 +223,66 @@ export default function MaterialsView() {
     }
   }
 
+  // Helper: Student tests LKPD code against test cases
+  async function handleTestLkpdCode() {
+    if (isTestingCode || !studyModal) return;
+    setIsTestingCode(true);
+    setCodeEvaluationResult(null);
+
+    try {
+      const testCases = studyModal.test_cases || [];
+      const evalRes = await evaluateLkpdCode({
+        language: studentCodeLang,
+        code: studentCode,
+        testCases
+      });
+      setCodeEvaluationResult(evalRes);
+
+      if (evalRes.allPassed) {
+        showToast('success', '🎉 Luar biasa! Kode Anda lolos seluruh pengujian tanpa error!');
+        // Automatically put code into lkpdAnswer
+        const formattedAnswer = `/* KODE SOLUSI LKPD (${studentCodeLang.toUpperCase()}) */\n\n${studentCode}`;
+        setLkpdAnswer(formattedAnswer);
+      } else {
+        showToast('error', evalRes.firstError || 'Kode Anda masih menghasilkan output yang salah atau error.');
+      }
+    } catch (err) {
+      setCodeEvaluationResult({
+        allPassed: false,
+        results: [],
+        firstError: `Error pengujian: ${err.message}`
+      });
+      showToast('error', 'Error saat menguji kode: ' + err.message);
+    } finally {
+      setIsTestingCode(false);
+    }
+  }
+
   // Helper: Student submits LKPD
   async function handleSubmitLkpd(e) {
     e.preventDefault();
     if (!studyModal) return;
-    if (!lkpdAnswer.trim() && !lkpdFileUrl.trim()) {
-      showToast('warning', 'Silakan isi teks jawaban atau lampirkan link Google Drive LKPD!');
+
+    let finalAnswer = lkpdAnswer;
+    if (studyModal.is_coding_task) {
+      // If code was tested, make sure answer has the code
+      if (!finalAnswer.trim() && studentCode.trim()) {
+        finalAnswer = `/* KODE SOLUSI LKPD (${studentCodeLang.toUpperCase()}) */\n\n${studentCode}`;
+      }
+    }
+
+    if (!finalAnswer.trim() && !lkpdFileUrl.trim()) {
+      showToast('warning', 'Silakan isi teks jawaban koding atau lampirkan link dokumen LKPD!');
       return;
     }
 
     setIsSubmittingLkpd(true);
     try {
       const res = await api.submitLkpd(studyModal.id, {
-        answer_text: lkpdAnswer,
+        answer_text: finalAnswer,
         file_url: lkpdFileUrl
       });
       showToast('success', res.message || 'LKPD berhasil dikumpulkan! Materi berikutnya telah terbuka.');
-      // Refresh materials so sequential lock updates immediately
       await loadMaterials();
       setStudyModal(prev => ({
         ...prev,
@@ -244,6 +312,11 @@ export default function MaterialsView() {
         video_url: m.video_url || '',
         file_url: m.file_url || '',
         content: m.content || '',
+        has_code_playground: m.has_code_playground !== false,
+        is_coding_task: Boolean(m.is_coding_task),
+        code_language: m.code_language || 'python',
+        starter_code: m.starter_code || '',
+        test_cases: Array.isArray(m.test_cases) ? m.test_cases : [],
         lkpd_title: m.lkpd_title || '',
         lkpd_instructions: m.lkpd_instructions || '',
         lkpd_questions: m.lkpd_questions || '',
@@ -253,18 +326,33 @@ export default function MaterialsView() {
       setEditingMaterial(null);
       const nextIndex = materials.length > 0 ? Math.max(...materials.map(x => Number(x.order_index) || 0)) + 1 : 1;
       setMaterialForm({
-        title: `Bab ${nextIndex}: `,
+        title: `Bab ${nextIndex}: Algoritma & Pemrograman`,
         order_index: nextIndex,
         class_id: selectedClassId || (classesList[0]?.id.toString() || '1'),
         subject_id: selectedSubjectId || (subjectsList[0]?.id.toString() || '7'),
-        description: '',
-        estimated_time: '45 Menit',
+        description: 'Mempelajari logika pemrograman terstruktur dan pengujian program interaktif.',
+        estimated_time: '60 Menit',
         video_url: '',
         file_url: '',
-        content: '',
-        lkpd_title: `LKPD ${nextIndex}: `,
-        lkpd_instructions: 'Bacalah permasalahan di atas, lalu tuliskan solusi atau analisis Anda secara mandiri.',
-        lkpd_questions: '1. Jelaskan pemahaman Anda mengenai materi ini!\n2. Bagaimana penerapannya pada studi kasus nyata?',
+        content: `### Algoritma dan Pemrograman
+Algoritma adalah langkah logis penyelesaian masalah secara sistematis. Pelajari struktur sintaks, percabangan if-else, dan perulangan.`,
+        has_code_playground: true,
+        is_coding_task: true,
+        code_language: 'python',
+        starter_code: `# Tuliskan program Anda di sini:
+angka = int(input())
+
+if angka % 2 == 0:
+    print("GENAP")
+else:
+    print("GANJIL")`,
+        test_cases: [
+          { input: '8', expected_output: 'GENAP', description: 'Uji Coba Angka 8 (Genap)' },
+          { input: '15', expected_output: 'GANJIL', description: 'Uji Coba Angka 15 (Ganjil)' }
+        ],
+        lkpd_title: `LKPD ${nextIndex}: Praktik Koding & Uji Algoritma`,
+        lkpd_instructions: 'Kerjakan tantangan koding berikut secara mandiri menggunakan compiler yang disediakan. Program Anda harus lolos seluruh kasus uji.',
+        lkpd_questions: 'Buatlah program yang membaca masukan sebuah bilangan bulat, lalu mencetak "GENAP" jika bilangan genap atau "GANJIL" jika bilangan ganjil.',
         require_previous: true
       });
     }
@@ -351,7 +439,6 @@ export default function MaterialsView() {
       });
       showToast('success', 'Nilai dan masukan LKPD berhasil disimpan!');
       setGradingSubmission(null);
-      // Refresh submissions list
       if (activeMaterialForSubmissions) {
         const updated = await api.getMaterialSubmissions(activeMaterialForSubmissions.id);
         setSubmissionsList(updated);
@@ -497,8 +584,8 @@ export default function MaterialsView() {
               Progres Pembelajaran Anda: {studentCompletedMaterials} dari {studentTotalMaterials} Bab Selesai
             </h3>
             <p style={{ fontSize: '0.84rem', opacity: 0.92, maxWidth: 540, margin: 0, lineHeight: 1.4 }}>
-              Setiap bab memiliki ringkasan materi dan Lembar Kerja Peserta Didik (LKPD). 
-              <strong> Selesaikan materi & kerjakan LKPD pada bab sebelumnya</strong> untuk membuka bab berikutnya secara otomatis!
+              Setiap bab memiliki ringkasan materi, compiler interaktif C++ / Python, dan LKPD.
+              <strong> Selesaikan materi & tuntaskan LKPD pada bab sebelumnya</strong> untuk membuka bab berikutnya secara otomatis!
             </p>
           </div>
 
@@ -545,11 +632,9 @@ export default function MaterialsView() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {materials.map((mat, index) => {
+              {materials.map((mat) => {
                 const isUnlocked = isTeacher || mat.is_unlocked;
                 const isCompleted = mat.is_completed;
-                const isRead = mat.is_read;
-                const hasSubmission = mat.is_lkpd_submitted;
 
                 return (
                   <div
@@ -570,7 +655,6 @@ export default function MaterialsView() {
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
                       {/* Left: Icon & Info */}
                       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flex: 1, minWidth: 280 }}>
-                        {/* Status Icon */}
                         <div style={{
                           width: 48,
                           height: 48,
@@ -599,7 +683,6 @@ export default function MaterialsView() {
                           )}
                         </div>
 
-                        {/* Title and metadata */}
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                             <span className="badge badge-primary" style={{ fontWeight: 800 }}>
@@ -614,6 +697,13 @@ export default function MaterialsView() {
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                               <Clock size={13} /> {mat.estimated_time || '45 Menit'}
                             </span>
+
+                            {/* Compiler badge if present */}
+                            {(mat.has_code_playground || mat.is_coding_task) && (
+                              <span className="badge" style={{ background: '#0f172a', color: '#38bdf8', fontSize: '0.74rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <Code2 size={12} /> Compiler C++ & Python
+                              </span>
+                            )}
 
                             {/* Status Pill for Student */}
                             {!isTeacher && (
@@ -648,7 +738,6 @@ export default function MaterialsView() {
                             {mat.description || 'Pelajari konsep materi ini secara mendalam dan tuntaskan lembar kerja yang diberikan.'}
                           </p>
 
-                          {/* Lock warning note if locked */}
                           {!isUnlocked && !isTeacher && (
                             <div style={{
                               display: 'inline-flex',
@@ -667,7 +756,6 @@ export default function MaterialsView() {
                             </div>
                           )}
 
-                          {/* Teacher Summary Counts */}
                           {isTeacher && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8, fontSize: '0.8rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                               <span>📖 Dibaca: <strong>{mat.read_count || 0}</strong> siswa</span>
@@ -681,7 +769,6 @@ export default function MaterialsView() {
 
                       {/* Right: Action Buttons */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        {/* Student Main Action */}
                         {!isTeacher && (
                           <button
                             type="button"
@@ -700,7 +787,6 @@ export default function MaterialsView() {
                           </button>
                         )}
 
-                        {/* Teacher Actions */}
                         {isTeacher && (
                           <>
                             <button
@@ -855,7 +941,7 @@ export default function MaterialsView() {
         <div className="modal-overlay" onClick={() => setStudyModal(null)}>
           <div
             className="modal-container"
-            style={{ maxWidth: 860, width: '95%', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}
+            style={{ maxWidth: 940, width: '96%', maxHeight: '94vh', display: 'flex', flexDirection: 'column' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -865,6 +951,11 @@ export default function MaterialsView() {
                   <span className="badge badge-primary" style={{ fontWeight: 800 }}>Bab {studyModal.order_index}</span>
                   <span className="badge badge-neutral">{studyModal.subject_name || 'INFORMATIKA'}</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}><Clock size={12} /> {studyModal.estimated_time}</span>
+                  {(studyModal.has_code_playground || studyModal.is_coding_task) && (
+                    <span className="badge" style={{ background: '#0f172a', color: '#38bdf8', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Code2 size={12} /> Compiler C++ & Python
+                    </span>
+                  )}
                 </div>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
                   {studyModal.title}
@@ -976,6 +1067,29 @@ export default function MaterialsView() {
                     </div>
                   )}
 
+                  {/* INTERACTIVE IN-LESSON COMPILER PLAYGROUND */}
+                  {(studyModal.has_code_playground || studyModal.is_coding_task) && (
+                    <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1.5px dashed var(--border-color)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <div>
+                          <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Code2 size={20} color="var(--primary)" /> Compiler Interaktif (C++ & Python)
+                          </h4>
+                          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 2, marginBottom: 0 }}>
+                            Silakan coba, modifikasi, dan jalankan kode di bawah ini secara langsung untuk memahami konsep algoritma.
+                          </p>
+                        </div>
+                      </div>
+
+                      <CodePlayground
+                        initialLanguage={studyModal.code_language || 'python'}
+                        initialCode={studyModal.starter_code || ''}
+                        title={`Taman Bermain Koding: ${studyModal.title}`}
+                        height="300px"
+                      />
+                    </div>
+                  )}
+
                   {/* Bottom Action for Content */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--border-color)', flexWrap: 'wrap', gap: 10 }}>
                     {!studyModal.is_read ? (
@@ -1017,19 +1131,229 @@ export default function MaterialsView() {
                       <FileText size={18} /> {studyModal.lkpd_title || 'Lembar Kerja Peserta Didik'}
                     </h4>
                     <p style={{ fontSize: '0.84rem', color: '#15803d', margin: 0, lineHeight: 1.5 }}>
-                      {studyModal.lkpd_instructions || 'Kerjakan tugas LKPD di bawah ini secara mandiri untuk menguji pemahaman Anda. Setelah dikirim, materi bab berikutnya akan terbuka otomatis.'}
+                      {studyModal.lkpd_instructions || 'Kerjakan tugas LKPD di bawah ini secara mandiri. Setelah dikirim, materi bab berikutnya akan terbuka otomatis.'}
                     </p>
                   </div>
 
                   {/* LKPD Questions Box */}
                   <div style={{ background: 'white', padding: 18, borderRadius: 8, border: '1.5px solid #e2e8f0', marginBottom: 20 }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: 8 }}>
-                      Soal / Instruksi LKPD:
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <CheckSquare size={16} color="var(--primary)" /> Soal / Tantangan LKPD:
                     </div>
                     <div style={{ fontSize: '0.92rem', color: '#334155', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
                       {studyModal.lkpd_questions || 'Tidak ada butir pertanyaan spesifik. Silakan tuliskan ringkasan pemahaman Anda.'}
                     </div>
                   </div>
+
+                  {/* LKPD CODING CHALLENGE COMPILER SECTION */}
+                  {studyModal.is_coding_task && !studyModal.my_submission && (
+                    <div style={{ marginBottom: 24 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Terminal size={18} color="#0284c7" />
+                          Editor Koding LKPD & Auto-Tester ({studentCodeLang.toUpperCase()})
+                        </div>
+
+                        {/* Language Selector for LKPD */}
+                        <div style={{ display: 'inline-flex', background: '#f1f5f9', borderRadius: 6, padding: 2 }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStudentCodeLang('python');
+                              if (!studentCode || studentCode.includes('#include')) {
+                                setStudentCode(studyModal.starter_code || LANGUAGE_CONFIG.python.defaultCode);
+                              }
+                            }}
+                            style={{
+                              padding: '3px 10px',
+                              borderRadius: 4,
+                              border: 'none',
+                              background: studentCodeLang === 'python' ? 'var(--primary)' : 'transparent',
+                              color: studentCodeLang === 'python' ? 'white' : '#64748b',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Python 3
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStudentCodeLang('cpp');
+                              if (!studentCode || !studentCode.includes('#include')) {
+                                setStudentCode(studyModal.starter_code || LANGUAGE_CONFIG.cpp.defaultCode);
+                              }
+                            }}
+                            style={{
+                              padding: '3px 10px',
+                              borderRadius: 4,
+                              border: 'none',
+                              background: studentCodeLang === 'cpp' ? 'var(--primary)' : 'transparent',
+                              color: studentCodeLang === 'cpp' ? 'white' : '#64748b',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            C++ (GCC)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Code Editor */}
+                      <div style={{
+                        background: '#0f172a',
+                        borderRadius: 8,
+                        border: '1.5px solid #334155',
+                        overflow: 'hidden',
+                        marginBottom: 12
+                      }}>
+                        <div style={{ background: '#1e293b', padding: '8px 14px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontFamily: 'monospace' }}>
+                            solution.{studentCodeLang === 'cpp' ? 'cpp' : 'py'}
+                          </span>
+                          <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                            Ketikkan solusi koding Anda di bawah ini
+                          </span>
+                        </div>
+                        <textarea
+                          rows={10}
+                          style={{
+                            width: '100%',
+                            background: '#090d16',
+                            color: '#f8fafc',
+                            border: 'none',
+                            outline: 'none',
+                            padding: '12px 16px',
+                            fontFamily: 'Consolas, "Fira Code", monospace',
+                            fontSize: '0.88rem',
+                            lineHeight: 1.6,
+                            tabSize: 4
+                          }}
+                          value={studentCode}
+                          onChange={(e) => setStudentCode(e.target.value)}
+                          placeholder={`// Tuliskan kode program ${studentCodeLang.toUpperCase()} Anda...`}
+                        />
+                      </div>
+
+                      {/* Run / Test Button */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          Klik tombol di sebelah kanan untuk menguji apakah program Anda benar dan bebas error.
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={handleTestLkpdCode}
+                          disabled={isTestingCode}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontWeight: 800,
+                            padding: '8px 18px',
+                            background: '#0284c7',
+                            borderColor: '#0284c7'
+                          }}
+                        >
+                          <Play size={15} fill="white" />
+                          {isTestingCode ? 'Menguji & Memeriksa Kode...' : '▶ Uji & Jalankan Kode LKPD'}
+                        </button>
+                      </div>
+
+                      {/* EVALUATION RESULTS & ERROR ALERTS */}
+                      {codeEvaluationResult && (
+                        <div style={{ marginBottom: 18 }}>
+                          {/* 1. ALERT IF CODE HAS COMPILATION OR LOGIC ERRORS */}
+                          {!codeEvaluationResult.allPassed ? (
+                            <div style={{
+                              background: '#fef2f2',
+                              border: '1.5px solid #ef4444',
+                              borderRadius: 8,
+                              padding: 16,
+                              color: '#991b1b',
+                              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.15)'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.98rem', fontWeight: 800, marginBottom: 6 }}>
+                                <XCircle size={20} color="#dc2626" />
+                                <span>⚠️ Peringatan: Kode Anda Masih Mengalami Kesalahan!</span>
+                              </div>
+                              <p style={{ fontSize: '0.85rem', margin: '0 0 10px 0', lineHeight: 1.5, color: '#7f1d1d' }}>
+                                Program belum berhasil melewati pengujian. Periksa kembali sintaks, variabel, atau logika percabangan/perulangan Anda:
+                              </p>
+
+                              {/* Error Explanation Box */}
+                              <div style={{
+                                background: '#450a0a',
+                                color: '#fecaca',
+                                padding: 12,
+                                borderRadius: 6,
+                                fontFamily: 'Consolas, monospace',
+                                fontSize: '0.82rem',
+                                whiteSpace: 'pre-line',
+                                lineHeight: 1.5,
+                                marginBottom: 12
+                              }}>
+                                {codeEvaluationResult.firstError}
+                              </div>
+
+                              {/* Test Cases Comparison Details */}
+                              {codeEvaluationResult.results && codeEvaluationResult.results.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#991b1b' }}>
+                                    Detail Hasil Kasus Uji:
+                                  </div>
+                                  {codeEvaluationResult.results.map((res, i) => (
+                                    <div key={i} style={{
+                                      background: res.passed ? '#f0fdf4' : '#fee2e2',
+                                      border: `1px solid ${res.passed ? '#86efac' : '#fca5a5'}`,
+                                      borderRadius: 6,
+                                      padding: '8px 12px',
+                                      fontSize: '0.82rem'
+                                    }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <strong>{res.description}</strong>
+                                        <span className={`badge ${res.passed ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.72rem' }}>
+                                          {res.passed ? '✓ Lolos' : '✗ Salah'}
+                                        </span>
+                                      </div>
+                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: '0.78rem' }}>
+                                        <div>Masukan (Input): <code style={{ color: '#0f172a' }}>{res.input}</code></div>
+                                        <div>Output Diharapkan: <code style={{ color: '#166534', fontWeight: 700 }}>{res.expectedOutput}</code></div>
+                                        <div style={{ gridColumn: 'span 2' }}>
+                                          Output Kode Anda: <code style={{ color: res.passed ? '#166534' : '#b91c1c', fontWeight: 700 }}>{res.actualOutput}</code>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            /* 2. ALERT IF ALL TESTS PASSED SUCCESSFULLY */
+                            <div style={{
+                              background: '#f0fdf4',
+                              border: '1.5px solid #10b981',
+                              borderRadius: 8,
+                              padding: 16,
+                              color: '#065f46',
+                              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '1rem', fontWeight: 800, marginBottom: 4 }}>
+                                <CheckCircle2 size={22} color="#059669" />
+                                <span>🎉 Luar Biasa! Kode Anda Lolos Seluruh Pengujian & Bebas Error!</span>
+                              </div>
+                              <p style={{ fontSize: '0.85rem', margin: 0, lineHeight: 1.5 }}>
+                                Program telah berhasil dieksekusi dengan benar dan menghasilkan output yang tepat untuk seluruh kasus uji. 
+                                Kode Anda telah disalin secara otomatis ke formulir pengumpulan. Silakan klik tombol <strong>"Kirim Jawaban LKPD"</strong> di bawah untuk menuntaskan materi ini!
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Submission Form / Status */}
                   {studyModal.my_submission ? (
@@ -1054,8 +1378,10 @@ export default function MaterialsView() {
                       </div>
 
                       <div style={{ background: 'white', padding: 12, borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.88rem', whiteSpace: 'pre-line', marginBottom: 10 }}>
-                        <strong>Jawaban Anda:</strong>
-                        <div style={{ marginTop: 4 }}>{studyModal.my_submission.answer_text}</div>
+                        <strong>Jawaban / Solusi Kode Anda:</strong>
+                        <div style={{ marginTop: 4, fontFamily: studyModal.is_coding_task ? 'monospace' : 'inherit' }}>
+                          {studyModal.my_submission.answer_text}
+                        </div>
                       </div>
 
                       {studyModal.my_submission.file_url && (
@@ -1082,15 +1408,16 @@ export default function MaterialsView() {
                     <form onSubmit={handleSubmitLkpd}>
                       <div className="form-group" style={{ marginBottom: 16 }}>
                         <label className="form-label" style={{ fontWeight: 700 }}>
-                          Lembar Jawaban / Analisis LKPD Anda <span style={{ color: '#ef4444' }}>*</span>
+                          {studyModal.is_coding_task ? 'Solusi Kode & Uraian Jawaban LKPD Anda' : 'Lembar Jawaban / Analisis LKPD Anda'} <span style={{ color: '#ef4444' }}>*</span>
                         </label>
                         <textarea
                           className="form-control"
                           rows={6}
-                          placeholder="Ketik jawaban lengkap dan uraian pemecahan masalah Anda di sini..."
+                          placeholder={studyModal.is_coding_task ? 'Ketikkan atau uji kode program Anda di atas untuk mengisi jawaban ini...' : 'Ketik jawaban lengkap dan uraian pemecahan masalah Anda di sini...'}
                           value={lkpdAnswer}
                           onChange={(e) => setLkpdAnswer(e.target.value)}
                           required
+                          style={{ fontFamily: studyModal.is_coding_task ? 'Consolas, monospace' : 'inherit' }}
                         />
                       </div>
 
@@ -1136,7 +1463,7 @@ export default function MaterialsView() {
         <div className="modal-overlay" onClick={() => !isSavingMaterial && setShowCreateModal(false)}>
           <div
             className="modal-container"
-            style={{ maxWidth: 780, width: '95%', maxHeight: '92vh', overflowY: 'auto' }}
+            style={{ maxWidth: 840, width: '95%', maxHeight: '92vh', overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -1201,7 +1528,7 @@ export default function MaterialsView() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Contoh: Bab 1: Fondasi Berpikir Komputasional"
+                    placeholder="Contoh: Bab 2: Algoritma dan Pemrograman Dasar"
                     value={materialForm.title}
                     onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })}
                     required
@@ -1225,7 +1552,7 @@ export default function MaterialsView() {
                     <input
                       type="text"
                       className="form-control"
-                      placeholder="Contoh: 45 Menit"
+                      placeholder="Contoh: 60 Menit"
                       value={materialForm.estimated_time}
                       onChange={(e) => setMaterialForm({ ...materialForm, estimated_time: e.target.value })}
                     />
@@ -1268,6 +1595,61 @@ export default function MaterialsView() {
                   </div>
                 </div>
 
+                {/* CODING & COMPILER OPTIONS */}
+                <div style={{ padding: 14, background: '#f8fafc', borderRadius: 8, border: '1.5px solid #cbd5e1' }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Code2 size={18} color="var(--primary)" /> Pengaturan Compiler C++ & Python
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>
+                      <input
+                        type="checkbox"
+                        checked={materialForm.has_code_playground}
+                        onChange={(e) => setMaterialForm({ ...materialForm, has_code_playground: e.target.checked })}
+                      />
+                      <span>Tampilkan Kotak Compiler Interaktif pada Konten Materi Pembelajaran</span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>
+                      <input
+                        type="checkbox"
+                        checked={materialForm.is_coding_task}
+                        onChange={(e) => setMaterialForm({ ...materialForm, is_coding_task: e.target.checked })}
+                      />
+                      <span>Gunakan Compiler Koding & Auto-Tester pada LKPD ini</span>
+                    </label>
+                  </div>
+
+                  {materialForm.is_coding_task && (
+                    <div style={{ background: 'white', padding: 12, borderRadius: 6, border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.8rem' }}>Bahasa Utama Tantangan Koding:</label>
+                        <select
+                          className="form-control"
+                          value={materialForm.code_language}
+                          onChange={(e) => setMaterialForm({ ...materialForm, code_language: e.target.value })}
+                        >
+                          <option value="python">Python 3</option>
+                          <option value="cpp">C++ (GCC)</option>
+                        </select>
+                      </div>
+
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.8rem' }}>Starter Code (Template Awal Siswa):</label>
+                        <textarea
+                          rows={4}
+                          className="form-control"
+                          style={{ fontFamily: 'Consolas, monospace', fontSize: '0.82rem' }}
+                          value={materialForm.starter_code}
+                          onChange={(e) => setMaterialForm({ ...materialForm, starter_code: e.target.value })}
+                          placeholder="# Tuliskan kerangka kode yang harus dilengkapi siswa..."
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '6px 0' }} />
 
                 <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1279,7 +1661,7 @@ export default function MaterialsView() {
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Contoh: LKPD 1: Studi Kasus Penerapan 4 Pilar"
+                    placeholder="Contoh: LKPD 2: Praktik Percabangan & Perulangan"
                     value={materialForm.lkpd_title}
                     onChange={(e) => setMaterialForm({ ...materialForm, lkpd_title: e.target.value })}
                   />
@@ -1301,7 +1683,7 @@ export default function MaterialsView() {
                   <textarea
                     className="form-control"
                     rows={4}
-                    placeholder="Tuliskan daftar pertanyaan atau kasus yang harus dijawab siswa..."
+                    placeholder="Tuliskan daftar pertanyaan atau tantangan koding yang harus diselesaikan siswa..."
                     value={materialForm.lkpd_questions}
                     onChange={(e) => setMaterialForm({ ...materialForm, lkpd_questions: e.target.value })}
                   />
@@ -1410,7 +1792,7 @@ export default function MaterialsView() {
                           Dikumpulkan: {new Date(sub.submitted_at).toLocaleString('id-ID')}
                         </div>
 
-                        <div style={{ background: 'white', padding: 10, borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.85rem', whiteSpace: 'pre-line', marginBottom: 6 }}>
+                        <div style={{ background: 'white', padding: 10, borderRadius: 6, border: '1px solid #e2e8f0', fontSize: '0.85rem', whiteSpace: 'pre-line', marginBottom: 6, fontFamily: sub.answer_text?.includes('/* KODE') || sub.answer_text?.includes('cout') || sub.answer_text?.includes('print') ? 'monospace' : 'inherit' }}>
                           {sub.answer_text}
                         </div>
 

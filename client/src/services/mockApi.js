@@ -4552,27 +4552,87 @@ Tugas Anda:
     subject_id: 7,
     subject_name: 'INFORMATIKA',
     order_index: 2,
-    title: 'Bab 2: Integrasi Aplikasi Perkantoran (Office Automation & OLE)',
-    description: 'Mendalami teknik integrasi lintas dokumen antara pengolah kata (Word), pengolah angka (Excel), dan presentasi (PowerPoint) dengan Mail Merge dan Object Linking & Embedding.',
+    title: 'Bab 2: Algoritma dan Pemrograman Dasar (C++ & Python)',
+    description: 'Mempelajari sintaks, variabel, percabangan if-else, dan perulangan menggunakan bahasa C++ dan Python dengan compiler interaktif langsung di peramban.',
     estimated_time: '60 Menit',
     video_url: '',
     file_url: '',
-    content: `### Integrasi Konten Aplikasi Perkantoran
-Dalam dunia kerja modern, efisiensi administrasi bergantung pada kemampuan menghubungkan berbagai jenis aplikasi perkantoran secara dinamis.
+    has_code_playground: true,
+    is_coding_task: true,
+    code_language: 'python',
+    starter_code: `# Program Penentu Bilangan Genap atau Ganjil
+# Masukkan sebuah angka bulat (integer) melalui input
+# Cetak tepat: "GENAP" jika angka genap, atau "GANJIL" jika angka ganjil
 
-#### Pokok Bahasan Utama:
-1. **Penyatuan Data dengan Mail Merge (Surat Massal)**
-   Mail Merge memungkinkan pembuatan ratusan dokumen serupa (surat undangan, kartu peserta ujian, sertifikat kelulusan) dengan menghubungkan *template* dokumen di Microsoft Word atau Google Docs dengan tabel basis data (Excel atau Google Sheets).
-2. **Object Linking and Embedding (OLE)**
-   - **Embedding (Menyematkan):** Menempelkan objek data (misal grafik Excel ke dokumen Word). Objek menjadi bagian dari dokumen penampung, tetapi jika sumber Excel berubah di luar, grafik tidak akan otomatis terbarui.
-   - **Linking (Menghubungkan):** Objek yang ditempelkan tetap terhubung dinamis ke file sumber. Setiap kali angka di spreadsheet Excel diedit, tampilan tabel atau grafik di dokumen Word otomatis sinkron dan diperbarui.
-3. **Pembuatan Daftar Isi Dinamis & Section Break**
-   Penggunaan heading styles dan page numbering format romawi/angka berbeda dalam satu dokumen master akademik.`,
-    lkpd_title: 'LKPD 2: Eksplorasi Mail Merge dan Penautan Grafik Dinamis (OLE)',
-    lkpd_instructions: 'Jawablah pertanyaan analisis teknis di bawah ini berdasarkan pemahaman materi integrasi aplikasi perkantoran yang telah Anda pelajari.',
-    lkpd_questions: `1. Kapan seorang staf administrasi sekolah sebaiknya memilih teknik "Link Data (Tautan)" dibandingkan "Embed Data (Penyematan Biasa)"? Jelaskan dampaknya terhadap ukuran file dan keandalan data!
-2. Uraikan secara berurutan langkah-langkah membuat 50 Surat Undangan Pengambilan Raport yang mencantumkan Nama Siswa, NIS, dan Nama Orang Tua menggunakan fitur Mail Merge!
-3. Jika file sumber Excel yang ditautkan dipindahkan ke flashdisk yang berbeda drive letter, apa yang terjadi pada dokumen Word? Bagaimana cara menanganinya?`,
+angka = int(input())
+
+# Tuliskan struktur if-else Anda di bawah ini:
+if angka % 2 == 0:
+    print("GENAP")
+else:
+    print("GANJIL")
+`,
+    test_cases: [
+      {
+        input: '8',
+        expected_output: 'GENAP',
+        description: 'Uji Coba Angka 8 (Genap)'
+      },
+      {
+        input: '15',
+        expected_output: 'GANJIL',
+        description: 'Uji Coba Angka 15 (Ganjil)'
+      },
+      {
+        input: '0',
+        expected_output: 'GENAP',
+        description: 'Uji Coba Angka 0'
+      }
+    ],
+    content: `### Algoritma dan Pemrograman (AP)
+Algoritma adalah urutan langkah logis penyelesaian masalah yang disusun secara sistematis, sedangkan pemrograman adalah proses mengonversi algoritma tersebut ke dalam bahasa yang dipahami oleh komputer (seperti C++ atau Python).
+
+#### 1. Perbandingan Karakteristik C++ vs Python:
+- **Python 3:** Bahasa pemrograman tingkat tinggi dengan sintaks ringkas, mudah dipelajari (*clean syntax*), berorientasi objek, dan menggunakan indentasi sebagai pembatas blok kode. Sangat populer untuk data science, otomasi, dan kecerdasan buatan.
+- **C++:** Bahasa pemrograman berkinerja tinggi (*high performance*) yang diturunkan dari bahasa C. Menggunakan tanda titik-koma (\`;\`) dan kurung kurawal (\`{}\`) untuk blok kode. Sangat umum digunakan pada Olimpiade Sains Nasional (OSN) bidang Informatika dan sistem operasi.
+
+#### 2. Struktur Dasar Percabangan (If-Else):
+- **Dalam Python:**
+\`\`\`python
+nilai = int(input())
+if nilai >= 75:
+    print("LULUS")
+else:
+    print("REMEDIAL")
+\`\`\`
+- **Dalam C++:**
+\`\`\`cpp
+#include <iostream>
+using namespace std;
+
+int main() {
+    int nilai;
+    cin >> nilai;
+    if (nilai >= 75) {
+        cout << "LULUS" << endl;
+    } else {
+        cout << "REMEDIAL" << endl;
+    }
+    return 0;
+}
+\`\`\`
+
+> **Coba Langsung di Bawah Ini:** Anda dapat menggunakan kotak compiler di bawah untuk mencoba dan mengubah kode program C++ dan Python secara bebas!`,
+    lkpd_title: 'LKPD 2: Implementasi Algoritma Percabangan Ganjil-Genap dengan Compiler',
+    lkpd_instructions: 'Kerjakan tantangan koding berikut secara mandiri menggunakan Compiler C++ atau Python yang disediakan. Uji program Anda hingga lolos semua kasus uji.',
+    lkpd_questions: `Tantangan Koding:
+Buatlah sebuah program yang membaca satu bilangan bulat positif dari masukan (input).
+Aturan Program:
+1. Jika bilangan tersebut habis dibagi 2, cetak kata "GENAP" (huruf kapital).
+2. Jika bilangan tersebut tidak habis dibagi 2, cetak kata "GANJIL" (huruf kapital).
+
+Petunjuk:
+Gunakan tombol "▶ Uji & Jalankan Kode LKPD" untuk memeriksa apakah program Anda sudah benar dan bebas dari error sintaks maupun logika. Jika masih salah, sistem akan menampilkan alert merah!`,
     require_previous: true,
     created_at: '2026-11-02T08:00:00.000Z'
   },
@@ -6364,6 +6424,11 @@ export async function handleMockRequest(endpoint, options = {}) {
       video_url: body.video_url || '',
       file_url: body.file_url || '',
       content: body.content || '',
+      has_code_playground: body.has_code_playground !== undefined ? Boolean(body.has_code_playground) : false,
+      is_coding_task: body.is_coding_task !== undefined ? Boolean(body.is_coding_task) : false,
+      code_language: body.code_language || 'python',
+      starter_code: body.starter_code || '',
+      test_cases: Array.isArray(body.test_cases) ? body.test_cases : [],
       lkpd_title: body.lkpd_title || 'LKPD ' + (body.order_index || 1),
       lkpd_instructions: body.lkpd_instructions || '',
       lkpd_questions: body.lkpd_questions || '',
@@ -6417,6 +6482,11 @@ export async function handleMockRequest(endpoint, options = {}) {
         video_url: body.video_url !== undefined ? body.video_url : mat.video_url,
         file_url: body.file_url !== undefined ? body.file_url : mat.file_url,
         content: body.content !== undefined ? body.content : mat.content,
+        has_code_playground: body.has_code_playground !== undefined ? Boolean(body.has_code_playground) : mat.has_code_playground,
+        is_coding_task: body.is_coding_task !== undefined ? Boolean(body.is_coding_task) : mat.is_coding_task,
+        code_language: body.code_language !== undefined ? body.code_language : mat.code_language,
+        starter_code: body.starter_code !== undefined ? body.starter_code : mat.starter_code,
+        test_cases: body.test_cases !== undefined ? (Array.isArray(body.test_cases) ? body.test_cases : []) : mat.test_cases,
         lkpd_title: body.lkpd_title !== undefined ? body.lkpd_title : mat.lkpd_title,
         lkpd_instructions: body.lkpd_instructions !== undefined ? body.lkpd_instructions : mat.lkpd_instructions,
         lkpd_questions: body.lkpd_questions !== undefined ? body.lkpd_questions : mat.lkpd_questions,
