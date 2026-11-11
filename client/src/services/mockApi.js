@@ -4686,7 +4686,36 @@ function getStored(key, fallback) {
       localStorage.setItem(key, JSON.stringify(fallback));
       return fallback;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+
+    // Auto-sync new default learning materials (e.g. Bab 2 Algoritma & Pemrograman with Compiler)
+    if (key === STORAGE_KEYS.MATERIALS && Array.isArray(parsed) && Array.isArray(fallback)) {
+      let updated = false;
+      fallback.forEach(item => {
+        const found = parsed.find(p => p.id === item.id);
+        if (!found) {
+          parsed.push(item);
+          updated = true;
+        } else if (item.has_code_playground && !found.has_code_playground) {
+          // Sync coding playground flags and starter code if outdated
+          found.has_code_playground = item.has_code_playground;
+          found.is_coding_task = item.is_coding_task;
+          found.code_language = item.code_language;
+          found.starter_code = item.starter_code;
+          found.test_cases = item.test_cases;
+          found.content = item.content;
+          found.lkpd_title = item.lkpd_title;
+          found.lkpd_questions = item.lkpd_questions;
+          found.lkpd_instructions = item.lkpd_instructions;
+          updated = true;
+        }
+      });
+      if (updated) {
+        localStorage.setItem(key, JSON.stringify(parsed));
+      }
+    }
+
+    return parsed;
   } catch (e) {
     return fallback;
   }
