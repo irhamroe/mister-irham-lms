@@ -253,7 +253,9 @@ export async function evaluateLkpdCode({ language = 'python', code = '', testCas
         expectedOutput: tc.expected_output || '',
         actualOutput: execRes.stdout || '',
         error: errorMsg,
-        status: execRes.status
+        status: execRes.status || 'Runtime Error',
+        time: execRes.time || '-',
+        memory: execRes.memory || '-'
       });
       break; // Stop on first compilation or execution error
     }
@@ -264,7 +266,7 @@ export async function evaluateLkpdCode({ language = 'python', code = '', testCas
 
     let passed = true;
     if (cleanExpected) {
-      // Loose comparison: check if actual output equals or contains expected output
+      // Loose comparison: check if actual output equals or matches expected output
       passed = cleanActual === cleanExpected || cleanActual.toLowerCase() === cleanExpected.toLowerCase();
     }
 
@@ -282,8 +284,10 @@ export async function evaluateLkpdCode({ language = 'python', code = '', testCas
       input: tc.input || '-',
       expectedOutput: cleanExpected || '(Bebas error)',
       actualOutput: cleanActual || '(Tidak ada output)',
-      error: passed ? '' : 'Output tidak cocok dengan kunci jawaban LKPD.',
-      status: passed ? 'Accepted' : 'Wrong Answer'
+      error: passed ? '' : 'Output tidak cocok dengan kunci jawaban.',
+      status: passed ? 'Accepted' : 'Wrong Answer',
+      time: execRes.time || '0.01 detik',
+      memory: execRes.memory || '2.0 MB'
     });
   }
 

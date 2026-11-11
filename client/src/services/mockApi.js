@@ -4559,7 +4559,136 @@ Tugas Anda:
     file_url: '',
     has_code_playground: true,
     is_coding_task: true,
+    is_tlx_style: true,
     code_language: 'python',
+    tlx_problems: [
+      {
+        id: 'prob-a',
+        letter: 'A',
+        title: 'Halo, Dunia!',
+        time_limit: '1.000 detik',
+        memory_limit: '64.0 MB',
+        points: 25,
+        description: 'Pak Dengklek baru saja membeli komputer baru. Sebagai pemula di dunia pemrograman dan algoritma, Pak Dengklek ingin membuat program pertamanya yang menyapa seluruh dunia dengan ramah melalui layar monitor.\n\nTugas Anda adalah membantu Pak Dengklek menulis program yang mencetak kalimat sapaan tersebut tepat seperti yang diminta.',
+        input_format: 'Tidak ada masukan untuk soal ini.',
+        output_format: 'Cetak sebuah baris berisi tepat teks "Halo, Dunia!" (tanpa tanda kutip).',
+        constraints: 'Tidak ada batasan khusus.',
+        sample_cases: [
+          {
+            input: '',
+            output: 'Halo, Dunia!',
+            explanation: 'Program langsung mencetak teks tanpa memerlukan masukan pengguna.'
+          }
+        ],
+        editorial: 'Gunakan perintah dasar keluaran:\n- Python 3: print("Halo, Dunia!")\n- C++: cout << "Halo, Dunia!" << endl;',
+        starter_codes: {
+          python: '# Program Pertama Pak Dengklek\nprint("Halo, Dunia!")\n',
+          cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Halo, Dunia!" << endl;\n    return 0;\n}\n'
+        },
+        test_cases: [
+          { input: '', expected_output: 'Halo, Dunia!', description: 'Kasus Uji 1: Output Sesuai' }
+        ]
+      },
+      {
+        id: 'prob-b',
+        letter: 'B',
+        title: 'A Tambah B',
+        time_limit: '1.000 detik',
+        memory_limit: '64.0 MB',
+        points: 25,
+        description: 'Pak Dengklek memiliki dua buah kandang bebek. Kandang pertama berisi A ekor bebek, dan kandang kedua berisi B ekor bebek.\n\nPak Dengklek ingin mengetahui berapa jumlah seluruh bebek miliknya jika digabungkan. Bantulah Pak Dengklek menghitung total bebek tersebut!',
+        input_format: 'Satu baris berisi dua buah bilangan bulat A dan B yang dipisahkan oleh satu spasi.',
+        output_format: 'Satu baris berisi sebuah bilangan bulat yang merupakan hasil penjumlahan A + B.',
+        constraints: '1 ≤ A, B ≤ 1.000',
+        sample_cases: [
+          {
+            input: '4 7',
+            output: '11',
+            explanation: '4 bebek ditambah 7 bebek menghasilkan total 11 bebek.'
+          },
+          {
+            input: '15 25',
+            output: '40',
+            explanation: '15 + 25 = 40.'
+          }
+        ],
+        editorial: 'Membaca masukan dua integer dalam satu baris:\n- Python 3: a, b = map(int, input().split()) lalu print(a + b)\n- C++: cin >> a >> b; lalu cout << a + b << endl;',
+        starter_codes: {
+          python: '# Membaca dua bilangan A dan B dari satu baris\na, b = map(int, input().split())\n\n# Cetak hasil penjumlahan\nprint(a + b)\n',
+          cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << a + b << endl;\n    return 0;\n}\n'
+        },
+        test_cases: [
+          { input: '4 7', expected_output: '11', description: 'Kasus Uji 1 (Sample 1)' },
+          { input: '15 25', expected_output: '40', description: 'Kasus Uji 2 (Sample 2)' },
+          { input: '100 250', expected_output: '350', description: 'Kasus Uji 3' },
+          { input: '999 1', expected_output: '1000', description: 'Kasus Uji 4' }
+        ]
+      },
+      {
+        id: 'prob-c',
+        letter: 'C',
+        title: 'Bebek untuk Teman (Pembagian & Modulo)',
+        time_limit: '1.000 detik',
+        memory_limit: '64.0 MB',
+        points: 25,
+        description: 'Pak Dengklek memiliki N ekor bebek. Hari ini, M orang temannya berkunjung ke peternakan. Pak Dengklek ingin membagikan bebek-bebek tersebut kepada semua temannya secara adil dan merata (setiap teman mendapat jumlah bebek bulat yang sama).\n\nJika ada bebek yang tersisa karena tidak bisa dibagi rata, sisa bebek tersebut akan tetap disimpan di peternakan Pak Dengklek.\n\nBantulah Pak Dengklek menghitung berapa ekor bebek yang didapat oleh masing-masing teman, dan berapa ekor bebek yang tersisa!',
+        input_format: 'Satu baris berisi dua buah bilangan bulat N dan M yang dipisahkan oleh spasi, masing-masing menyatakan banyaknya bebek dan banyaknya teman.',
+        output_format: 'Baris pertama berisi teks "masing-masing " diikuti jumlah bebek yang didapat setiap teman.\nBaris kedua berisi teks "bersisa " diikuti sisa bebek Pak Dengklek.',
+        constraints: '1 ≤ N ≤ 100.000\n1 ≤ M ≤ N',
+        sample_cases: [
+          {
+            input: '63 5',
+            output: 'masing-masing 12\nbersisa 3',
+            explanation: '63 bebek dibagi 5 orang: 63 / 5 = 12 dengan sisa 3 (karena 12 * 5 + 3 = 63).'
+          }
+        ],
+        editorial: 'Menggunakan operator pembagian bulat dan modulo (sisa bagi):\n- Python: setiap = n // m; sisa = n % m\n- C++: int setiap = n / m; int sisa = n % m;',
+        starter_codes: {
+          python: 'n, m = map(int, input().split())\n\n# Hitung pembagian bulat dan modulo\nsetiap = n // m\nsisa = n % m\n\nprint(f"masing-masing {setiap}")\nprint(f"bersisa {sisa}")\n',
+          cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    int n, m;\n    cin >> n >> m;\n    int setiap = n / m;\n    int sisa = n % m;\n    cout << "masing-masing " << setiap << endl;\n    cout << "bersisa " << sisa << endl;\n    return 0;\n}\n'
+        },
+        test_cases: [
+          { input: '63 5', expected_output: 'masing-masing 12\nbersisa 3', description: 'Kasus Uji 1 (Sample)' },
+          { input: '100 10', expected_output: 'masing-masing 10\nbersisa 0', description: 'Kasus Uji 2 (Habis Dibagi)' },
+          { input: '17 4', expected_output: 'masing-masing 4\nbersisa 1', description: 'Kasus Uji 3' }
+        ]
+      },
+      {
+        id: 'prob-d',
+        letter: 'D',
+        title: 'Penentu Bilangan Genap atau Ganjil',
+        time_limit: '1.000 detik',
+        memory_limit: '64.0 MB',
+        points: 25,
+        description: 'Pak Dengklek sedang melatih bebek-bebeknya untuk berbaris rapi. Setiap bebek diberi nomor dada berupa sebuah bilangan bulat positif N.\n\nBebek dengan nomor GENAP harus berbaris di sebelah kanan sungai, sedangkan bebek dengan nomor GANJIL harus berbaris di sebelah kiri sungai.\n\nBantulah Pak Dengklek membuat program penentu arah barisan tersebut!',
+        input_format: 'Satu baris berisi sebuah bilangan bulat positif N.',
+        output_format: 'Cetak tepat satu baris berisi kata "GENAP" jika N genap, atau "GANJIL" jika N ganjil (semua huruf kapital tanpa tanda kutip).',
+        constraints: '1 ≤ N ≤ 1.000.000',
+        sample_cases: [
+          {
+            input: '8',
+            output: 'GENAP',
+            explanation: '8 adalah bilangan genap karena habis dibagi 2.'
+          },
+          {
+            input: '15',
+            output: 'GANJIL',
+            explanation: '15 adalah bilangan ganjil karena bersisa 1 ketika dibagi 2.'
+          }
+        ],
+        editorial: 'Struktur percabangan if-else:\nJika n % 2 == 0 cetak "GENAP", jika tidak cetak "GANJIL".',
+        starter_codes: {
+          python: 'n = int(input())\n\n# Percabangan if-else penentu genap/ganjil\nif n % 2 == 0:\n    print("GENAP")\nelse:\n    print("GANJIL")\n',
+          cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    int n;\n    cin >> n;\n    if (n % 2 == 0) {\n        cout << "GENAP" << endl;\n    } else {\n        cout << "GANJIL" << endl;\n    }\n    return 0;\n}\n'
+        },
+        test_cases: [
+          { input: '8', expected_output: 'GENAP', description: 'Kasus Uji 1 (Genap)' },
+          { input: '15', expected_output: 'GANJIL', description: 'Kasus Uji 2 (Ganjil)' },
+          { input: '0', expected_output: 'GENAP', description: 'Kasus Uji 3 (Nol)' },
+          { input: '99999', expected_output: 'GANJIL', description: 'Kasus Uji 4 (Ganjil Besar)' }
+        ]
+      }
+    ],
     starter_code: `# Program Penentu Bilangan Genap atau Ganjil
 # Masukkan sebuah angka bulat (integer) melalui input
 # Cetak tepat: "GENAP" jika angka genap, atau "GANJIL" jika angka ganjil
@@ -4696,18 +4825,25 @@ function getStored(key, fallback) {
         if (!found) {
           parsed.push(item);
           updated = true;
-        } else if (item.has_code_playground && !found.has_code_playground) {
-          // Sync coding playground flags and starter code if outdated
-          found.has_code_playground = item.has_code_playground;
-          found.is_coding_task = item.is_coding_task;
-          found.code_language = item.code_language;
-          found.starter_code = item.starter_code;
-          found.test_cases = item.test_cases;
-          found.content = item.content;
-          found.lkpd_title = item.lkpd_title;
-          found.lkpd_questions = item.lkpd_questions;
-          found.lkpd_instructions = item.lkpd_instructions;
-          updated = true;
+        } else {
+          if (item.is_tlx_style) {
+            found.is_tlx_style = item.is_tlx_style;
+            found.tlx_problems = item.tlx_problems;
+            updated = true;
+          }
+          if (item.has_code_playground && !found.has_code_playground) {
+            // Sync coding playground flags and starter code if outdated
+            found.has_code_playground = item.has_code_playground;
+            found.is_coding_task = item.is_coding_task;
+            found.code_language = item.code_language;
+            found.starter_code = item.starter_code;
+            found.test_cases = item.test_cases;
+            found.content = item.content;
+            found.lkpd_title = item.lkpd_title;
+            found.lkpd_questions = item.lkpd_questions;
+            found.lkpd_instructions = item.lkpd_instructions;
+            updated = true;
+          }
         }
       });
       if (updated) {
@@ -6455,6 +6591,8 @@ export async function handleMockRequest(endpoint, options = {}) {
       content: body.content || '',
       has_code_playground: body.has_code_playground !== undefined ? Boolean(body.has_code_playground) : false,
       is_coding_task: body.is_coding_task !== undefined ? Boolean(body.is_coding_task) : false,
+      is_tlx_style: body.is_tlx_style !== undefined ? Boolean(body.is_tlx_style) : false,
+      tlx_problems: Array.isArray(body.tlx_problems) ? body.tlx_problems : [],
       code_language: body.code_language || 'python',
       starter_code: body.starter_code || '',
       test_cases: Array.isArray(body.test_cases) ? body.test_cases : [],
@@ -6513,6 +6651,8 @@ export async function handleMockRequest(endpoint, options = {}) {
         content: body.content !== undefined ? body.content : mat.content,
         has_code_playground: body.has_code_playground !== undefined ? Boolean(body.has_code_playground) : mat.has_code_playground,
         is_coding_task: body.is_coding_task !== undefined ? Boolean(body.is_coding_task) : mat.is_coding_task,
+        is_tlx_style: body.is_tlx_style !== undefined ? Boolean(body.is_tlx_style) : (mat.is_tlx_style || false),
+        tlx_problems: body.tlx_problems !== undefined ? (Array.isArray(body.tlx_problems) ? body.tlx_problems : []) : (mat.tlx_problems || []),
         code_language: body.code_language !== undefined ? body.code_language : mat.code_language,
         starter_code: body.starter_code !== undefined ? body.starter_code : mat.starter_code,
         test_cases: body.test_cases !== undefined ? (Array.isArray(body.test_cases) ? body.test_cases : []) : mat.test_cases,

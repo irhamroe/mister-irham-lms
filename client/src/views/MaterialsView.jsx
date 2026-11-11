@@ -39,6 +39,7 @@ import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/AlertContext';
 import { api } from '../services/api';
 import CodePlayground from '../components/CodePlayground';
+import TlxTokiArena from '../components/TlxTokiArena';
 import { evaluateLkpdCode, LANGUAGE_CONFIG } from '../services/codeRunnerService';
 
 export default function MaterialsView() {
@@ -66,6 +67,9 @@ export default function MaterialsView() {
   const [isSubmittingLkpd, setIsSubmittingLkpd] = useState(false);
   const [isMarkingRead, setIsMarkingRead] = useState(false);
 
+  // Dedicated TLX TOKI Arena Workspace State
+  const [tlxArenaMaterial, setTlxArenaMaterial] = useState(null);
+
   // Student Coding LKPD State
   const [studentCodeLang, setStudentCodeLang] = useState('python');
   const [studentCode, setStudentCode] = useState('');
@@ -87,6 +91,8 @@ export default function MaterialsView() {
     content: '',
     has_code_playground: true,
     is_coding_task: false,
+    is_tlx_style: false,
+    tlx_problems: [],
     code_language: 'python',
     starter_code: '',
     test_cases: [],
@@ -183,12 +189,19 @@ export default function MaterialsView() {
     }
   }
 
-  // Helper: Open Study Modal
+  // Helper: Open Study Modal / TLX Arena
   function handleOpenStudy(material) {
     if (!material.is_unlocked && !isTeacher) {
       showToast('warning', material.locked_reason || 'Materi ini masih terkunci.');
       return;
     }
+
+    // If material is configured with TLX TOKI style, launch the dedicated Arena directly!
+    if (material.is_tlx_style) {
+      setTlxArenaMaterial(material);
+      return;
+    }
+
     setStudyModal(material);
     setStudyTab('content');
 
@@ -203,6 +216,22 @@ export default function MaterialsView() {
     } else {
       setLkpdAnswer('');
       setLkpdFileUrl('');
+    }
+  }
+
+  // Helper: Submit LKPD from TLX TOKI Arena
+  async function handleTlxArenaSubmit({ answer_text, score, ac_count, total_problems }) {
+    if (!tlxArenaMaterial) return;
+    try {
+      const res = await api.submitLkpd(tlxArenaMaterial.id, {
+        answer_text,
+        file_url: ''
+      });
+      showToast('success', `🎉 Selamat! Seluruh solusi LKPD TLX berhasil dikumpulkan (${ac_count}/${total_problems} AC)! Materi berikutnya telah terbuka.`);
+      await loadMaterials();
+      setTlxArenaMaterial(null);
+    } catch (err) {
+      showToast('error', 'Gagal mengumpulkan jawaban LKPD: ' + err.message);
     }
   }
 
@@ -314,6 +343,8 @@ export default function MaterialsView() {
         content: m.content || '',
         has_code_playground: m.has_code_playground !== false,
         is_coding_task: Boolean(m.is_coding_task),
+        is_tlx_style: Boolean(m.is_tlx_style),
+        tlx_problems: Array.isArray(m.tlx_problems) ? m.tlx_problems : [],
         code_language: m.code_language || 'python',
         starter_code: m.starter_code || '',
         test_cases: Array.isArray(m.test_cases) ? m.test_cases : [],
@@ -338,6 +369,8 @@ export default function MaterialsView() {
 Algoritma adalah langkah logis penyelesaian masalah secara sistematis. Pelajari struktur sintaks, percabangan if-else, dan perulangan.`,
         has_code_playground: true,
         is_coding_task: true,
+        is_tlx_style: false,
+        tlx_problems: [],
         code_language: 'python',
         starter_code: `# Tuliskan program Anda di sini:
 angka = int(input())
@@ -705,6 +738,13 @@ else:
                               </span>
                             )}
 
+                            {/* TLX TOKI Style Badge */}
+                            {mat.is_tlx_style && (
+                              <span className="badge" style={{ background: '#0b1329', color: '#60a5fa', border: '1px solid #1d4ed8', fontSize: '0.74rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <Terminal size={12} color="#38bdf8" /> Model Kursus TLX TOKI (Pak Dengklek)
+                              </span>
+                            )}
+
                             {/* Status Pill for Student */}
                             {!isTeacher && (
                               isCompleted ? (
@@ -768,27 +808,68 @@ else:
                       </div>
 
                       {/* Right: Action Buttons */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
                         {!isTeacher && (
-                          <button
-                            type="button"
-                            className={`btn ${isCompleted ? 'btn-outline' : isUnlocked ? 'btn-primary' : 'btn-outline'}`}
-                            onClick={() => handleOpenStudy(mat)}
-                            disabled={!isUnlocked}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
-                          >
-                            {isCompleted ? (
-                              <><Check size={16} /> Review Materi & LKPD</>
-                            ) : isUnlocked ? (
-                              <><ArrowRight size={16} /> Buka & Pelajari Materi</>
-                            ) : (
-                              <><Lock size={15} /> Terkunci</>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            {mat.is_tlx_style && isUnlocked && (
+                              <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={() => setTlxArenaMaterial(mat)}
+                                style={{
+                                  background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
+                                  border: 'none',
+                                  color: '#fff',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  fontWeight: 800,
+                                  boxShadow: '0 2px 8px rgba(37,99,235,0.3)'
+                                }}
+                              >
+                                <Terminal size={15} /> Buka Arena TLX TOKI
+                              </button>
                             )}
-                          </button>
+
+                            <button
+                              type="button"
+                              className={`btn ${isCompleted ? 'btn-outline' : isUnlocked ? (mat.is_tlx_style ? 'btn-outline' : 'btn-primary') : 'btn-outline'}`}
+                              onClick={() => handleOpenStudy(mat)}
+                              disabled={!isUnlocked}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                            >
+                              {isCompleted ? (
+                                <><Check size={16} /> Review Materi & LKPD</>
+                              ) : isUnlocked ? (
+                                <><ArrowRight size={16} /> Buka & Pelajari Materi</>
+                              ) : (
+                                <><Lock size={15} /> Terkunci</>
+                              )}
+                            </button>
+                          </div>
                         )}
 
                         {isTeacher && (
                           <>
+                            {mat.is_tlx_style && (
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                style={{
+                                  background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
+                                  border: 'none',
+                                  color: '#fff',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontWeight: 700
+                                }}
+                                onClick={() => setTlxArenaMaterial(mat)}
+                                title="Buka Pratinjau Arena TLX TOKI"
+                              >
+                                <Terminal size={14} /> Arena TLX
+                              </button>
+                            )}
                             <button
                               type="button"
                               className="btn btn-outline btn-sm"
@@ -947,13 +1028,18 @@ else:
             {/* Modal Header */}
             <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', padding: '16px 20px' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                   <span className="badge badge-primary" style={{ fontWeight: 800 }}>Bab {studyModal.order_index}</span>
                   <span className="badge badge-neutral">{studyModal.subject_name || 'INFORMATIKA'}</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}><Clock size={12} /> {studyModal.estimated_time}</span>
                   {(studyModal.has_code_playground || studyModal.is_coding_task) && (
                     <span className="badge" style={{ background: '#0f172a', color: '#38bdf8', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <Code2 size={12} /> Compiler C++ & Python
+                    </span>
+                  )}
+                  {studyModal.is_tlx_style && (
+                    <span className="badge" style={{ background: '#0b1329', color: '#60a5fa', border: '1px solid #1d4ed8', fontSize: '0.72rem', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Terminal size={12} color="#38bdf8" /> Model TLX TOKI
                     </span>
                   )}
                 </div>
@@ -970,6 +1056,57 @@ else:
                 <X size={18} />
               </button>
             </div>
+
+            {/* TLX TOKI Arena Banner Switcher */}
+            {studyModal.is_tlx_style && (
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #0f172a, #1e293b)',
+                  color: '#fff',
+                  padding: '12px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderBottom: '1px solid #334155',
+                  flexWrap: 'wrap',
+                  gap: 10
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ background: '#2563eb', padding: '6px 8px', borderRadius: 6 }}>
+                    <Terminal size={18} color="#fff" />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#f8fafc' }}>
+                      Tersedia Workspace Khusus Model TLX TOKI (Split-Screen)
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>
+                      Soal bertingkat (A, B, C, D) dengan format masukan/keluaran dan judge otomatis ala tlx.toki.id
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    const target = studyModal;
+                    setStudyModal(null);
+                    setTlxArenaMaterial(target);
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                    border: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontWeight: 800,
+                    boxShadow: '0 2px 8px rgba(37,99,235,0.4)'
+                  }}
+                >
+                  <Terminal size={14} /> Buka Arena TLX TOKI
+                </button>
+              </div>
+            )}
 
             {/* Navigation Tabs between Materi & LKPD */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', background: '#f8fafc', padding: '0 20px' }}>
@@ -1619,6 +1756,17 @@ else:
                       />
                       <span>Gunakan Compiler Koding & Auto-Tester pada LKPD ini</span>
                     </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, fontSize: '0.85rem', fontWeight: 600 }}>
+                      <input
+                        type="checkbox"
+                        checked={materialForm.is_tlx_style}
+                        onChange={(e) => setMaterialForm({ ...materialForm, is_tlx_style: e.target.checked })}
+                      />
+                      <span style={{ color: '#2563eb' }}>
+                        🏆 Gunakan Model Kursus TLX TOKI (Split-Screen Workspace, Soal Pak Dengklek A, B, C, D)
+                      </span>
+                    </label>
                   </div>
 
                   {materialForm.is_coding_task && (
@@ -1889,6 +2037,17 @@ else:
             </form>
           </div>
         </div>
+      )}
+      {/* ========================================================
+          6. DEDICATED TLX TOKI ARENA (FULLSCREEN WORKSPACE)
+         ======================================================== */}
+      {tlxArenaMaterial && (
+        <TlxTokiArena
+          material={tlxArenaMaterial}
+          user={user}
+          onClose={() => setTlxArenaMaterial(null)}
+          onSubmitLkpd={handleTlxArenaSubmit}
+        />
       )}
     </div>
   );
