@@ -36,6 +36,28 @@ export default function DashboardView({ setActiveTab, onStartCbt }) {
 
   useEffect(() => {
     loadDashboardData();
+
+    let syncTimer = null;
+    const handleSync = (e) => {
+      const { storageKey } = e.detail || {};
+      if (
+        storageKey === 'lms_mock_attendance_sessions_v3' ||
+        storageKey === 'lms_mock_attendance_records_v3' ||
+        storageKey === 'lms_mock_cbt_exams_v3' ||
+        storageKey === 'lms_mock_assignments_v3'
+      ) {
+        clearTimeout(syncTimer);
+        syncTimer = setTimeout(() => {
+          loadDashboardData();
+        }, 200);
+      }
+    };
+
+    window.addEventListener('lms-sync-update', handleSync);
+    return () => {
+      window.removeEventListener('lms-sync-update', handleSync);
+      if (syncTimer) clearTimeout(syncTimer);
+    };
   }, [user]);
 
   async function loadDashboardData() {

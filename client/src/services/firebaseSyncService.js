@@ -67,7 +67,16 @@ export function initFirebaseSync(defaultFallbacks = {}) {
     // Live continuous listener for real-time synchronization across all devices
     onValue(dbRef, (snapshot) => {
       if (snapshot.exists()) {
-        const val = snapshot.val();
+        let val = snapshot.val();
+        // Firebase RTDB converts array to object if indices are sparse or serialized as map
+        if (val && typeof val === 'object' && !Array.isArray(val)) {
+          const keys = Object.keys(val);
+          const isNumericKeys = keys.length > 0 && keys.every(k => !isNaN(Number(k)));
+          if (isNumericKeys) {
+            val = Object.values(val);
+          }
+        }
+
         try {
           isRemoteUpdating = true;
           localStorage.setItem(storageKey, JSON.stringify(val));

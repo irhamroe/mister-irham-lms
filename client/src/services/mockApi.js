@@ -7099,6 +7099,8 @@ export async function handleMockRequest(endpoint, options = {}) {
         filtered = filtered.filter(s => s.class_name === currentUser.kelas);
       } else if (classId) {
         filtered = filtered.filter(s => s.class_id === Number(classId));
+      } else {
+        return [];
       }
       if (subjectId) {
         filtered = filtered.filter(s => s.subject_id === Number(subjectId));

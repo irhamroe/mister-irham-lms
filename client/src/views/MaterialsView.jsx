@@ -199,6 +199,13 @@ export default function MaterialsView() {
       return;
     }
 
+    // Khusus materi dengan format TLX TOKI (seperti Bab 2 Algoritma dan Pemrograman):
+    // Langsung buka antarmuka Arena TLX TOKI (Sidebar Daftar Modul di Kiri & Kurikulum di Kanan)
+    if (material.is_tlx_style) {
+      setTlxArenaMaterial(material);
+      return;
+    }
+
     setStudyModal(material);
     setStudyTab('content');
     setActiveRoadmapIdx(0);

@@ -77,6 +77,50 @@ function getSessionTimeWarning(dateStr, startStr, endStr) {
   return null;
 }
 
+function getClassesForSubject(subject, allSortedClasses) {
+  if (!subject || !allSortedClasses || allSortedClasses.length === 0) return allSortedClasses || [];
+
+  // 1. Explicit class_ids if present
+  if (Array.isArray(subject.class_ids) && subject.class_ids.length > 0) {
+    const filtered = allSortedClasses.filter(c => subject.class_ids.includes(c.id));
+    if (filtered.length > 0) return filtered;
+  }
+
+  // 2. Detect level from code or name
+  const code = (subject.code || '').toUpperCase();
+  const name = (subject.name || '').toUpperCase();
+  const str = `${code} ${name}`;
+
+  // Level 10 / X
+  if (str.includes('-10') || str.includes(' 10') || (str.includes('X') && !str.includes('XI') && !str.includes('XII'))) {
+    const c10 = allSortedClasses.filter(c =>
+      (c.level && (c.level.includes('10') || c.level.includes('X'))) ||
+      c.name.startsWith('X-') || c.name.startsWith('X ') || c.name === 'X'
+    );
+    if (c10.length > 0) return c10;
+  }
+
+  // Level 11 / XI
+  if (str.includes('-11') || str.includes(' 11') || (str.includes('XI') && !str.includes('XII'))) {
+    const c11 = allSortedClasses.filter(c =>
+      (c.level && (c.level.includes('11') || c.level.includes('XI'))) ||
+      c.name.startsWith('XI-') || c.name.startsWith('XI ') || c.name === 'XI'
+    );
+    if (c11.length > 0) return c11;
+  }
+
+  // Level 12 / XII
+  if (str.includes('-12') || str.includes(' 12') || str.includes('XII')) {
+    const c12 = allSortedClasses.filter(c =>
+      (c.level && (c.level.includes('12') || c.level.includes('XII'))) ||
+      c.name.startsWith('XII-') || c.name.startsWith('XII ') || c.name === 'XII'
+    );
+    if (c12.length > 0) return c12;
+  }
+
+  return allSortedClasses;
+}
+
 export default function AttendanceView() {
   const { user, classes, subjects } = useAuth();
   const sortedClasses = React.useMemo(() => sortClassesNatural(classes), [classes]);
@@ -99,21 +143,45 @@ export default function AttendanceView() {
     return subjects;
   }, [subjects, user]);
 
-  const initialClassId = React.useMemo(() => {
-    if (user?.role === 'siswa' && user?.kelas) {
-      const studentCls = sortedClasses.find(c => c.name === user.kelas);
-      return studentCls ? studentCls.id.toString() : (sortedClasses[0]?.id?.toString() || '');
-    }
-    return sortedClasses[0]?.id?.toString() || '';
-  }, [sortedClasses, user]);
-
   const initialSubjectId = React.useMemo(() => {
     return displaySubjects[0]?.id?.toString() || '';
   }, [displaySubjects]);
 
-  // Filter states - initialized synchronously to avoid empty fetch and flash
-  const [selectedClass, setSelectedClass] = useState(initialClassId);
   const [selectedSubject, setSelectedSubject] = useState(initialSubjectId);
+
+  // Available classes dynamically adjusted to the selected subject
+  const currentSelectedSubjectObj = React.useMemo(() => {
+    return displaySubjects.find(s => s.id?.toString() === selectedSubject?.toString()) || displaySubjects[0];
+  }, [displaySubjects, selectedSubject]);
+
+  const availableClasses = React.useMemo(() => {
+    return getClassesForSubject(currentSelectedSubjectObj, sortedClasses);
+  }, [currentSelectedSubjectObj, sortedClasses]);
+
+  const initialClassId = React.useMemo(() => {
+    if (user?.role === 'siswa' && user?.kelas) {
+      const studentCls = sortedClasses.find(c => c.name === user.kelas);
+      return studentCls ? studentCls.id.toString() : '';
+    }
+    // Teacher/Admin starts with EMPTY class selection!
+    return '';
+  }, [sortedClasses, user]);
+
+  // Filter states: empty by default for teacher/admin until class is chosen
+  const [selectedClass, setSelectedClass] = useState(initialClassId);
+
+  function handleSubjectChange(newSubjId) {
+    setSelectedSubject(newSubjId);
+    if (isTeacher) {
+      // Requirement: reset class to empty when subject changes so teacher selects class from the new subject's class list
+      setSelectedClass('');
+      setSessions([]);
+      setActiveSession(null);
+      setSessionDetail(null);
+      setStudentRecords([]);
+      setRecapData(null);
+    }
+  }
 
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +196,6 @@ export default function AttendanceView() {
   const [studentRecords, setStudentRecords] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const isFetchingSessions = React.useRef(false);
-  const isFetchingDetails = React.useRef(false);
 
   // Student check-in state
   const [checkInCode, setCheckInCode] = useState('');
@@ -173,9 +240,17 @@ export default function AttendanceView() {
     const endM = String(endTotalMinutes % 60).padStart(2, '0');
     const timeEnd = `${endH}:${endM}`;
 
+    const defaultSubj = selectedSubject || (displaySubjects[0]?.id ? String(displaySubjects[0].id) : '');
+    const modalSubjObj = displaySubjects.find(s => s.id?.toString() === defaultSubj.toString()) || displaySubjects[0];
+    const modalClasses = getClassesForSubject(modalSubjObj, sortedClasses);
+
+    const defaultClass = selectedClass && modalClasses.some(c => c.id.toString() === selectedClass.toString())
+      ? selectedClass
+      : (modalClasses[0]?.id ? String(modalClasses[0].id) : '');
+
     setNewSessionForm({
-      class_id: selectedClass || (sortedClasses[0]?.id ? String(sortedClasses[0].id) : ''),
-      subject_id: selectedSubject || (subjects[0]?.id ? String(subjects[0].id) : ''),
+      class_id: defaultClass,
+      subject_id: defaultSubj,
       date: todayStr,
       time_start: timeStart,
       time_end: timeEnd,
@@ -189,48 +264,77 @@ export default function AttendanceView() {
 
   // Synchronize filters if metadata arrives asynchronously
   useEffect(() => {
-    if (!selectedClass && initialClassId) {
+    if (user?.role === 'siswa' && !selectedClass && initialClassId) {
       setSelectedClass(initialClassId);
     }
     if (!selectedSubject && initialSubjectId) {
       setSelectedSubject(initialSubjectId);
     }
-  }, [initialClassId, initialSubjectId, selectedClass, selectedSubject]);
+  }, [initialClassId, initialSubjectId, selectedClass, selectedSubject, user]);
 
   useEffect(() => {
     // Only load sessions once class and subject are ready
-    if (sortedClasses.length > 0 && !selectedClass) return;
+    if (isTeacher && !selectedClass) {
+      setSessions([]);
+      setActiveSession(null);
+      setSessionDetail(null);
+      setStudentRecords([]);
+      setLoading(false);
+      return;
+    }
     if (displaySubjects.length > 0 && !selectedSubject) return;
     loadSessions();
   }, [user, selectedClass, selectedSubject]);
 
-  // Realtime synchronization across all devices via Firebase with debouncing
+  // Realtime synchronization across all devices via Firebase with instant reaction
   useEffect(() => {
     let syncTimer = null;
 
     const handleSync = (e) => {
       const { storageKey } = e.detail || {};
-      if (storageKey === 'lms_mock_attendance_sessions_v3') {
+      if (storageKey === 'lms_mock_attendance_sessions_v3' || storageKey === 'lms_mock_attendance_records_v3') {
         clearTimeout(syncTimer);
-        syncTimer = setTimeout(() => {
-          loadSessions(true);
-        }, 300);
-      } else if (storageKey === 'lms_mock_attendance_records_v3') {
-        clearTimeout(syncTimer);
-        syncTimer = setTimeout(() => {
-          if (activeSessionRef.current) {
-            silentRefreshSessionDetails(activeSessionRef.current);
+        syncTimer = setTimeout(async () => {
+          if (user?.role === 'siswa' || selectedClass) {
+            await loadSessions(true);
+            if (activeSessionRef.current) {
+              await silentRefreshSessionDetails(activeSessionRef.current);
+            }
           }
-        }, 300);
+        }, 100);
       }
     };
 
     window.addEventListener('lms-sync-update', handleSync);
+
+    // Refresh instantly when user resumes phone or switches tab back
+    const handleVisibility = () => {
+      if (!document.hidden && (user?.role === 'siswa' || selectedClass)) {
+        loadSessions(true);
+        if (activeSessionRef.current) {
+          silentRefreshSessionDetails(activeSessionRef.current);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+
     return () => {
       window.removeEventListener('lms-sync-update', handleSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
       if (syncTimer) clearTimeout(syncTimer);
     };
-  }, []);
+  }, [user, selectedClass]);
+
+  // Mobile heartbeat polling for student: guarantees real-time sync even if background mobile socket throttles
+  useEffect(() => {
+    if (user?.role !== 'siswa' || !activeSession) return;
+    const interval = setInterval(() => {
+      silentRefreshSessionDetails(activeSession);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [user, activeSession]);
 
   useEffect(() => {
     if (activeTab === 'recap' && selectedClass && selectedSubject) {
@@ -316,46 +420,25 @@ export default function AttendanceView() {
   }
 
   async function silentRefreshSessionDetails(sessionId) {
-    if (!sessionId || isFetchingDetails.current) return;
+    if (!sessionId) return;
     try {
-      isFetchingDetails.current = true;
       const data = await api.getAttendanceSessionDetails(sessionId);
       if (!data || activeSessionRef.current !== sessionId) return;
 
       if (data.session) {
-        setSessionDetail(prev => {
-          if (!prev) return data.session;
-          if (
-            prev.id === data.session.id &&
-            prev.is_open === data.session.is_open &&
-            prev.session_title === data.session.session_title &&
-            prev.session_code === data.session.session_code
-          ) {
-            return prev;
-          }
-          return data.session;
-        });
+        setSessionDetail(data.session);
       }
 
       const rawList = data.students || data.records || [];
       const sorted = sortStudentList(rawList);
-
-      setStudentRecords(prev => {
-        if (prev.length !== sorted.length) return sorted;
-        const hasDiff = sorted.some((item, i) => {
-          const old = prev[i];
-          return !old || old.student_id !== item.student_id || old.status !== item.status || old.notes !== item.notes;
-        });
-        return hasDiff ? sorted : prev;
-      });
+      setStudentRecords(sorted);
     } catch (err) {
       console.warn('Silent refresh error:', err);
-    } finally {
-      isFetchingDetails.current = false;
     }
   }
 
   async function loadRecap() {
+    if (!selectedClass || !selectedSubject) return;
     try {
       const data = await api.getAttendanceSummary(selectedClass, selectedSubject);
       setRecapData(data || { sessions: [], summary: [] });
@@ -391,12 +474,16 @@ export default function AttendanceView() {
 
   async function executeCreateSession() {
     try {
+      const targetClassId = newSessionForm.class_id || selectedClass;
       await api.createAttendanceSession({
         ...newSessionForm,
-        class_id: Number(newSessionForm.class_id || selectedClass),
+        class_id: Number(targetClassId),
         subject_id: Number(newSessionForm.subject_id || selectedSubject)
       });
       setShowModal(false);
+      if (targetClassId) {
+        setSelectedClass(String(targetClassId));
+      }
       loadSessions();
       showToast('success', 'Sesi presensi baru berhasil dibuat!');
     } catch (err) {
@@ -480,7 +567,20 @@ export default function AttendanceView() {
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* 1. Mata Pelajaran (Urutan Pertama) */}
+          <select
+            className="form-control"
+            style={{ width: 'auto', fontWeight: 600 }}
+            value={selectedSubject}
+            onChange={(e) => handleSubjectChange(e.target.value)}
+          >
+            {displaySubjects.map(s => (
+              <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
+            ))}
+          </select>
+
+          {/* 2. Kelas (Urutan Kedua - Sesuai Mapel Terpilih & Kosong Awalnya untuk Guru) */}
           {user?.role === 'siswa' ? (
             <div className="badge badge-primary" style={{ padding: '8px 14px', fontSize: '0.9rem', fontWeight: 700 }}>
               Kelas {user.kelas || (sortedClasses.find(c => c.id.toString() === selectedClass)?.name || '')}
@@ -488,26 +588,26 @@ export default function AttendanceView() {
           ) : (
             <select
               className="form-control"
-              style={{ width: 'auto' }}
+              style={{ width: 'auto', fontWeight: 600, borderColor: !selectedClass ? 'var(--primary)' : undefined }}
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
             >
-              {sortedClasses.map(c => (
+              <option value="">-- Pilih Kelas --</option>
+              {availableClasses.map(c => (
                 <option key={c.id} value={c.id}>Kelas {c.name}</option>
               ))}
             </select>
           )}
 
-          <select
-            className="form-control"
-            style={{ width: 'auto' }}
-            value={selectedSubject}
-            onChange={(e) => setSelectedSubject(e.target.value)}
+          {/* Indikator Status Sinkronisasi Real-Time */}
+          <span
+            className="badge badge-success"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', fontSize: '0.75rem' }}
+            title="Presensi tersinkron otomatis antar HP siswa dan laptop guru via Realtime Database"
           >
-            {displaySubjects.map(s => (
-              <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>
-            ))}
-          </select>
+            <span className="pulse-dot green" style={{ width: 6, height: 6 }}></span>
+            Real-Time
+          </span>
 
           {isTeacher && (
             <button className="btn btn-primary" onClick={handleOpenNewSessionModal}>
@@ -517,7 +617,46 @@ export default function AttendanceView() {
         </div>
       </div>
 
-      {activeTab === 'sessions' ? (
+      {/* Tampilan Kosong untuk Guru/Admin sebelum memilih kelas */}
+      {isTeacher && !selectedClass ? (
+        <div className="card" style={{ padding: '60px 24px', textAlign: 'center', maxWidth: 680, margin: '20px auto' }}>
+          <div style={{
+            width: 76,
+            height: 76,
+            borderRadius: '50%',
+            background: 'var(--primary-light)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px auto'
+          }}>
+            <Users size={36} color="var(--primary)" />
+          </div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: 10 }}>
+            Pilih Kelas Terlebih Dahulu
+          </h3>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: 480, margin: '0 auto 24px auto', lineHeight: 1.6 }}>
+            Silakan pilih kelas pada filter di atas untuk melihat riwayat sesi presensi mata pelajaran <strong>{currentSelectedSubjectObj?.name || 'terpilih'}</strong>, atau klik salah satu kelas di bawah ini:
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+            {availableClasses.length === 0 ? (
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Tidak ada kelas yang terhubung dengan mata pelajaran ini.</span>
+            ) : (
+              availableClasses.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="btn btn-outline"
+                  style={{ fontWeight: 700, padding: '8px 18px', borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                  onClick={() => setSelectedClass(c.id.toString())}
+                >
+                  Kelas {c.name}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      ) : activeTab === 'sessions' ? (
         <div className="attendance-split-layout">
           {/* Left: Sessions List */}
           <div className="card" style={{ padding: 16 }}>
@@ -613,15 +752,15 @@ export default function AttendanceView() {
                   </div>
                 </div>
 
-                {/* If Student logged in: Show Check-in Box or Status Banner */}
+                {/* If Student logged in: Show Check-in Box or Multi-Status Banner */}
                 {!isTeacher && (
                   (() => {
                     const myRecord = studentRecords.find(st => st.student_id === user?.id);
-                    const isAlreadyHadir = myRecord && myRecord.status === 'Hadir';
+                    const status = myRecord?.status;
 
-                    if (isAlreadyHadir) {
+                    if (status === 'Hadir') {
                       return (
-                        <div style={{ background: 'var(--success-light)', padding: '14px 18px', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #a7f3d0' }}>
+                        <div style={{ background: '#ecfdf5', padding: '14px 18px', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #a7f3d0' }}>
                           <CheckCircle size={22} color="#059669" />
                           <div>
                             <strong style={{ fontSize: '0.92rem', color: '#065f46', display: 'block' }}>
@@ -629,6 +768,70 @@ export default function AttendanceView() {
                             </strong>
                             <span style={{ fontSize: '0.78rem', color: '#047857' }}>
                               Terima kasih, kehadiran Anda pada sesi ini telah tersimpan secara resmi.
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (status === 'Sakit') {
+                      return (
+                        <div style={{ background: '#fffbeb', padding: '14px 18px', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #fde68a' }}>
+                          <Clock size={22} color="#d97706" />
+                          <div>
+                            <strong style={{ fontSize: '0.92rem', color: '#92400e', display: 'block' }}>
+                              Status Kehadiran Anda: Sakit
+                            </strong>
+                            <span style={{ fontSize: '0.78rem', color: '#b45309' }}>
+                              Guru telah mencatat keterangan sakit untuk Anda pada pertemuan ini. Lekas pulih!
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (status === 'Izin') {
+                      return (
+                        <div style={{ background: '#eff6ff', padding: '14px 18px', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #bfdbfe' }}>
+                          <Info size={22} color="#2563eb" />
+                          <div>
+                            <strong style={{ fontSize: '0.92rem', color: '#1e40af', display: 'block' }}>
+                              Status Kehadiran Anda: Izin
+                            </strong>
+                            <span style={{ fontSize: '0.78rem', color: '#1d4ed8' }}>
+                              Guru telah mencatat keterangan izin untuk Anda pada pertemuan ini.
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (status === 'Terlambat') {
+                      return (
+                        <div style={{ background: '#fff7ed', padding: '14px 18px', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #fed7aa' }}>
+                          <Clock size={22} color="#ea580c" />
+                          <div>
+                            <strong style={{ fontSize: '0.92rem', color: '#9a3412', display: 'block' }}>
+                              Status Kehadiran Anda: Terlambat
+                            </strong>
+                            <span style={{ fontSize: '0.78rem', color: '#c2410c' }}>
+                              Kehadiran Anda telah dicatat dengan keterangan terlambat.
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (status === 'Alpa') {
+                      return (
+                        <div style={{ background: '#fef2f2', padding: '14px 18px', borderRadius: 'var(--radius-md)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #fecaca' }}>
+                          <AlertCircle size={22} color="#dc2626" />
+                          <div>
+                            <strong style={{ fontSize: '0.92rem', color: '#991b1b', display: 'block' }}>
+                              Status Kehadiran Anda: Alpa (Tanpa Keterangan)
+                            </strong>
+                            <span style={{ fontSize: '0.78rem', color: '#b91c1c' }}>
+                              Status kehadiran Anda tercatat alpa. Silakan hubungi guru pengampu jika ada kekeliruan.
                             </span>
                           </div>
                         </div>
@@ -915,22 +1118,42 @@ export default function AttendanceView() {
                 <div className="form-group">
                   <label className="form-label">Mata Pelajaran & Kelas</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    {/* 1. Mata Pelajaran di Modal (Urutan Pertama) */}
+                    <select
+                      className="form-control"
+                      value={newSessionForm.subject_id || selectedSubject}
+                      onChange={(e) => {
+                        const newSubj = e.target.value;
+                        const modalSubjObj = displaySubjects.find(s => s.id?.toString() === newSubj?.toString());
+                        const validClasses = getClassesForSubject(modalSubjObj, sortedClasses);
+                        setNewSessionForm({
+                          ...newSessionForm,
+                          subject_id: newSubj,
+                          class_id: validClasses[0]?.id?.toString() || ''
+                        });
+                      }}
+                      required
+                    >
+                      {displaySubjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
+                    </select>
+
+                    {/* 2. Kelas di Modal (Tersaring Menyesuaikan Mapel) */}
                     <select
                       className="form-control"
                       value={newSessionForm.class_id || selectedClass}
                       onChange={(e) => setNewSessionForm({ ...newSessionForm, class_id: e.target.value })}
                       required
                     >
-                      {sortedClasses.map(c => <option key={c.id} value={c.id}>Kelas {c.name}</option>)}
-                    </select>
-
-                    <select
-                      className="form-control"
-                      value={newSessionForm.subject_id || selectedSubject}
-                      onChange={(e) => setNewSessionForm({ ...newSessionForm, subject_id: e.target.value })}
-                      required
-                    >
-                      {subjects.map(s => <option key={s.id} value={s.id}>{s.name} {s.code ? `(${s.code})` : ''}</option>)}
+                      {(() => {
+                        const currentModalSubj = displaySubjects.find(s => s.id?.toString() === (newSessionForm.subject_id || selectedSubject)?.toString()) || displaySubjects[0];
+                        const modalFilteredClasses = getClassesForSubject(currentModalSubj, sortedClasses);
+                        if (modalFilteredClasses.length === 0) {
+                          return <option value="">-- Tidak ada kelas --</option>;
+                        }
+                        return modalFilteredClasses.map(c => (
+                          <option key={c.id} value={c.id}>Kelas {c.name}</option>
+                        ));
+                      })()}
                     </select>
                   </div>
                 </div>
